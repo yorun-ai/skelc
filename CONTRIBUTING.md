@@ -11,7 +11,7 @@ Thank you for contributing to skelc. This guide describes the development workfl
 
 ## Prerequisites
 
-The Go module targets Go 1.26. VS Code extension changes also require a Node.js version compatible with VS Code extension development.
+The Go module targets Go 1.26.
 
 Download Go dependencies and run the baseline test suite with:
 
@@ -104,14 +104,11 @@ Update both when a change affects both language semantics and command behavior.
 
 ## VS Code Extension
 
-The extension source lives under `tool/vscode-skel`. After changing the extension, TextMate grammar, language configuration, or theme, run:
-
-```bash
-cd tool/vscode-skel
-npm run check
-```
-
-Packaged `.vsix` files are ignored release artifacts rather than source files. Rebuild one only when preparing an extension release, and inspect the package contents before publishing it.
+The extension is maintained in the independent
+[`yorun-ai/vscode-skel`](https://github.com/yorun-ai/vscode-skel) repository.
+Changes to `skelc lsp` capabilities should document their compatibility impact
+and be validated with the extension client, but extension source and packaged
+`.vsix` files do not belong in this repository.
 
 ## Runnable Example
 

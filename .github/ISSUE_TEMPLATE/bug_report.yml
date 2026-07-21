@@ -24,7 +24,7 @@ body:
         - TypeScript generation
         - Public Skel generation
         - CLI
-        - VS Code extension
+        - Language server
     validations:
       required: true
   - type: textarea

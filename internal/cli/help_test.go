@@ -23,6 +23,9 @@ func TestRunSkelcHelpShowsSubcommandOptions(t *testing.T) {
 	if !strings.Contains(result.Stdout, "format") {
 		t.Fatalf("unexpected stdout: %q", result.Stdout)
 	}
+	if !strings.Contains(result.Stdout, "lsp") {
+		t.Fatalf("unexpected stdout: %q", result.Stdout)
+	}
 	if strings.Contains(result.Stdout, "migrate") {
 		t.Fatalf("unexpected removed command in stdout: %q", result.Stdout)
 	}

@@ -219,7 +219,7 @@ Run `skelc --help` or `skelc <command> --help` for all options supported by the 
 - [TypeScript generation](https://yorun.ai/skelc/generation/typescript)
 - [Changelog](CHANGELOG.md)
 - [Documentation site source](https://github.com/yorun-ai/vine-doc)
-- [VS Code extension](https://github.com/yorun-ai/vscode-skel)
+- [Editor support and VS Code extension](https://github.com/yorun-ai/skel-editor-support)
 
 ## Contributing
 

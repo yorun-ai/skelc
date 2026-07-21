@@ -33,7 +33,7 @@
 ## Generated Artifacts
 
 - Modify generator templates under the relevant `internal/codegen/{golang,skeleton,typescript}` package rather than patching expected generated output behavior elsewhere.
-- The VS Code extension lives in the independent `yorun-ai/vscode-skel` repository. Keep editor client code and Marketplace packaging out of skelc; coordinate LSP compatibility across the two repositories.
+- Editor integrations live in the independent `yorun-ai/skel-editor-support` repository. Keep editor client code and Marketplace packaging out of skelc; coordinate LSP compatibility across the two repositories.
 - Do not commit temporary generated projects, test output, coverage files, editor settings, dependency directories, or local workspace files.
 
 ## Documentation

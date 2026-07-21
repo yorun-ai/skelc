@@ -1,0 +1,106 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to build
+        required: true
+        type: string
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  binaries:
+    name: Release binaries
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - name: Check out release
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Validate release tag
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Release tag must use the v<major>.<minor>.<patch> format"
+            exit 1
+          fi
+
+          git tag --points-at HEAD --list "$RELEASE_TAG" | grep -Fx "$RELEASE_TAG"
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Build archives
+        run: |
+          set -euo pipefail
+
+          version="${RELEASE_TAG#v}"
+          mkdir -p dist
+
+          for target in \
+            darwin/amd64 \
+            darwin/arm64 \
+            linux/amd64 \
+            linux/arm64 \
+            windows/amd64
+          do
+            goos="${target%/*}"
+            goarch="${target#*/}"
+            archive="skelc_${version}_${goos}_${goarch}"
+            stage="dist/$archive"
+            executable="skelc"
+            if [ "$goos" = "windows" ]; then
+              executable="skelc.exe"
+            fi
+
+            mkdir -p "$stage"
+            install_root="$RUNNER_TEMP/skelc_${goos}_${goarch}"
+            GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 \
+              GOPATH="$install_root" GOMODCACHE="$RUNNER_TEMP/go-mod" \
+              go install -trimpath -ldflags "-s -w" \
+                "go.yorun.ai/skelc/cmd/skelc@$RELEASE_TAG"
+            installed="$(find "$install_root/bin" -type f -name "$executable" -print -quit)"
+            test -n "$installed"
+            cp "$installed" "$stage/$executable"
+            cp LICENSE README.md "$stage/"
+
+            if [ "$goos" = "windows" ]; then
+              (cd dist && zip -qr "$archive.zip" "$archive")
+            else
+              tar -C dist -czf "dist/$archive.tar.gz" "$archive"
+            fi
+          done
+
+      - name: Create checksums
+        run: |
+          cd dist
+          sha256sum skelc_*.tar.gz skelc_*.zip > checksums.txt
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$RELEASE_TAG" \
+            dist/skelc_*.tar.gz \
+            dist/skelc_*.zip \
+            dist/checksums.txt \
+            --clobber \
+            --repo "$GITHUB_REPOSITORY"

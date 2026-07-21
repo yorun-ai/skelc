@@ -1,0 +1,165 @@
+package source
+
+import (
+	"strings"
+
+	"go.yorun.ai/skelc/model"
+)
+
+const facadeGoFilename = "pub.go"
+
+var facadeGoTemplate = loadTemplate("facade.go.tpl")
+
+func importPackageName(domainName string, usePubPackage bool) string {
+	parts := strings.Split(domainName, ".")
+	name := parts[len(parts)-1]
+	if usePubPackage {
+		return name + "pub"
+	}
+	return name
+}
+
+type FacadeGoPayload struct {
+	PackageName        string
+	PubImport          *Import
+	PubPackageName     string
+	Enums              []*Enum
+	Data               []*Data
+	Configs            []*Data
+	Actors             []*Actor
+	AuthCredentialData []*Data
+	AuthServices       []*Service
+	Resources          []*Resource
+	Services           []*Service
+	Events             []*Event
+	UsesPermissionCode bool
+}
+
+func (g *_Gen) genFacadeGo() {
+	if !g.isSplitRegular() || !g.hasPubSymbols() {
+		return
+	}
+
+	payload := &FacadeGoPayload{
+		PackageName: g.pkgName,
+		PubImport: &Import{
+			Path: g.pubImportPath,
+		},
+		PubPackageName:     importPackageName(g.Domain.Name(), true),
+		Enums:              make([]*Enum, 0),
+		Data:               make([]*Data, 0),
+		Configs:            make([]*Data, 0),
+		Actors:             make([]*Actor, 0),
+		AuthCredentialData: make([]*Data, 0),
+		AuthServices:       make([]*Service, 0),
+		Resources:          make([]*Resource, 0),
+		Services:           make([]*Service, 0),
+		Events:             make([]*Event, 0),
+	}
+	for _, enum := range g.Domain.Enums() {
+		if enum.Pub {
+			payload.Enums = append(payload.Enums, castEnum(enum))
+		}
+	}
+	for _, data := range g.Domain.Data() {
+		if data.Pub {
+			payload.Data = append(payload.Data, castData(data))
+		}
+	}
+	for _, config := range g.Domain.Configs() {
+		if config.Pub {
+			payload.Configs = append(payload.Configs, castData(config))
+		}
+	}
+	for _, actor := range g.Domain.Actors() {
+		if actor.Pub {
+			payload.Actors = append(payload.Actors, castActor(actor))
+			if actor.AuthEnabled {
+				payload.AuthCredentialData = append(payload.AuthCredentialData, castData(actor.AuthCredential), castData(actor.AuthInfo))
+				payload.AuthServices = append(payload.AuthServices, castActorAuthService(actor.AuthService))
+			}
+			if actor.PermService != nil {
+				payload.AuthServices = append(payload.AuthServices, castActorAuthService(actor.PermService))
+			}
+		}
+	}
+	for _, resource := range g.Domain.Resources() {
+		if resource.Pub {
+			casted := castResource(resource)
+			payload.Resources = append(payload.Resources, casted)
+			if len(casted.Actions) > 0 {
+				payload.UsesPermissionCode = true
+			}
+			if resource.CheckService != nil {
+				payload.AuthServices = append(payload.AuthServices, g.castService(resource.CheckService, false, true))
+			}
+		}
+	}
+	for _, service := range g.Domain.Services() {
+		if service.Pub {
+			payload.Services = append(payload.Services, g.castService(service, true, false))
+		}
+	}
+	for _, event := range g.Domain.Events() {
+		if event.Pub {
+			payload.Events = append(payload.Events, g.castEvent(event, true, false))
+		}
+	}
+
+	g.renderGo(facadeGoFilename, facadeGoTemplate, payload)
+}
+
+func (g *_Gen) hasPubSymbols() bool {
+	return hasPubEnum(g.Domain.Enums()) ||
+		hasPubData(g.Domain.Data()) ||
+		hasPubData(g.Domain.Configs()) ||
+		hasPubActor(g.Domain.Actors()) ||
+		hasPubResource(g.Domain.Resources()) ||
+		hasPubService(g.Domain.Services()) ||
+		hasPubData(g.Domain.Events())
+}
+
+func hasPubEnum(enums []*model.Enum) bool {
+	for _, enum := range enums {
+		if enum.Pub {
+			return true
+		}
+	}
+	return false
+}
+
+func hasPubData(dataList []*model.Data) bool {
+	for _, data := range dataList {
+		if data.Pub {
+			return true
+		}
+	}
+	return false
+}
+
+func hasPubResource(resources []*model.Resource) bool {
+	for _, resource := range resources {
+		if resource.Pub {
+			return true
+		}
+	}
+	return false
+}
+
+func hasPubActor(actors []*model.Actor) bool {
+	for _, actor := range actors {
+		if actor.Pub {
+			return true
+		}
+	}
+	return false
+}
+
+func hasPubService(services []*model.Service) bool {
+	for _, service := range services {
+		if service.Pub {
+			return true
+		}
+	}
+	return false
+}

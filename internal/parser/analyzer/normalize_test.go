@@ -1,0 +1,267 @@
+package analyzer
+
+import (
+	"testing"
+
+	"go.yorun.ai/skelc/internal/parser/grammar"
+	"go.yorun.ai/skelc/model"
+)
+
+func TestAnalyzeReturnsErrorWhenDataReferencesConfig(t *testing.T) {
+	expectAnalyzePanicContains(t, "data Page cannot reference config SiteConfig", &grammar.SkelContent{
+		Domain: domainContent("demo.user"),
+		Entries: []*grammar.SkelEntry{
+			{
+				Config: &grammar.Data{
+					Name:      ident("SiteConfig"),
+					Qualifier: ident("instant"),
+					Members: []*grammar.DataMember{
+						{Name: ident("title"), Type: plainType(grammar.String)},
+					},
+				},
+			},
+			{
+				Data: &grammar.Data{
+					Name: ident("Page"),
+					Members: []*grammar.DataMember{
+						{Name: ident("site"), Type: refGrammarType("SiteConfig")},
+					},
+				},
+			},
+		},
+	})
+}
+
+func TestAnalyzeReturnsErrorWhenConfigReferencesData(t *testing.T) {
+	expectAnalyzePanicContains(t, "config AppConfig member database cannot reference data Database", &grammar.SkelContent{
+		Domain: domainContent("demo.user"),
+		Entries: []*grammar.SkelEntry{
+			{
+				Data: &grammar.Data{
+					Name: ident("Database"),
+					Members: []*grammar.DataMember{
+						{Name: ident("host"), Type: plainType(grammar.String)},
+					},
+				},
+			},
+			{
+				Config: &grammar.Data{
+					Name:      ident("AppConfig"),
+					Qualifier: ident("eternal"),
+					Members: []*grammar.DataMember{
+						{Name: ident("database"), Type: refGrammarType("Database")},
+					},
+				},
+			},
+		},
+	})
+}
+
+func TestAnalyzeAllowsConfigReferencesEnum(t *testing.T) {
+	domain := Analyze(&grammar.SkelContent{
+		Domain: domainContent("demo.user"),
+		Entries: []*grammar.SkelEntry{
+			{
+				Enum: &grammar.Enum{
+					Name: ident("UserStatus"),
+					Items: []*grammar.EnumItem{
+						{Name: ident("ACTIVE")},
+					},
+				},
+			},
+			{
+				Config: &grammar.Data{
+					Name:      ident("AppConfig"),
+					Qualifier: ident("eternal"),
+					Members: []*grammar.DataMember{
+						{Name: ident("defaultStatus"), Type: refGrammarType("UserStatus")},
+					},
+				},
+			},
+		},
+	}).Model()
+	if domain.Configs()[0].Members[0].Type.Kind != model.TypeKindEnum {
+		t.Fatalf("unexpected config member type: %v", domain.Configs()[0].Members[0].Type.Kind)
+	}
+}
+
+func TestAnalyzeAllowsConfigListValueEnum(t *testing.T) {
+	domain := Analyze(&grammar.SkelContent{
+		Domain: domainContent("demo.user"),
+		Entries: []*grammar.SkelEntry{
+			{
+				Enum: &grammar.Enum{
+					Name: ident("UserStatus"),
+					Items: []*grammar.EnumItem{
+						{Name: ident("ACTIVE")},
+					},
+				},
+			},
+			{
+				Config: &grammar.Data{
+					Name:      ident("AppConfig"),
+					Qualifier: ident("eternal"),
+					Members: []*grammar.DataMember{
+						{Name: ident("statuses"), Type: listType(refGrammarType("UserStatus"))},
+					},
+				},
+			},
+		},
+	}).Model()
+	if domain.Configs()[0].Members[0].Type.List.Value.Kind != model.TypeKindEnum {
+		t.Fatalf("unexpected list value type: %v", domain.Configs()[0].Members[0].Type.List.Value.Kind)
+	}
+}
+
+func TestAnalyzeReturnsErrorWhenConfigMemberIsBinary(t *testing.T) {
+	expectAnalyzePanicContains(t, "config AppConfig member payload cannot use binary type", &grammar.SkelContent{
+		Domain: domainContent("demo.user"),
+		Entries: []*grammar.SkelEntry{
+			{
+				Config: &grammar.Data{
+					Name:      ident("AppConfig"),
+					Qualifier: ident("eternal"),
+					Members: []*grammar.DataMember{
+						{Name: ident("payload"), Type: plainType(grammar.Binary)},
+					},
+				},
+			},
+		},
+	})
+}
+
+func TestAnalyzeReturnsErrorWhenConfigListValueIsBinary(t *testing.T) {
+	expectAnalyzePanicContains(t, "config AppConfig member payloads list value cannot use binary type", &grammar.SkelContent{
+		Domain: domainContent("demo.user"),
+		Entries: []*grammar.SkelEntry{
+			{
+				Config: &grammar.Data{
+					Name:      ident("AppConfig"),
+					Qualifier: ident("eternal"),
+					Members: []*grammar.DataMember{
+						{Name: ident("payloads"), Type: listType(plainType(grammar.Binary))},
+					},
+				},
+			},
+		},
+	})
+}
+
+func TestAnalyzeReturnsErrorWhenConfigListValueIsData(t *testing.T) {
+	expectAnalyzePanicContains(t, "config AppConfig member databases list value type must be scalar or enum", &grammar.SkelContent{
+		Domain: domainContent("demo.user"),
+		Entries: []*grammar.SkelEntry{
+			{
+				Data: &grammar.Data{
+					Name: ident("Database"),
+					Members: []*grammar.DataMember{
+						{Name: ident("host"), Type: plainType(grammar.String)},
+					},
+				},
+			},
+			{
+				Config: &grammar.Data{
+					Name:      ident("AppConfig"),
+					Qualifier: ident("eternal"),
+					Members: []*grammar.DataMember{
+						{Name: ident("databases"), Type: listType(refGrammarType("Database"))},
+					},
+				},
+			},
+		},
+	})
+}
+
+func TestAnalyzeReturnsErrorWhenConfigMapValueIsNotScalar(t *testing.T) {
+	expectAnalyzePanicContains(t, "config AppConfig member databases map value type must be scalar", &grammar.SkelContent{
+		Domain: domainContent("demo.user"),
+		Entries: []*grammar.SkelEntry{
+			{
+				Data: &grammar.Data{
+					Name: ident("Database"),
+					Members: []*grammar.DataMember{
+						{Name: ident("host"), Type: plainType(grammar.String)},
+					},
+				},
+			},
+			{
+				Config: &grammar.Data{
+					Name:      ident("AppConfig"),
+					Qualifier: ident("eternal"),
+					Members: []*grammar.DataMember{
+						{Name: ident("databases"), Type: mapType(plainType(grammar.String), refGrammarType("Database"))},
+					},
+				},
+			},
+		},
+	})
+}
+
+func TestAnalyzeReturnsErrorWhenConfigMapValueIsBinary(t *testing.T) {
+	expectAnalyzePanicContains(t, "config AppConfig member payloads map value cannot use binary type", &grammar.SkelContent{
+		Domain: domainContent("demo.user"),
+		Entries: []*grammar.SkelEntry{
+			{
+				Config: &grammar.Data{
+					Name:      ident("AppConfig"),
+					Qualifier: ident("eternal"),
+					Members: []*grammar.DataMember{
+						{Name: ident("payloads"), Type: mapType(plainType(grammar.String), plainType(grammar.Binary))},
+					},
+				},
+			},
+		},
+	})
+}
+
+func TestAnalyzeAllowsConfigMapEnumKey(t *testing.T) {
+	domain := Analyze(&grammar.SkelContent{
+		Domain: domainContent("demo.user"),
+		Entries: []*grammar.SkelEntry{
+			{
+				Enum: &grammar.Enum{
+					Name: ident("UserStatus"),
+					Items: []*grammar.EnumItem{
+						{Name: ident("ACTIVE")},
+					},
+				},
+			},
+			{
+				Config: &grammar.Data{
+					Name:      ident("AppConfig"),
+					Qualifier: ident("eternal"),
+					Members: []*grammar.DataMember{
+						{Name: ident("statusNames"), Type: mapType(refGrammarType("UserStatus"), plainType(grammar.String))},
+					},
+				},
+			},
+		},
+	}).Model()
+	if domain.Configs()[0].Members[0].Type.Map.Key.Kind != model.TypeKindEnum {
+		t.Fatalf("expected config map key enum")
+	}
+}
+
+func TestAnalyzeReturnsErrorForHardReferenceCycle(t *testing.T) {
+	expectAnalyzePanicContains(t, "hard reference chain detected", &grammar.SkelContent{
+		Domain: domainContent("demo.user"),
+		Entries: []*grammar.SkelEntry{
+			{
+				Data: &grammar.Data{
+					Name: ident("User"),
+					Members: []*grammar.DataMember{
+						{Name: ident("profile"), Type: refGrammarType("Profile")},
+					},
+				},
+			},
+			{
+				Data: &grammar.Data{
+					Name: ident("Profile"),
+					Members: []*grammar.DataMember{
+						{Name: ident("user"), Type: refGrammarType("User")},
+					},
+				},
+			},
+		},
+	})
+}

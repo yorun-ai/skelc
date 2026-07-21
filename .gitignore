@@ -1,0 +1,34 @@
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local environment / workspace
+.env
+.env.*
+!.env.example
+/.cache/
+/go.work
+/go.work.sum
+
+# Go build / test artifacts
+/bin/
+*.test
+*.out
+*.prof
+/coverage/
+/coverage.*
+
+# VS Code extension / Node artifacts
+/tool/vscode-skel/dist/
+/tool/vscode-skel/*.vsix
+node_modules/
+npm-debug.log*
+
+# Temporary / runtime files
+/tmp/
+/temp/
+/examples/quickstart/generated/
+*.log

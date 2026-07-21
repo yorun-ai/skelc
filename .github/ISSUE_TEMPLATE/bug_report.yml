@@ -1,0 +1,55 @@
+name: Bug report
+description: Report incorrect parsing, validation, formatting, CLI, or generated output.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for helping improve skelc. Remove secrets and proprietary contracts from reproductions.
+  - type: input
+    id: version
+    attributes:
+      label: skelc version
+      description: Paste the output of `skelc version`.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Parser or validation
+        - Formatter
+        - Go generation
+        - TypeScript generation
+        - Public Skel generation
+        - CLI
+        - VS Code extension
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Include the smallest Skel input and exact command that reproduce the problem.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include complete diagnostics or generated-output differences.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include operating system, architecture, and relevant Vine or vRPC versions.

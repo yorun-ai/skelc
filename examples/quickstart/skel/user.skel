@@ -1,0 +1,21 @@
+domain demo.user
+
+pub actor ClientActor {
+    via client {}
+}
+
+pub data User {
+    id: int
+    name: string
+}
+
+pub service UserService {
+    for ClientActor via client
+
+    method getUser {
+        input {
+            userId: int
+        }
+        output User?
+    }
+}

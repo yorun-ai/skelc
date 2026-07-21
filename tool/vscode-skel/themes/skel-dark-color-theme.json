@@ -1,0 +1,104 @@
+{
+  "name": "Skel Dark",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#242424",
+    "editor.foreground": "#d4d4d4",
+    "editorLineNumber.foreground": "#858585",
+    "editorCursor.foreground": "#aeafad",
+    "editor.selectionBackground": "#264f78",
+    "editor.lineHighlightBackground": "#2a2a2a"
+  },
+  "tokenColors": [
+    {
+      "scope": "source.skel comment",
+      "settings": {
+        "foreground": "#7a7a7a"
+      }
+    },
+    {
+      "scope": "source.skel string",
+      "settings": {
+        "foreground": "#6a9955"
+      }
+    },
+    {
+      "scope": [
+        "source.skel keyword.declaration",
+        "source.skel keyword.control.import",
+        "source.skel keyword.declaration.domain",
+        "source.skel storage.modifier.public"
+      ],
+      "settings": {
+        "foreground": "#d19a66"
+      }
+    },
+    {
+      "scope": [
+        "source.skel keyword.control",
+        "source.skel keyword.operator"
+      ],
+      "settings": {
+        "foreground": "#dcdcaa"
+      }
+    },
+    {
+      "scope": [
+        "source.skel punctuation.separator.output",
+        "source.skel punctuation.bracket"
+      ],
+      "settings": {
+        "foreground": "#d4d4d4"
+      }
+    },
+    {
+      "scope": [
+        "source.skel entity.name.type",
+        "source.skel entity.name.type.reference",
+        "source.skel entity.name.namespace",
+        "source.skel support.type"
+      ],
+      "settings": {
+        "foreground": "#61afef"
+      }
+    },
+    {
+      "scope": "source.skel support.type.builtin",
+      "settings": {
+        "foreground": "#d19a66"
+      }
+    },
+    {
+      "scope": [
+        "source.skel variable.other.member",
+        "source.skel variable.other.alias"
+      ],
+      "settings": {
+        "foreground": "#c586c0"
+      }
+    },
+    {
+      "scope": [
+        "source.skel entity.name.function.decorator"
+      ],
+      "settings": {
+        "foreground": "#dcdcaa"
+      }
+    },
+    {
+      "scope": [
+        "source.skel entity.name.function",
+        "source.skel entity.name.function.method"
+      ],
+      "settings": {
+        "foreground": "#9cdcfe"
+      }
+    },
+    {
+      "scope": "source.skel punctuation.separator",
+      "settings": {
+        "foreground": "#d4d4d4"
+      }
+    }
+  ]
+}

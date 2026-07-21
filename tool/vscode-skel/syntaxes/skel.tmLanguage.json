@@ -1,0 +1,338 @@
+{
+  "name": "Skel",
+  "scopeName": "source.skel",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#decorators"
+    },
+    {
+      "include": "#domain"
+    },
+    {
+      "include": "#imports"
+    },
+    {
+      "include": "#entries"
+    },
+    {
+      "include": "#members"
+    },
+    {
+      "include": "#method-output"
+    },
+    {
+      "include": "#methods"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#scalars"
+    },
+    {
+      "include": "#type-references"
+    },
+    {
+      "include": "#operators"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.skel",
+          "match": "//.*$"
+        },
+        {
+          "name": "comment.block.skel",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.triple.skel",
+          "begin": "\"\"\"",
+          "end": "\"\"\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.skel",
+              "match": "\\\\."
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.double.skel",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.skel",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "decorators": {
+      "patterns": [
+        {
+          "name": "meta.annotation.skel",
+          "match": "(@)([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.annotation.skel"
+            },
+            "2": {
+              "name": "entity.name.function.decorator.skel"
+            }
+          }
+        }
+      ]
+    },
+    "domain": {
+      "patterns": [
+        {
+          "name": "meta.domain.skel",
+          "match": "^\\s*(domain)\\s+([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*)",
+          "captures": {
+            "1": {
+              "name": "keyword.declaration.domain.skel"
+            },
+            "2": {
+              "name": "entity.name.namespace.skel"
+            }
+          }
+        }
+      ]
+    },
+    "imports": {
+      "patterns": [
+        {
+          "name": "meta.import.skel",
+          "match": "^\\s*(import)\\s+([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*)(?:\\s+(as)\\s+([A-Za-z_][A-Za-z0-9_]*))?",
+          "captures": {
+            "1": {
+              "name": "keyword.control.import.skel"
+            },
+            "2": {
+              "name": "entity.name.namespace.skel"
+            },
+            "3": {
+              "name": "keyword.control.as.skel"
+            },
+            "4": {
+              "name": "variable.other.alias.skel"
+            }
+          }
+        }
+      ]
+    },
+    "entries": {
+      "patterns": [
+        {
+          "name": "meta.definition.skel",
+          "match": "^\\s*(?:(pub)\\s+)?(enum|data|config|actor|resource|service|web|event|task)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "storage.modifier.public.skel"
+            },
+            "2": {
+              "name": "keyword.declaration.skel"
+            },
+            "3": {
+              "name": "entity.name.type.skel"
+            }
+          }
+        },
+        {
+          "name": "meta.resource-check.skel",
+          "match": "^\\s*(check)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "keyword.declaration.check.skel"
+            },
+            "2": {
+              "name": "entity.name.function.check.skel"
+            }
+          }
+        },
+        {
+          "name": "meta.resource-action.skel",
+          "match": "^\\s*(action)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "keyword.declaration.action.skel"
+            },
+            "2": {
+              "name": "entity.name.function.action.skel"
+            }
+          }
+        },
+        {
+          "name": "meta.actor-access.skel",
+          "match": "\\b(via)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": {
+              "name": "keyword.declaration.via.skel"
+            },
+            "2": {
+              "name": "entity.name.function.skel"
+            }
+          }
+        }
+      ]
+    },
+    "members": {
+      "patterns": [
+        {
+          "name": "meta.member.skel",
+          "match": "^\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*(:)\\s*([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)?)",
+          "captures": {
+            "1": {
+              "name": "variable.other.member.skel"
+            },
+            "2": {
+              "name": "punctuation.separator.key-value.skel"
+            },
+            "3": {
+              "name": "support.type.skel"
+            }
+          }
+        },
+        {
+          "name": "meta.method-output.skel",
+          "match": "\\b(output)\\s*([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)?)",
+          "captures": {
+            "1": {
+              "name": "keyword.control.output.skel"
+            },
+            "2": {
+              "name": "support.type.skel"
+            }
+          }
+        }
+      ]
+    },
+    "method-output": {
+      "patterns": [
+        {
+          "name": "meta.method-auth.skel",
+          "match": "\\b(auth|noauth)\\b",
+          "captures": {
+            "1": {
+              "name": "keyword.control.auth.skel"
+            }
+          }
+        },
+        {
+          "name": "meta.method-require.skel",
+          "match": "\\b(require)\\s+",
+          "captures": {
+            "1": {
+              "name": "keyword.control.require.skel"
+            }
+          }
+        },
+        {
+          "name": "keyword.control.require-mode.skel",
+          "match": "\\b(all|any)\\b(?=\\s*\\()"
+        },
+        {
+          "name": "meta.permission-target.skel",
+          "match": "\\b([A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)?)(:)([A-Za-z_][A-Za-z0-9_]*)(?:(:)([A-Za-z_][A-Za-z0-9_]*))?",
+          "captures": {
+            "1": {
+              "name": "entity.name.type.resource.skel"
+            },
+            "2": {
+              "name": "punctuation.separator.permission.skel"
+            },
+            "3": {
+              "name": "entity.name.function.action.skel"
+            },
+            "4": {
+              "name": "punctuation.separator.permission.skel"
+            },
+            "5": {
+              "name": "entity.name.function.check.skel"
+            }
+          }
+        },
+        {
+          "name": "meta.method-output.skel",
+          "match": "\\b(output)(\\s*)",
+          "captures": {
+            "1": {
+              "name": "keyword.control.output.skel"
+            }
+          }
+        }
+      ]
+    },
+    "methods": {
+      "patterns": [
+        {
+          "name": "meta.method.skel",
+          "match": "^\\s*(method)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(?=\\{)",
+          "captures": {
+            "1": {
+              "name": "keyword.declaration.method.skel"
+            },
+            "2": {
+              "name": "entity.name.function.method.skel"
+            }
+          }
+        }
+      ]
+    },
+    "type-references": {
+      "patterns": [
+        {
+          "name": "entity.name.type.reference.skel",
+          "match": "\\b[A-Z][A-Za-z0-9_]*\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.skel",
+          "match": "\\b(pub|domain|import|as|via|for|auth|noauth|permission|credential|info|method|require|trigger|input|output|payload|resource|action|check|all|any)\\b"
+        }
+      ]
+    },
+    "scalars": {
+      "patterns": [
+        {
+          "name": "support.type.builtin.skel",
+          "match": "\\b(int|float|bool|string|decimal|binary|timestamp|duration|localdate|localtime|localdatetime|uuid|json|PermissionCode|list|map)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.nullable.skel",
+          "match": "\\?"
+        },
+        {
+          "name": "punctuation.separator.skel",
+          "match": "[,.:;]"
+        },
+        {
+          "name": "punctuation.bracket.skel",
+          "match": "[{}()<>\\[\\]]"
+        }
+      ]
+    }
+  }
+}

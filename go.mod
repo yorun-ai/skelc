@@ -3,11 +3,11 @@ module go.yorun.ai/skelc
 go 1.26.0
 
 require (
-	github.com/Masterminds/semver/v3 v3.4.0
+	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/alecthomas/participle/v2 v2.1.4
 	github.com/stretchr/testify v1.11.1
-	github.com/urfave/cli/v3 v3.4.1
-	golang.org/x/mod v0.35.0
+	github.com/urfave/cli/v3 v3.10.1
+	golang.org/x/mod v0.38.0
 )
 
 require (

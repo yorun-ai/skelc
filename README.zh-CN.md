@@ -1,5 +1,9 @@
 # skelc
 
+[![License](https://img.shields.io/github/license/yorun-ai/skelc)](LICENSE)
+[![Go](https://img.shields.io/github/go-mod/go-version/yorun-ai/skelc)](go.mod)
+[![CI](https://github.com/yorun-ai/skelc/actions/workflows/ci.yml/badge.svg)](https://github.com/yorun-ai/skelc/actions/workflows/ci.yml)
+
 [English](README.md) | **简体中文**
 
 skelc 是 Skel 契约语言的编译器和命令行工具。你可以用 `.skel` 文件统一描述 Vine 应用的领域数据、服务、事件和入口，然后生成 Go 服务端代码、TypeScript client 以及可供其他 domain 使用的公开契约。

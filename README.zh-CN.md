@@ -219,7 +219,7 @@ version        显示 skelc 与默认 Vine 版本
 - [TypeScript 生成说明](https://yorun.ai/skelc/generation/typescript)
 - [变更记录](CHANGELOG.md)（英文）
 - [文档站源码](https://github.com/yorun-ai/vine-doc)
-- [VS Code 扩展](https://github.com/yorun-ai/vscode-skel)（英文）
+- [编辑器支持与 VS Code 扩展](https://github.com/yorun-ai/skel-editor-support)（英文）
 
 ## 参与贡献
 

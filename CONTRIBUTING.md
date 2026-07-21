@@ -105,7 +105,7 @@ Update both when a change affects both language semantics and command behavior.
 ## VS Code Extension
 
 The extension is maintained in the independent
-[`yorun-ai/vscode-skel`](https://github.com/yorun-ai/vscode-skel) repository.
+[`yorun-ai/skel-editor-support`](https://github.com/yorun-ai/skel-editor-support) repository.
 Changes to `skelc lsp` capabilities should document their compatibility impact
 and be validated with the extension client, but extension source and packaged
 `.vsix` files do not belong in this repository.

@@ -1,5 +1,9 @@
 # skelc
 
+[![License](https://img.shields.io/github/license/yorun-ai/skelc)](LICENSE)
+[![Go](https://img.shields.io/github/go-mod/go-version/yorun-ai/skelc)](go.mod)
+[![CI](https://github.com/yorun-ai/skelc/actions/workflows/ci.yml/badge.svg)](https://github.com/yorun-ai/skelc/actions/workflows/ci.yml)
+
 **English** | [简体中文](README.zh-CN.md)
 
 skelc is the compiler and command-line tool for the Skel contract language. Use `.skel` files to describe the domain data, services, events, and entry points of a Vine application, then generate Go server code, TypeScript clients, and public contracts for other domains.

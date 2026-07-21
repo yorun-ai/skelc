@@ -37,21 +37,3 @@ jobs:
 
       - name: Exercise quickstart
         run: ./examples/quickstart/generate.sh "$RUNNER_TEMP/skelc-quickstart"
-
-  vscode-extension:
-    name: VS Code extension
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: tool/vscode-skel
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 22
-
-      - name: Validate extension sources
-        run: npm run check

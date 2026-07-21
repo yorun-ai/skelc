@@ -21,12 +21,6 @@
 /coverage/
 /coverage.*
 
-# VS Code extension / Node artifacts
-/tool/vscode-skel/dist/
-/tool/vscode-skel/*.vsix
-node_modules/
-npm-debug.log*
-
 # Temporary / runtime files
 /tmp/
 /temp/

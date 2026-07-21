@@ -201,6 +201,7 @@ After upgrading skelc, regenerate the code and run type checks and tests in its 
 ```text
 check          validate Skel definitions
 format         format Skel definitions in place
+lsp            run the Skel language server over stdio
 symbol         list or inspect top-level symbols
 gen skel       generate public Skel contracts
 gen go         generate code inside an existing Go module
@@ -218,7 +219,7 @@ Run `skelc --help` or `skelc <command> --help` for all options supported by the 
 - [TypeScript generation](https://yorun.ai/skelc/generation/typescript)
 - [Changelog](CHANGELOG.md)
 - [Documentation site source](https://github.com/yorun-ai/vine-doc)
-- [VS Code extension](tool/vscode-skel/README.md)
+- [VS Code extension](https://github.com/yorun-ai/vscode-skel)
 
 ## Contributing
 

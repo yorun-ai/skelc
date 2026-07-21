@@ -15,4 +15,5 @@ Initial public release.
 - TypeScript type, package, and vRPC service client generation
 - Public Skel contract extraction for cross-domain sharing
 - Binary-aware sparse vRPC wire-schema generation for TypeScript clients
-- VS Code syntax highlighting and symbol navigation
+- Language Server Protocol support for syntax diagnostics, document symbols, definitions, and references
+- VS Code syntax highlighting and LSP-powered language features

@@ -17,12 +17,29 @@ type _Parser struct {
 	skelContentParser *participle.Parser[grammar.SkelContent]
 }
 
-// ValidateSource validates the grammar and finalized syntax state of one Skel source file.
-func ValidateSource(path string, source []byte) {
+// ParseSource parses and finalizes one Skel source file without resolving its
+// imports or performing domain-level semantic analysis.
+func ParseSource(path string, source []byte) (*grammar.SkelContent, error) {
 	parser := newParser()
 	content, err := parser.skelContentParser.Parse(path, bytes.NewReader(source))
+	if err != nil {
+		return nil, err
+	}
+	if err := content.Finalize(); err != nil {
+		return nil, err
+	}
+	if content.Domain != nil {
+		if err := content.Domain.Finalize(); err != nil {
+			return nil, err
+		}
+	}
+	return content, nil
+}
+
+// ValidateSource validates the grammar and finalized syntax state of one Skel source file.
+func ValidateSource(path string, source []byte) {
+	_, err := ParseSource(path, source)
 	checkutil.CheckNilError(err, "parse %s failed", path)
-	checkutil.CheckNilError(content.Finalize(), "finalize %s failed", path)
 }
 
 func newParser() *_Parser {
@@ -111,15 +128,13 @@ func buildMergedContent(domainFileContent *grammar.SkelContent, contents []*gram
 }
 
 func (p *_Parser) parseContent(sourceFile *loader.SourceFile, requireDomain bool) *grammar.SkelContent {
-	content, err := p.skelContentParser.Parse(sourceFile.FilePath, bytes.NewReader(sourceFile.Content))
+	content, err := ParseSource(sourceFile.FilePath, sourceFile.Content)
 	checkutil.CheckNilError(err, "parse %s failed", sourceFile.FilePath)
-	checkutil.CheckNilError(content.Finalize(), "finalize %s failed", sourceFile.FilePath)
 
 	if content.Domain == nil || content.Domain.Name == nil {
 		checkutil.CheckNot(requireDomain, "missing domain declaration in %s", sourceFile.FilePath)
 		return content
 	}
-	checkutil.CheckNilError(content.Domain.Finalize(), "finalize domain in %s failed", sourceFile.FilePath)
 	checkutil.Check(content.Domain.Name.String() != "", "missing domain name in %s", sourceFile.FilePath)
 	return content
 }

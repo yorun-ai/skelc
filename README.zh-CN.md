@@ -201,6 +201,7 @@ skelc 负责读取契约并生成代码，本身不是应用运行时：
 ```text
 check          校验 Skel 定义
 format         原地格式化 Skel 定义
+lsp            通过标准输入输出运行 Skel 语言服务器
 symbol         列出或查询顶层符号
 gen skel       生成公开 Skel 契约
 gen go         在现有 Go module 中生成代码
@@ -218,7 +219,7 @@ version        显示 skelc 与默认 Vine 版本
 - [TypeScript 生成说明](https://yorun.ai/skelc/generation/typescript)
 - [变更记录](CHANGELOG.md)（英文）
 - [文档站源码](https://github.com/yorun-ai/vine-doc)
-- [VS Code 扩展](tool/vscode-skel/README.md)（英文）
+- [VS Code 扩展](https://github.com/yorun-ai/vscode-skel)（英文）
 
 ## 参与贡献
 

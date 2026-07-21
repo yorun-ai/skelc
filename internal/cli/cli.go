@@ -44,6 +44,9 @@ type _LogEntry struct {
 }
 
 func Main() {
+	if len(os.Args) == 2 && os.Args[1] == "lsp" {
+		os.Exit(runLSP())
+	}
 	result := Run(os.Args[1:])
 	if result.Stdout != "" {
 		_, _ = fmt.Fprint(os.Stdout, result.Stdout)
@@ -81,6 +84,7 @@ func newCommand() *ucli.Command {
 		},
 		Commands: []*ucli.Command{
 			newVersionCommand(),
+			newLSPCommand(),
 			newGenCommand(),
 			newSymbolCommand(),
 			newCheckCommand(),

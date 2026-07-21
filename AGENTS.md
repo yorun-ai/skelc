@@ -30,10 +30,10 @@
 - Keep deterministic behavior: input discovery, symbols, imports, dependencies, diagnostics, and generated files must have stable ordering.
 - Do not add silent recovery for invalid contracts. Diagnostics should identify the relevant source path and location whenever available.
 
-## Generated and Packaged Artifacts
+## Generated Artifacts
 
 - Modify generator templates under the relevant `internal/codegen/{golang,skeleton,typescript}` package rather than patching expected generated output behavior elsewhere.
-- Treat `tool/vscode-skel/dist/*.vsix` as release artifacts. Change the extension sources and manifest under `tool/vscode-skel`, validate them, and rebuild the package only when the task explicitly includes updating the release artifact.
+- The VS Code extension lives in the independent `yorun-ai/vscode-skel` repository. Keep editor client code and Marketplace packaging out of skelc; coordinate LSP compatibility across the two repositories.
 - Do not commit temporary generated projects, test output, coverage files, editor settings, dependency directories, or local workspace files.
 
 ## Documentation
@@ -55,6 +55,5 @@
 - Run `gofmt` on changed Go files and run `git diff --check`.
 - Run targeted package tests while iterating, then run `GOWORK=off go test ./...` for repository-wide Go changes so an enclosing workspace cannot replace published dependencies.
 - Run `GOWORK=off go vet ./...` after changes involving exported APIs, reflection, filesystem safety, or CLI/runtime wiring.
-- Run `npm run check` in `tool/vscode-skel` after changing the VS Code extension, grammar, language configuration, or theme.
 - Run `pnpm build` in `vine-doc` after changing skelc user-facing documentation there.
 - For CLI, syntax, or generator changes, exercise at least one representative `skelc check` or `skelc gen` flow in addition to automated tests.

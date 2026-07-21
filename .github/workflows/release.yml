@@ -59,17 +59,12 @@ jobs:
             darwin/amd64 \
             darwin/arm64 \
             linux/amd64 \
-            linux/arm64 \
-            windows/amd64
+            linux/arm64
           do
             goos="${target%/*}"
             goarch="${target#*/}"
             archive="skelc_${version}_${goos}_${goarch}"
             stage="dist/$archive"
-            executable="skelc"
-            if [ "$goos" = "windows" ]; then
-              executable="skelc.exe"
-            fi
 
             mkdir -p "$stage"
             install_root="$RUNNER_TEMP/skelc_${goos}_${goarch}"
@@ -77,22 +72,17 @@ jobs:
               GOPATH="$install_root" GOMODCACHE="$RUNNER_TEMP/go-mod" \
               go install -trimpath -ldflags "-s -w" \
                 "go.yorun.ai/skelc/cmd/skelc@$RELEASE_TAG"
-            installed="$(find "$install_root/bin" -type f -name "$executable" -print -quit)"
+            installed="$(find "$install_root/bin" -type f -name skelc -print -quit)"
             test -n "$installed"
-            cp "$installed" "$stage/$executable"
+            cp "$installed" "$stage/skelc"
             cp LICENSE README.md "$stage/"
-
-            if [ "$goos" = "windows" ]; then
-              (cd dist && zip -qr "$archive.zip" "$archive")
-            else
-              tar -C dist -czf "dist/$archive.tar.gz" "$archive"
-            fi
+            tar -C dist -czf "dist/$archive.tar.gz" "$archive"
           done
 
       - name: Create checksums
         run: |
           cd dist
-          sha256sum skelc_*.tar.gz skelc_*.zip > checksums.txt
+          sha256sum skelc_*.tar.gz > checksums.txt
 
       - name: Upload release assets
         env:
@@ -100,7 +90,6 @@ jobs:
         run: |
           gh release upload "$RELEASE_TAG" \
             dist/skelc_*.tar.gz \
-            dist/skelc_*.zip \
             dist/checksums.txt \
             --clobber \
             --repo "$GITHUB_REPOSITORY"

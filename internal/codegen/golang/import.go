@@ -1,34 +1,35 @@
 package golang
 
 import (
+	"fmt"
 	"strings"
 
 	gomodule "go.yorun.ai/skelc/internal/codegen/golang/module"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/model"
 )
 
-func (g *_Gen) resolveExternalTypeImports() {
+func (g *_Gen) resolveExternalTypeImports() error {
+	var resolveErr error
 	g.visitDomainTypes(func(type_ *model.Type) {
-		if type_ == nil || type_.ExternalDomain == "" {
+		if resolveErr != nil || type_ == nil || type_.ExternalDomain == "" {
 			return
 		}
-		type_.ExternalImportPath = g.goImportPath(type_.ExternalDomain)
+		type_.ExternalImportPath, resolveErr = g.goImportPath(type_.ExternalDomain)
 		if !type_.ExternalAliasExplicit {
 			type_.ExternalAlias = importPackageName(type_.ExternalDomain, true)
 		}
 	})
+	return resolveErr
 }
 
-func (g *_Gen) goImportPath(domainName string) string {
+func (g *_Gen) goImportPath(domainName string) (string, error) {
 	if path := g.goImports[domainName]; path != "" {
 		return gomodule.ImportPath(path)
 	}
-	checkutil.Check(g.modulePrefix != "",
-		"missing go import for domain %s; pass --go-import %s=PACKAGE or --go-module-prefix",
-		domainName, domainName,
-	)
-	return buildModuleName(g.modulePrefix, strings.Split(domainName, "."), true)
+	if g.modulePrefix == "" {
+		return "", fmt.Errorf("missing Go import for domain %s; pass --go-import %s=PACKAGE or --go-module-prefix", domainName, domainName)
+	}
+	return buildModuleName(g.modulePrefix, strings.Split(domainName, "."), true), nil
 }
 
 func (g *_Gen) visitDomainTypes(visit func(*model.Type)) {

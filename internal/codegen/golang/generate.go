@@ -7,7 +7,6 @@ import (
 	"go.yorun.ai/skelc/internal/codegen/golang/schema"
 	"go.yorun.ai/skelc/internal/codegen/golang/source"
 	"go.yorun.ai/skelc/internal/codegen/golang/view"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -28,9 +27,9 @@ type _Gen struct {
 	out               string
 }
 
-func Generate(domain *model.Domain, option Option) {
+func Generate(domain *model.Domain, option Option) error {
 	if option.PubOut == "" {
-		newGen(_GenOption{
+		gen, err := newGen(_GenOption{
 			CompilerVersion: option.CompilerVersion,
 			ModulePrefix:    option.ModulePrefix,
 			Module:          option.Module,
@@ -40,15 +39,18 @@ func Generate(domain *model.Domain, option Option) {
 			Domain:          domain,
 			Out:             option.Out,
 			AsModule:        option.AsModule,
-		}).gen()
-		return
+		})
+		if err != nil {
+			return err
+		}
+		return gen.gen()
 	}
 
 	pubModule := option.PubModule
 	if pubModule == "" {
 		pubModule = DefaultPubModuleName(option.ModulePrefix, option.Module, domain.Name())
 	}
-	newGen(_GenOption{
+	pubGen, err := newGen(_GenOption{
 		CompilerVersion: option.CompilerVersion,
 		ModulePrefix:    option.ModulePrefix,
 		Module:          pubModule,
@@ -58,8 +60,14 @@ func Generate(domain *model.Domain, option Option) {
 		Domain:          domain,
 		Out:             option.PubOut,
 		AsModule:        true,
-	}).gen()
-	newGen(_GenOption{
+	})
+	if err != nil {
+		return err
+	}
+	if err := pubGen.gen(); err != nil {
+		return err
+	}
+	regularGen, err := newGen(_GenOption{
 		CompilerVersion:   option.CompilerVersion,
 		ModulePrefix:      option.ModulePrefix,
 		Module:            option.Module,
@@ -71,24 +79,34 @@ func Generate(domain *model.Domain, option Option) {
 		Mode:              view.ModeRegular,
 		PubImportPath:     pubModule,
 		ExtraDependencies: []string{pubModule},
-	}).gen()
+	})
+	if err != nil {
+		return err
+	}
+	return regularGen.gen()
 }
 
-func newGen(option _GenOption) *_Gen {
-	checkutil.Check(isValidMode(option.Mode), "invalid go generation mode %q", option.Mode)
+func newGen(option _GenOption) (*_Gen, error) {
 	g := &_Gen{
 		domain:            option.Domain,
 		mode:              option.Mode,
 		asModule:          option.AsModule,
 		compilerVersion:   option.CompilerVersion,
-		vineVersion:       gomodule.ResolveVineVersion(option.VineVersion),
 		modulePrefix:      option.ModulePrefix,
 		goImports:         option.Imports,
 		pubImportPath:     option.PubImportPath,
 		extraDependencies: option.ExtraDependencies,
 		out:               option.Out,
 	}
-	g.view = view.New(option.Mode, option.Domain)
+	var err error
+	g.vineVersion, err = gomodule.ResolveVineVersion(option.VineVersion)
+	if err != nil {
+		return nil, err
+	}
+	g.view, err = view.Build(option.Mode, option.Domain)
+	if err != nil {
+		return nil, err
+	}
 	domainParts := strings.Split(g.domain.Name(), ".")
 	if option.AsModule {
 		g.modName = option.Module
@@ -96,30 +114,39 @@ func newGen(option _GenOption) *_Gen {
 			g.modName = buildModuleName(g.modulePrefix, domainParts, option.Mode == view.ModePub)
 		}
 	}
-	g.pkgName = inferPackageName(option.Out, packageNameFallback(domainParts, option.Mode == view.ModePub), option.AsModule)
-	g.resolveExternalTypeImports()
-	return g
+	g.pkgName, err = inferPackageName(option.Out, packageNameFallback(domainParts, option.Mode == view.ModePub), option.AsModule)
+	if err != nil {
+		return nil, err
+	}
+	if err := g.resolveExternalTypeImports(); err != nil {
+		return nil, err
+	}
+	return g, nil
 }
 
-func (g *_Gen) gen() {
+func (g *_Gen) gen() error {
 	if g.asModule {
-		gomodule.Generate(gomodule.Option{
+		if err := gomodule.Generate(gomodule.Option{
 			Out:               g.out,
 			Module:            g.modName,
 			VineVersion:       g.vineVersion,
 			Imports:           g.goImports,
 			ExtraDependencies: g.extraDependencies,
-		})
+		}); err != nil {
+			return err
+		}
 	}
-	source.Generate(source.Option{
+	if err := source.Generate(source.Option{
 		Domain:        g.domain,
 		View:          g.view,
 		Mode:          g.mode,
 		PackageName:   g.pkgName,
 		PubImportPath: g.pubImportPath,
 		Out:           g.out,
-	})
-	schema.Generate(schema.Option{
+	}); err != nil {
+		return err
+	}
+	return schema.Generate(schema.Option{
 		Domain:          g.domain,
 		View:            g.view,
 		Mode:            g.mode,

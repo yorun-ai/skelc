@@ -32,7 +32,13 @@ func parseDecoratorMeta(reporter *diagnosticReporter, decorators []*grammar.Deco
 			if !accepted {
 				continue
 			}
-			meta.Description = grammar.UnquoteDescriptionString(decorator.Value.Raw)
+			description, err := grammar.UnquoteDescriptionString(decorator.Value.Raw)
+			if err != nil {
+				reporter.reportf("%s invalid decorator @desc: %v", decorator.Name.Pos, err)
+				valid = false
+				continue
+			}
+			meta.Description = description
 		case "example":
 			accepted := reporter.check(ctx.allowExample, "%s unexpected decorator %s", decorator.Name.Pos, "@"+decorator.Name.Value)
 			accepted = reporter.checkNot(meta.HasExample, "%s duplicated decorator @example", decorator.Name.Pos) && accepted

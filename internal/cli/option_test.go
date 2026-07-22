@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -14,16 +13,16 @@ func TestValidateGoGenOption(t *testing.T) {
 	input := skelc.Input{SkelIn: "./demo"}
 	option := skelc.GolangOption{Out: "./gen/go"}
 
-	validateGoGenOption(input, option)
+	if err := validateGoGenOption(input, option); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestValidateGoGenOptionRequiresModuleName(t *testing.T) {
 	input := skelc.Input{SkelIn: "./demo"}
 	option := skelc.GolangOption{Out: "./gen/go", AsModule: true}
 
-	expectPanicContains(t, "missing flag go-module or go-module-prefix", func() {
-		validateGoGenOption(input, option)
-	})
+	expectOptionError(t, validateGoGenOption(input, option), "missing flag go-module or go-module-prefix")
 }
 
 func TestValidateGoGenOptionAllowsModulePrefix(t *testing.T) {
@@ -34,7 +33,9 @@ func TestValidateGoGenOptionAllowsModulePrefix(t *testing.T) {
 		ModulePrefix: "github.com/acme/skel",
 	}
 
-	validateGoGenOption(input, option)
+	if err := validateGoGenOption(input, option); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestValidateGoGenOptionRejectsModuleForNonModuleOutput(t *testing.T) {
@@ -44,9 +45,7 @@ func TestValidateGoGenOptionRejectsModuleForNonModuleOutput(t *testing.T) {
 		Module: "github.com/acme/skel/demo/user",
 	}
 
-	expectPanicContains(t, "flag go-module requires go-module output", func() {
-		validateGoGenOption(input, option)
-	})
+	expectOptionError(t, validateGoGenOption(input, option), "flag go-module requires go-module output")
 }
 
 func TestValidateGoGenOptionRejectsPubModuleWithoutPubOut(t *testing.T) {
@@ -58,9 +57,7 @@ func TestValidateGoGenOptionRejectsPubModuleWithoutPubOut(t *testing.T) {
 		PubModule:    "github.com/acme/skel/demo/userpub",
 	}
 
-	expectPanicContains(t, "flag go-pub-module requires go-pub-out", func() {
-		validateGoGenOption(input, option)
-	})
+	expectOptionError(t, validateGoGenOption(input, option), "flag go-pub-module requires go-pub-out")
 }
 
 func TestValidateGoGenOptionRejectsPubOutForNonModuleOutput(t *testing.T) {
@@ -71,9 +68,7 @@ func TestValidateGoGenOptionRejectsPubOutForNonModuleOutput(t *testing.T) {
 		ModulePrefix: "github.com/acme/skel",
 	}
 
-	expectPanicContains(t, "flag go-pub-out requires go-module output", func() {
-		validateGoGenOption(input, option)
-	})
+	expectOptionError(t, validateGoGenOption(input, option), "flag go-pub-out requires go-module output")
 }
 
 func TestValidateGoGenOptionRejectsTrailingSlash(t *testing.T) {
@@ -115,9 +110,7 @@ func TestValidateGoGenOptionRejectsTrailingSlash(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			input := skelc.Input{SkelIn: "./demo"}
-			expectPanicContains(t, test.expected, func() {
-				validateGoGenOption(input, test.option)
-			})
+			expectOptionError(t, validateGoGenOption(input, test.option), test.expected)
 		})
 	}
 }
@@ -126,9 +119,7 @@ func TestValidateTypeScriptGenOptionRequiresModuleName(t *testing.T) {
 	input := skelc.Input{SkelIn: "./demo"}
 	option := skelc.TypeScriptOption{Out: "./gen/ts", AsModule: true}
 
-	expectPanicContains(t, "missing flag ts-module or ts-module-scope", func() {
-		validateTypeScriptGenOption(input, option)
-	})
+	expectOptionError(t, validateTypeScriptGenOption(input, option), "missing flag ts-module or ts-module-scope")
 }
 
 func TestValidateTypeScriptGenOptionRejectsModuleOptionsWithoutAsModule(t *testing.T) {
@@ -152,9 +143,7 @@ func TestValidateTypeScriptGenOptionRejectsModuleOptionsWithoutAsModule(t *testi
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			input := skelc.Input{SkelIn: "./demo"}
-			expectPanicContains(t, test.expected, func() {
-				validateTypeScriptGenOption(input, test.option)
-			})
+			expectOptionError(t, validateTypeScriptGenOption(input, test.option), test.expected)
 		})
 	}
 }
@@ -171,22 +160,24 @@ func TestValidateTypeScriptGenOption(t *testing.T) {
 		},
 	}
 
-	validateTypeScriptGenOption(input, option)
+	if err := validateTypeScriptGenOption(input, option); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestValidateSkelGenOptionRequiresPub(t *testing.T) {
 	input := skelc.Input{SkelIn: "./demo"}
 	option := skelc.SkeletonOption{Out: "./gen/skel"}
 
-	expectPanicContains(t, "flag pub is required for gen skel", func() {
-		validateSkelGenOption(input, option)
-	})
+	expectOptionError(t, validateSkelGenOption(input, option), "flag pub is required for gen skel")
 }
 
 func TestNormalizeCheckOption(t *testing.T) {
 	parserOption := parser.Option{SkelIn: "./demo"}
 
-	normalizeCheckOption(&parserOption)
+	if err := normalizeCheckOption(&parserOption); err != nil {
+		t.Fatal(err)
+	}
 	if !filepath.IsAbs(parserOption.SkelIn) {
 		t.Fatalf("expected absolute skel-in, got %q", parserOption.SkelIn)
 	}
@@ -194,21 +185,12 @@ func TestNormalizeCheckOption(t *testing.T) {
 
 func TestNormalizeCheckOptionRequiresInput(t *testing.T) {
 	parserOption := parser.Option{}
-	expectPanicContains(t, "missing flag skel-in", func() {
-		normalizeCheckOption(&parserOption)
-	})
+	expectOptionError(t, normalizeCheckOption(&parserOption), "missing flag skel-in")
 }
 
-func expectPanicContains(t *testing.T, expected string, fn func()) {
+func expectOptionError(t *testing.T, err error, expected string) {
 	t.Helper()
-	defer func() {
-		recovered := recover()
-		if recovered == nil {
-			t.Fatalf("expected panic containing %q", expected)
-		}
-		if !strings.Contains(fmt.Sprint(recovered), expected) {
-			t.Fatalf("unexpected panic: %v", recovered)
-		}
-	}()
-	fn()
+	if err == nil || !strings.Contains(err.Error(), expected) {
+		t.Fatalf("expected error containing %q, got %v", expected, err)
+	}
 }

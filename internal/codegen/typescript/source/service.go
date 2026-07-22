@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.yorun.ai/skelc/internal/codegen"
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/model"
@@ -127,7 +127,7 @@ func castServiceMethod(p *model.Method) *ServiceMethod {
 	}
 	method.ParamDocs = append(method.ParamDocs, &MethodParamDoc{
 		Name:        "params",
-		Description: codegen.ChooseString(method.HasParams, "Request parameters", "Must be null"),
+		Description: common.ChooseString(method.HasParams, "Request parameters", "Must be null"),
 	})
 	method.ParamDocs = append(method.ParamDocs, &MethodParamDoc{
 		Name:        "options",
@@ -159,7 +159,7 @@ func castMethodArgument(p *model.Argument) *MethodArgument {
 	return &MethodArgument{
 		Name:        nameutil.ToLowerCamel(p.Name),
 		SkelName:    p.Name,
-		Description: tsTagDoc(codegen.MergeDescriptionAndExample(p.Description, p.Example)),
+		Description: tsTagDoc(common.MergeDescriptionAndExample(p.Description, p.Example)),
 		Type:        argType,
 	}
 }
@@ -233,15 +233,15 @@ func buildServiceExternalTypeImports(services []*model.Service) []*TypeImport {
 }
 
 func tsDocLines(description string) []string {
-	return codegen.SplitDocLines(description)
+	return common.SplitDocLines(description)
 }
 
 func tsCommentLines(description string, example string) []string {
-	docLines := tsDocLines(codegen.MergeDescriptionAndExample(description, example))
+	docLines := tsDocLines(common.MergeDescriptionAndExample(description, example))
 	if len(docLines) == 0 {
 		return nil
 	}
-	docLines[0] = codegen.EnsureSentence(docLines[0])
+	docLines[0] = common.EnsureSentence(docLines[0])
 	return docLines
 }
 
@@ -255,7 +255,7 @@ func tsReturnDoc(resultType *Type, description string, example string) *MethodRe
 	}
 	return &MethodReturnDoc{
 		TypeName:    resultType.Plain,
-		Description: tsTagDoc(codegen.MergeDescriptionAndExample(description, example)),
+		Description: tsTagDoc(common.MergeDescriptionAndExample(description, example)),
 	}
 }
 

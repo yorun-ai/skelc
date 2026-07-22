@@ -7,7 +7,7 @@ import (
 	"strings"
 	"text/template"
 
-	"go.yorun.ai/skelc/internal/codegen"
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/codegen/golang/view"
 	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/model"
@@ -27,7 +27,7 @@ type _Gen struct {
 	mode            view.Mode
 	pkgName         string
 	compilerVersion string
-	Renderer        *codegen.Renderer
+	Renderer        *common.Renderer
 }
 
 type Option struct {
@@ -39,8 +39,10 @@ type Option struct {
 	Out             string
 }
 
-func Generate(option Option) {
-	newGen(option).gen()
+func Generate(option Option) error {
+	gen := newGen(option)
+	gen.gen()
+	return gen.Renderer.Err()
 }
 
 func newGen(option Option) *_Gen {
@@ -50,13 +52,13 @@ func newGen(option Option) *_Gen {
 		mode:            option.Mode,
 		pkgName:         option.PackageName,
 		compilerVersion: option.CompilerVersion,
-		Renderer:        codegen.NewRenderer(option.Out),
+		Renderer:        common.NewRenderer(option.Out),
 	}
 }
 
 func (g *_Gen) gen() {
 	payload := g.buildSchemaGoPayload()
-	content := codegen.RenderTemplateWithFuncs(schemaGoTemplate, payload, g.schemaGoTemplateFuncs())
+	content := common.RenderTemplateWithFuncs(schemaGoTemplate, payload, g.schemaGoTemplateFuncs())
 	formatted, err := format.Source([]byte(content))
 	checkutil.CheckNilError(err, "format generated %s failed", schemaGoFilename)
 	g.Renderer.Write(schemaGoFilename, string(formatted))

@@ -3,8 +3,7 @@ package source
 import (
 	"strings"
 
-	"go.yorun.ai/skelc/internal/codegen"
-	"go.yorun.ai/skelc/internal/util/checkutil"
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -19,8 +18,9 @@ type _Gen struct {
 	tsImports   map[string]string
 	outputDir   string
 	err         error
+	publicView  *common.PublicView
 
-	renderer *codegen.Renderer
+	renderer *common.Renderer
 }
 
 type Option struct {
@@ -35,13 +35,20 @@ type Result struct {
 	ResolvedImports map[string]string
 }
 
-func Generate(domain *model.Domain, outputDir string, option Option) Result {
+func Generate(domain *model.Domain, outputDir string, option Option) (Result, error) {
 	gen := newGen(domain, outputDir, option)
+	if gen.err != nil {
+		return Result{}, gen.err
+	}
 	gen.generate()
+	resolvedImports := gen.resolvedModuleImports()
+	if gen.err != nil {
+		return Result{}, gen.err
+	}
 	return Result{
 		PackageName:     gen.pkgName,
-		ResolvedImports: gen.resolvedModuleImports(),
-	}
+		ResolvedImports: resolvedImports,
+	}, gen.renderer.Err()
 }
 
 func newGen(domain *model.Domain, outputDir string, options ...Option) *_Gen {
@@ -56,7 +63,7 @@ func newGen(domain *model.Domain, outputDir string, options ...Option) *_Gen {
 		pkgName:     strings.TrimRight(option.Module, "/"),
 		tsImports:   option.Imports,
 		outputDir:   outputDir,
-		renderer:    codegen.NewRenderer(outputDir),
+		renderer:    common.NewRenderer(outputDir),
 	}
 	if g.pkgName == "" {
 		scope := g.moduleScope
@@ -65,13 +72,17 @@ func newGen(domain *model.Domain, outputDir string, options ...Option) *_Gen {
 		}
 		g.pkgName = buildPackageName(scope, g.domain.Name(), g.pubOnly)
 	}
+	if g.pubOnly {
+		g.publicView, g.err = common.BuildPublicView(domain)
+		if g.err != nil {
+			return g
+		}
+	}
 	g.resolveExternalTypeImports()
 	return g
 }
 
 func (g *_Gen) generate() {
-	checkutil.CheckNilError(g.err, "typescript generator init failed")
-	g.validatePubOnly()
 	g.genDataTs()
 	g.genSpecTs()
 	g.genServiceTs()

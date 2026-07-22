@@ -1,6 +1,9 @@
 package skeleton
 
-import "go.yorun.ai/skelc/model"
+import (
+	"go.yorun.ai/skelc/internal/codegen/common"
+	"go.yorun.ai/skelc/model"
+)
 
 type _SkelPayload struct {
 	Domain      *model.Domain
@@ -29,12 +32,12 @@ func (g *_Gen) buildActorPayload(actors []*model.Actor) *_SkelPayload {
 	return payload
 }
 
-func (g *_Gen) buildTypesPayload(view *_PubView) *_SkelPayload {
+func (g *_Gen) buildTypesPayload(view *common.PublicView) *_SkelPayload {
 	payload := g.buildDomainPayload(collectTypeImports(g.domain, view))
-	payload.Enums = view.enums
-	payload.Data = view.dataList
-	payload.Configs = view.configs
-	payload.Resources = view.resources
+	payload.Enums = view.Enums
+	payload.Data = view.Data
+	payload.Configs = view.Configs
+	payload.Resources = view.Resources
 	return payload
 }
 

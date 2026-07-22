@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,7 +22,11 @@ func parseDomain(t *testing.T, files map[string]string) *model.Domain {
 		writeFile(t, filepath.Join(dir, name), content)
 	}
 
-	sourceFiles := loader.Load(dir).Files
+	loadResult, err := loader.Load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceFiles := loadResult.Files
 
 	parser := newParser()
 	domain, err := parser.parseDomainFiles(findDomainFileForTest(t, sourceFiles), sourceFiles)
@@ -95,16 +98,9 @@ func domainContentForTest(name string, description string) *grammar.DomainConten
 		},
 	}
 }
-func expectPanicContains(t *testing.T, expected string, fn func()) {
+func expectErrorContains(t *testing.T, err error, expected string) {
 	t.Helper()
-	defer func() {
-		recovered := recover()
-		if recovered == nil {
-			t.Fatalf("expected panic containing %q", expected)
-		}
-		if !strings.Contains(fmt.Sprint(recovered), expected) {
-			t.Fatalf("unexpected panic: %v", recovered)
-		}
-	}()
-	fn()
+	if err == nil || !strings.Contains(err.Error(), expected) {
+		t.Fatalf("expected error containing %q, got %v", expected, err)
+	}
 }

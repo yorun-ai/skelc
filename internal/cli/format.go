@@ -3,13 +3,13 @@ package cli
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 
 	ucli "github.com/urfave/cli/v3"
 	"go.yorun.ai/skelc/internal/formatter"
 	"go.yorun.ai/skelc/internal/loader"
 	"go.yorun.ai/skelc/internal/parser"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 )
 
 const (
@@ -29,8 +29,11 @@ func newFormatCommand() *ucli.Command {
 		Usage: "format skel definition files",
 		Flags: newFormatFlags(),
 		Action: func(_ context.Context, cmd *ucli.Command) error {
-			formatFiles(parseFormatCommand(cmd))
-			return nil
+			path, err := parseFormatCommand(cmd)
+			if err != nil {
+				return err
+			}
+			return formatFiles(path)
 		},
 	}
 }
@@ -41,27 +44,41 @@ func newFormatFlags() []ucli.Flag {
 	}
 }
 
-func parseFormatCommand(cmd *ucli.Command) string {
-	checkutil.Check(cmd.Args().Len() == 0, "unexpected args for %s", commandFormat)
+func parseFormatCommand(cmd *ucli.Command) (string, error) {
+	if cmd.Args().Len() != 0 {
+		return "", fmt.Errorf("unexpected args for %s", commandFormat)
+	}
 	skelIn := cmd.String(flagFormatSkelIn)
-	checkutil.Check(skelIn != "", "missing flag skel-in")
+	if skelIn == "" {
+		return "", fmt.Errorf("missing flag skel-in")
+	}
 	return normalizeRequiredPath(skelIn)
 }
 
-func formatFiles(skelIn string) {
-	sourceFiles := loader.Load(skelIn).Files
+func formatFiles(skelIn string) error {
+	loadResult, err := loader.Load(skelIn)
+	if err != nil {
+		return err
+	}
+	sourceFiles := loadResult.Files
 	formattedFiles := make([]_FormattedFile, 0, len(sourceFiles))
 	for _, sourceFile := range sourceFiles {
-		parser.ValidateSource(sourceFile.FilePath, sourceFile.Content)
+		if err := parser.ValidateSource(sourceFile.FilePath, sourceFile.Content); err != nil {
+			return err
+		}
 		formatted := formatter.Source(sourceFile.Content)
-		parser.ValidateSource(sourceFile.FilePath, formatted)
+		if err := parser.ValidateSource(sourceFile.FilePath, formatted); err != nil {
+			return err
+		}
 		if bytes.Equal(sourceFile.Content, formatted) {
 			continue
 		}
 		formattedFiles = append(formattedFiles, _FormattedFile{path: sourceFile.FilePath, content: formatted})
 	}
 	for _, file := range formattedFiles {
-		err := os.WriteFile(file.path, file.content, 0o644)
-		checkutil.CheckNilError(err, "write %s failed", file.path)
+		if err := os.WriteFile(file.path, file.content, 0o644); err != nil {
+			return fmt.Errorf("write %s: %w", file.path, err)
+		}
 	}
+	return nil
 }

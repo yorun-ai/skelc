@@ -46,10 +46,10 @@ func (g *_Gen) buildDataTsPayload() *DataTsPayload {
 }
 
 func (g *_Gen) buildPubDataTsPayload() *DataTsPayload {
-	dataList := pubData(g.domain.Data())
+	dataList := g.publicView.Data
 	payload := &DataTsPayload{
 		TypeImports: buildDataExternalImports(dataList),
-		Enums:       sliceutil.Map(pubEnums(g.domain.Enums()), castEnum),
+		Enums:       sliceutil.Map(g.publicView.Enums, castEnum),
 		Data:        make([]*Data, 0, len(dataList)),
 	}
 	for _, dataType := range dataList {

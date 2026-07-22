@@ -95,7 +95,11 @@ func (content *DomainContent) Finalize() error {
 			if decorator.Value == nil {
 				return participle.Errorf(decorator.Name.Pos, "decorator @desc requires a string argument")
 			}
-			content.Description = UnquoteDescriptionString(decorator.Value.Raw)
+			description, err := UnquoteDescriptionString(decorator.Value.Raw)
+			if err != nil {
+				return participle.Errorf(decorator.Name.Pos, "%s", err)
+			}
+			content.Description = description
 		default:
 			return participle.Errorf(decorator.Name.Pos, "unexpected decorator @%s", decorator.Name.Value)
 		}

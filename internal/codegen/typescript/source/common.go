@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.yorun.ai/skelc/internal/codegen"
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/model"
 )
@@ -46,55 +46,55 @@ func castScalarType(p *model.Type) *Type {
 	switch p.Scalar {
 	case model.ScalarInt:
 		return &Type{
-			Plain: codegen.ChooseString(p.Nullable, "number | null", "number"),
+			Plain: common.ChooseString(p.Nullable, "number | null", "number"),
 		}
 	case model.ScalarFloat:
 		return &Type{
-			Plain: codegen.ChooseString(p.Nullable, "number | null", "number"),
+			Plain: common.ChooseString(p.Nullable, "number | null", "number"),
 		}
 	case model.ScalarBoolean:
 		return &Type{
-			Plain: codegen.ChooseString(p.Nullable, "boolean | null", "boolean"),
+			Plain: common.ChooseString(p.Nullable, "boolean | null", "boolean"),
 		}
 	case model.ScalarString:
 		return &Type{
-			Plain: codegen.ChooseString(p.Nullable, "string | null", "string"),
+			Plain: common.ChooseString(p.Nullable, "string | null", "string"),
 		}
 	case model.ScalarDecimal:
 		return &Type{
-			Plain: codegen.ChooseString(p.Nullable, "string | null", "string"),
+			Plain: common.ChooseString(p.Nullable, "string | null", "string"),
 		}
 	case model.ScalarBinary:
 		return &Type{
-			Plain: codegen.ChooseString(p.Nullable, "Uint8Array | null", "Uint8Array"),
+			Plain: common.ChooseString(p.Nullable, "Uint8Array | null", "Uint8Array"),
 		}
 	case model.ScalarTimestamp:
 		return &Type{
-			Plain: codegen.ChooseString(p.Nullable, "string | null", "string"),
+			Plain: common.ChooseString(p.Nullable, "string | null", "string"),
 		}
 	case model.ScalarDuration:
 		return &Type{
-			Plain: codegen.ChooseString(p.Nullable, "string | null", "string"),
+			Plain: common.ChooseString(p.Nullable, "string | null", "string"),
 		}
 	case model.ScalarLocalDate:
 		return &Type{
-			Plain: codegen.ChooseString(p.Nullable, "string | null", "string"),
+			Plain: common.ChooseString(p.Nullable, "string | null", "string"),
 		}
 	case model.ScalarLocalTime:
 		return &Type{
-			Plain: codegen.ChooseString(p.Nullable, "string | null", "string"),
+			Plain: common.ChooseString(p.Nullable, "string | null", "string"),
 		}
 	case model.ScalarLocalDateTime:
 		return &Type{
-			Plain: codegen.ChooseString(p.Nullable, "string | null", "string"),
+			Plain: common.ChooseString(p.Nullable, "string | null", "string"),
 		}
 	case model.ScalarUUID:
 		return &Type{
-			Plain: codegen.ChooseString(p.Nullable, "string | null", "string"),
+			Plain: common.ChooseString(p.Nullable, "string | null", "string"),
 		}
 	case model.ScalarJSON:
 		return &Type{
-			Plain: codegen.ChooseString(p.Nullable, "string | null", "string"),
+			Plain: common.ChooseString(p.Nullable, "string | null", "string"),
 		}
 	}
 	checkutil.Failf("unexpected scalar type %+v", p)
@@ -105,7 +105,7 @@ func castListType(p *model.Type) *Type {
 	valueType := castType(p.List.Value)
 	arrayType := fmt.Sprintf("Array<%s>", valueType.Plain)
 	return &Type{
-		Plain: codegen.ChooseString(p.Nullable, fmt.Sprintf("%s | null", arrayType), arrayType),
+		Plain: common.ChooseString(p.Nullable, fmt.Sprintf("%s | null", arrayType), arrayType),
 	}
 }
 
@@ -114,7 +114,7 @@ func castMapType(p *model.Type) *Type {
 	valueType := castType(p.Map.Value)
 	mapType := fmt.Sprintf("Record<%s, %s>", keyType.Plain, valueType.Plain)
 	return &Type{
-		Plain: codegen.ChooseString(p.Nullable, fmt.Sprintf("%s | null", mapType), mapType),
+		Plain: common.ChooseString(p.Nullable, fmt.Sprintf("%s | null", mapType), mapType),
 	}
 }
 
@@ -124,7 +124,7 @@ func castEnumType(p *model.Type) *Type {
 		enumName = fmt.Sprintf("%s.%s", p.ExternalAlias, enumName)
 	}
 	return &Type{
-		Plain: codegen.ChooseString(p.Nullable, enumName+" | null", enumName),
+		Plain: common.ChooseString(p.Nullable, enumName+" | null", enumName),
 	}
 }
 
@@ -142,7 +142,7 @@ func castDataType(p *model.Type) *Type {
 		dataName = fmt.Sprintf("%s<%s>", dataName, strings.Join(typeArgNames, ", "))
 	}
 	return &Type{
-		Plain: codegen.ChooseString(p.Nullable, dataName+" | null", dataName),
+		Plain: common.ChooseString(p.Nullable, dataName+" | null", dataName),
 	}
 }
 

@@ -55,12 +55,9 @@ domain demo.user
 	if err := content.Finalize(); err != nil {
 		t.Fatalf("unexpected content finalize error: %v", err)
 	}
-	defer func() {
-		if recover() == nil {
-			t.Fatal("expected panic for inline triple-quoted description")
-		}
-	}()
-	_ = content.Domain.Finalize()
+	if err := content.Domain.Finalize(); err == nil {
+		t.Fatal("expected finalize error for inline triple-quoted description")
+	}
 }
 
 func TestParseIndentedTripleQuotedMethodDescription(t *testing.T) {
@@ -78,7 +75,10 @@ service UserService {
 `)
 
 	raw := serviceMethodsForTest(content.Entries[0].Service)[0].Decorators[0].Value.Raw
-	got := UnquoteDescriptionString(raw)
+	got, err := UnquoteDescriptionString(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got != "Get a user by user ID" {
 		t.Fatalf("unexpected description: %q", got)
 	}

@@ -17,7 +17,7 @@ func TestAnalyzeWorkspaceValidatesCrossDomainTypes(t *testing.T) {
 	})
 
 	require.Len(t, diagnostics, 1)
-	assert.Equal(t, DiagnosticCodeSemantic, diagnostics[0].Code)
+	assert.Equal(t, DiagnosticCodeSemanticReference, diagnostics[0].Code)
 	assert.Equal(t, "/workspace/order.skel", diagnostics[0].Position.File)
 	assert.Equal(t, 3, diagnostics[0].Position.Line)
 	assert.Contains(t, diagnostics[0].Message, "definition of user.Missing not found")
@@ -39,7 +39,7 @@ func TestAnalyzeWorkspaceReturnsStructuredDuplicatePosition(t *testing.T) {
 	})
 
 	require.Len(t, diagnostics, 1)
-	assert.Equal(t, DiagnosticCodeSemantic, diagnostics[0].Code)
+	assert.Equal(t, DiagnosticCodeSemanticDuplicate, diagnostics[0].Code)
 	assert.Equal(t, "/workspace/b.skel", diagnostics[0].Position.File)
 	assert.Equal(t, 2, diagnostics[0].Position.Line)
 	assert.NotContains(t, diagnostics[0].Message, "/workspace/b.skel:2:6")
@@ -116,7 +116,7 @@ func TestAnalyzeWorkspaceSuppressesDependentCascade(t *testing.T) {
 	})
 
 	require.Len(t, diagnostics, 1)
-	assert.Equal(t, DiagnosticCodeSyntax, diagnostics[0].Code)
+	assert.Equal(t, DiagnosticCodeSyntaxEOF, diagnostics[0].Code)
 	assert.Equal(t, "/workspace/user.skel", diagnostics[0].Position.File)
 }
 
@@ -126,7 +126,7 @@ func TestAnalyzeWorkspaceReportsMissingImport(t *testing.T) {
 	}})
 
 	require.Len(t, diagnostics, 1)
-	assert.Equal(t, DiagnosticCodeImport, diagnostics[0].Code)
+	assert.Equal(t, DiagnosticCodeImportMissing, diagnostics[0].Code)
 	assert.Equal(t, 2, diagnostics[0].Position.Line)
 }
 
@@ -138,6 +138,6 @@ func TestAnalyzeWorkspaceReportsMultipleMissingImports(t *testing.T) {
 
 	require.Len(t, diagnostics, 2)
 	assert.Equal(t, []int{2, 3}, []int{diagnostics[0].Position.Line, diagnostics[1].Position.Line})
-	assert.Equal(t, DiagnosticCodeImport, diagnostics[0].Code)
-	assert.Equal(t, DiagnosticCodeImport, diagnostics[1].Code)
+	assert.Equal(t, DiagnosticCodeImportMissing, diagnostics[0].Code)
+	assert.Equal(t, DiagnosticCodeImportMissing, diagnostics[1].Code)
 }

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"go.yorun.ai/skelc/internal/parser"
 )
 
 func TestRunSkelcCheck(t *testing.T) {
@@ -73,6 +75,17 @@ func TestRunSkelcCheckWritesJSONLLoaderWarnings(t *testing.T) {
 	}
 }
 
+func TestRunSkelcCheckWritesTextLoaderWarnings(t *testing.T) {
+	dir := t.TempDir()
+	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
+	writeCLIFile(t, dir+"/.hidden.skel", `domain demo.user`)
+
+	result := Run([]string{"check", "--skel-in", dir})
+	if result.ExitCode != ExitCodeSuccess || !strings.Contains(result.Stdout, ".hidden.skel ignored (HIDDEN_FILE)") {
+		t.Fatalf("unexpected result: %+v", result)
+	}
+}
+
 func TestRunSkelcCheckWritesJSONLErrors(t *testing.T) {
 	result := Run([]string{"--log-format", "jsonl", "check"})
 
@@ -88,6 +101,38 @@ func TestRunSkelcCheckWritesJSONLErrors(t *testing.T) {
 	}
 	if entry.Message != "missing flag skel-in" {
 		t.Fatalf("unexpected message: %q", entry.Message)
+	}
+}
+
+func TestRunSkelcCheckWritesMultipleStructuredSyntaxDiagnostics(t *testing.T) {
+	dir := t.TempDir()
+	writeCLIFile(t, dir+"/domain.skel", "domain demo.user")
+	writeCLIFile(t, dir+"/types.skel", `domain demo.user
+data User {
+    first string
+    second:
+}
+`)
+
+	result := Run([]string{"check", "--log-format", "jsonl", "--skel-in", dir})
+	if result.ExitCode != ExitCodeError {
+		t.Fatalf("expected check failure: %+v", result)
+	}
+	lines := strings.Split(strings.TrimSpace(result.Stderr), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("expected two diagnostics, got %d: %s", len(lines), result.Stderr)
+	}
+	for _, line := range lines {
+		entry := &_LogEntry{}
+		if err := json.Unmarshal([]byte(line), entry); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.HasPrefix(entry.Code, "syntax.") || entry.Severity != parser.DiagnosticSeverityError {
+			t.Fatalf("unexpected structured diagnostic: %+v", entry)
+		}
+		if entry.Range.End.Column <= entry.Range.Start.Column {
+			t.Fatalf("expected non-empty diagnostic range: %+v", entry.Range)
+		}
 	}
 }
 

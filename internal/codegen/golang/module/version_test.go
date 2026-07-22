@@ -14,7 +14,11 @@ func TestResolveVineVersion(t *testing.T) {
 		{name: "higher", version: "v1.2.3", expected: "v1.2.3"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if got := ResolveVineVersion(test.version); got != test.expected {
+			got, err := ResolveVineVersion(test.version)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != test.expected {
 				t.Fatalf("unexpected Vine version: got %q want %q", got, test.expected)
 			}
 		})
@@ -24,12 +28,9 @@ func TestResolveVineVersion(t *testing.T) {
 func TestResolveVineVersionRejectsInvalidVersion(t *testing.T) {
 	for _, version := range []string{"0.9.0", "v0.8.0", "v-invalid"} {
 		t.Run(version, func(t *testing.T) {
-			defer func() {
-				if recover() == nil {
-					t.Fatalf("expected %q to panic", version)
-				}
-			}()
-			ResolveVineVersion(version)
+			if _, err := ResolveVineVersion(version); err == nil {
+				t.Fatalf("expected %q to return an error", version)
+			}
 		})
 	}
 }

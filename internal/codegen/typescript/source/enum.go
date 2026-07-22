@@ -3,7 +3,7 @@ package source
 import (
 	"fmt"
 
-	"go.yorun.ai/skelc/internal/codegen"
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/internal/util/sliceutil"
 	"go.yorun.ai/skelc/model"
@@ -49,6 +49,6 @@ func castEnumItem(p *model.EnumItem) *EnumItem {
 	return &EnumItem{
 		Literal:      fmt.Sprintf(`"%s"`, nameutil.ToScreamingSnake(p.Name)),
 		Value:        nameutil.ToScreamingSnake(p.Name),
-		CommentLines: tsCommentLines(codegen.MergeDescriptionAndExample(p.Description, ""), ""),
+		CommentLines: tsCommentLines(common.MergeDescriptionAndExample(p.Description, ""), ""),
 	}
 }

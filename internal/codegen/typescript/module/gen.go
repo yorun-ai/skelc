@@ -2,11 +2,11 @@ package module
 
 import (
 	_ "embed"
+	"fmt"
 	"sort"
 	"strings"
 
-	"go.yorun.ai/skelc/internal/codegen"
-	"go.yorun.ai/skelc/internal/util/checkutil"
+	"go.yorun.ai/skelc/internal/codegen/common"
 )
 
 const (
@@ -34,22 +34,31 @@ type PackageJSONDependency struct {
 	Version string
 }
 
-func Generate(option Option) {
-	payload := buildPackageJSONPayload(option)
-	codegen.NewRenderer(option.Out).Render(packageJSONFilename, packageJSONTemplate, payload)
-}
-
-func buildPackageJSONPayload(option Option) *PackageJSONPayload {
-	return &PackageJSONPayload{
-		PackageName:      option.PackageName,
-		PeerDependencies: packageJSONDependencies(option),
+func Generate(option Option) error {
+	payload, err := buildPackageJSONPayload(option)
+	if err != nil {
+		return err
 	}
+	renderer := common.NewRenderer(option.Out)
+	renderer.Render(packageJSONFilename, packageJSONTemplate, payload)
+	return renderer.Err()
 }
 
-func packageJSONDependencies(option Option) []PackageJSONDependency {
+func buildPackageJSONPayload(option Option) (*PackageJSONPayload, error) {
+	dependencies, err := packageJSONDependencies(option)
+	if err != nil {
+		return nil, err
+	}
+	return &PackageJSONPayload{PackageName: option.PackageName, PeerDependencies: dependencies}, nil
+}
+
+func packageJSONDependencies(option Option) ([]PackageJSONDependency, error) {
 	dependencies := map[string]string{"@yorun-ai/vrpc": defaultTSImportVersion}
 	for _, path := range option.Imports {
-		dependency := parseTSImportDependency(path)
+		dependency, err := parseTSImportDependency(path)
+		if err != nil {
+			return nil, err
+		}
 		dependency.fillDefaultVersion()
 		dependencies[dependency.Package] = dependency.Version
 	}
@@ -58,11 +67,12 @@ func packageJSONDependencies(option Option) []PackageJSONDependency {
 			dependencies[importPath] = defaultTSImportVersion
 		}
 	}
-	return sortedPackageJSONDependencies(dependencies)
+	return sortedPackageJSONDependencies(dependencies), nil
 }
 
-func ImportPath(path string) string {
-	return parseTSImportDependency(path).Package
+func ImportPath(path string) (string, error) {
+	dependency, err := parseTSImportDependency(path)
+	return dependency.Package, err
 }
 
 func (d *PackageJSONDependency) fillDefaultVersion() {
@@ -71,15 +81,20 @@ func (d *PackageJSONDependency) fillDefaultVersion() {
 	}
 }
 
-func parseTSImportDependency(path string) PackageJSONDependency {
+func parseTSImportDependency(path string) (PackageJSONDependency, error) {
 	index := strings.LastIndex(path, "@")
 	if index <= 0 {
-		return PackageJSONDependency{Package: path}
+		if path == "" {
+			return PackageJSONDependency{}, fmt.Errorf("invalid TypeScript import %q: missing package", path)
+		}
+		return PackageJSONDependency{Package: path}, nil
 	}
 	pkg := path[:index]
 	version := path[index+1:]
-	checkutil.Check(version != "", "invalid ts import %q: missing version", path)
-	return PackageJSONDependency{Package: pkg, Version: version}
+	if version == "" {
+		return PackageJSONDependency{}, fmt.Errorf("invalid TypeScript import %q: missing version", path)
+	}
+	return PackageJSONDependency{Package: pkg, Version: version}, nil
 }
 
 func sortedPackageJSONDependencies(dependencies map[string]string) []PackageJSONDependency {

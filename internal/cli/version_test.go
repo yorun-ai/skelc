@@ -3,7 +3,6 @@ package cli
 import (
 	"runtime"
 	"runtime/debug"
-	"strings"
 	"testing"
 )
 
@@ -13,7 +12,11 @@ func TestRunSkelcVersion(t *testing.T) {
 	if result.ExitCode != ExitCodeSuccess {
 		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
 	}
-	expected := versionInfo().TextString() + "\n"
+	info, err := versionInfo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := info.TextString() + "\n"
 	if result.Stdout != expected {
 		t.Fatalf("unexpected stdout: %q", result.Stdout)
 	}
@@ -28,7 +31,15 @@ func TestRunSkelcVersionJSON(t *testing.T) {
 	if result.ExitCode != ExitCodeSuccess {
 		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
 	}
-	expected := versionInfo().JSONString() + "\n"
+	info, err := versionInfo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	json, err := info.JSONString()
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := json + "\n"
 	if result.Stdout != expected {
 		t.Fatalf("unexpected stdout: %q", result.Stdout)
 	}
@@ -49,7 +60,11 @@ func TestRunSkelcVersionRejectsLegacyJSONFlag(t *testing.T) {
 }
 
 func TestDefaultGoVineVersion(t *testing.T) {
-	version := versionInfo().GolangCodeGen.DefaultVineVersion
+	info, err := versionInfo()
+	if err != nil {
+		t.Fatal(err)
+	}
+	version := info.GolangCodeGen.DefaultVineVersion
 	if version != "v0.9.0" {
 		t.Fatalf("unexpected default go vine version: %q", version)
 	}
@@ -68,14 +83,18 @@ func TestModuleVersion(t *testing.T) {
 		{name: "dirty", raw: "v1.1.0-alpha3+dirty", expected: "v1.1.0-alpha3"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if got := moduleVersion(test.raw); got != test.expected {
+			got, err := moduleVersion(test.raw)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != test.expected {
 				t.Fatalf("unexpected module version: got %q want %q", got, test.expected)
 			}
 		})
 	}
 }
 
-func TestMustDebugBuildInfo(t *testing.T) {
+func TestDebugBuildInfo(t *testing.T) {
 	setReadBuildInfoForTest(t, func() (*debug.BuildInfo, bool) {
 		return &debug.BuildInfo{
 			GoVersion: "go1.26.0",
@@ -83,7 +102,10 @@ func TestMustDebugBuildInfo(t *testing.T) {
 		}, true
 	})
 
-	info := mustDebugBuildInfo()
+	info, err := debugBuildInfo()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if info.Version != "v1.1.3" {
 		t.Fatalf("unexpected version: %q", info.Version)
 	}
@@ -95,22 +117,15 @@ func TestMustDebugBuildInfo(t *testing.T) {
 	}
 }
 
-func TestMustDebugBuildInfoRejectsMissingBuildInfo(t *testing.T) {
+func TestDebugBuildInfoRejectsMissingBuildInfo(t *testing.T) {
 	setReadBuildInfoForTest(t, func() (*debug.BuildInfo, bool) {
 		return nil, false
 	})
 
-	defer func() {
-		recovered := recover()
-		if recovered == nil {
-			t.Fatal("expected panic")
-		}
-		err, ok := recovered.(error)
-		if !ok || !strings.Contains(err.Error(), "read Go build info failed") {
-			t.Fatalf("unexpected panic: %#v", recovered)
-		}
-	}()
-	mustDebugBuildInfo()
+	_, err := debugBuildInfo()
+	if err == nil {
+		t.Fatal("expected error")
+	}
 }
 
 func setReadBuildInfoForTest(t *testing.T, read func() (*debug.BuildInfo, bool)) {

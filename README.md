@@ -100,7 +100,7 @@ const userService = createUserService(client);
 const user = await userService.getUser({ userId: 1001 });
 ```
 
-Generation cleans the target directory before writing by default, so the directory should be owned exclusively by skelc. Use `--no-clean` only when preserving other files there is intentional.
+Generation supports shared output directories. skelc records owned files in `.skelc-manifest.json`, preserves untracked files, and removes a stale generated file only when its content still matches the previous manifest.
 
 A runnable version of this walkthrough lives in [`examples/quickstart`](examples/quickstart). From a repository checkout, validate the contract and generate every supported target with:
 
@@ -155,9 +155,9 @@ skelc format --skel-in ./skel
 
 `format` modifies files in place after validating all inputs. It applies one canonical style: four-space indentation, compact type and permission punctuation, one space after field and argument colons, compact empty blocks, and one blank line between top-level declarations. Declaration order and comment or string values are preserved. Tool integrations can request machine-readable diagnostics with the global `--log-format jsonl` option.
 
-`check` reports up to 50 independent diagnostics per domain in one run. Invalid declarations are isolated so dependent errors do not cascade; text output prints one error per line, while JSONL emits one object per diagnostic.
+`check` recovers at declaration, block-member, closing-brace, and decorator boundaries and reports up to 50 independent syntax and semantic diagnostics per domain in one run. Invalid declarations are isolated so dependent errors do not cascade. JSONL diagnostics include a stable code, severity, exact range, related locations, and an optional fix suggestion.
 
-`skelc lsp` provides syntax and workspace-wide semantic diagnostics, editor formatting, keyword and type completion, declaration hover details, hierarchical document and workspace symbols, definition and reference navigation, and safe top-level declaration rename. Semantic analysis uses the current in-memory contents of every document, merges files in the same domain, and validates cross-domain references without requiring a save. While a document contains a syntax error, the server keeps a best-effort index of its domain, imports, and top-level declarations so unaffected navigation remains available and dependent semantic errors do not cascade.
+`skelc lsp` provides recoverable syntax and workspace-wide semantic diagnostics, diagnostic quick fixes, editor formatting, keyword and type completion, declaration hover details, hierarchical document and workspace symbols, definition and reference navigation, and safe top-level declaration rename. Duplicate declarations include the first declaration as related information. Semantic analysis uses the current in-memory contents of every document, caches parsed syntax trees, and recalculates only changed domains and their reverse dependents. Superseded analysis is cancelled immediately.
 
 ## Programmatic API
 
@@ -181,12 +181,12 @@ result, err := skelc.CompileGolang(
 if err != nil {
 	return err
 }
-for _, warning := range result.Warnings {
-	log.Print(warning)
+for _, diagnostic := range result.Diagnostics {
+	log.Printf("%s [%s] %s", diagnostic.Severity, diagnostic.Code, diagnostic.Message)
 }
 ```
 
-The API also provides `CompileTypeScript` and `CompileSkeleton`. Compilation validates and parses all inputs before cleaning output directories; set `NoClean` in the target option to preserve existing files.
+The API also provides `CompileTypeScript` and `CompileSkeleton`. Parser and loader warnings use the same structured diagnostic model instead of a separate string list. All public-contract generators consume one validated `internal/codegen/common` projection, preventing Go, Skel, and TypeScript visibility rules from drifting. Generation records owned files in `.skelc-manifest.json`, atomically replaces individual generated files, removes only unchanged stale generated files, and preserves every untracked file in a shared output directory.
 
 Custom generators can call `skelc.Parse` and consume the returned `*model.Domain` through the parser-independent `go.yorun.ai/skelc/model` package. Parsed models already contain compatibility hashes calculated by skelc. Built-in generators accept the same parsed domain through `GenerateGolang`, `GenerateTypeScript`, and `GenerateSkeleton`, so several targets can share one parse result.
 

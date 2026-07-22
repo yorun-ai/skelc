@@ -3,11 +3,11 @@ package source
 import (
 	"strings"
 
-	"go.yorun.ai/skelc/internal/codegen"
+	"go.yorun.ai/skelc/internal/codegen/common"
 )
 
 func (g *_Gen) renderTs(file string, tpl string, data any) {
-	content := codegen.RenderTemplate(tpl, data)
+	content := common.RenderTemplate(tpl, data)
 	g.renderer.Write(file, trimTrailingWhitespace(content))
 }
 

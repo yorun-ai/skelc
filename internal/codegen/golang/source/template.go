@@ -5,7 +5,7 @@ import (
 	"go/format"
 	"strings"
 
-	"go.yorun.ai/skelc/internal/codegen"
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/util/checkutil"
 )
 
@@ -31,7 +31,7 @@ func joinTemplates(names ...string) string {
 }
 
 func (g *_Gen) renderGo(file string, tpl string, data any) {
-	content := codegen.RenderTemplate(tpl, data)
+	content := common.RenderTemplate(tpl, data)
 	formatted, err := format.Source([]byte(content))
 	checkutil.CheckNilError(err, "format generated %s failed", file)
 	g.Renderer.Write(file, string(formatted))

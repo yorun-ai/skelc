@@ -34,9 +34,7 @@ func TestCheckNotNilRejectsTypedNil(t *testing.T) {
 }
 
 func TestFailfCarriesStructuredPosition(t *testing.T) {
-	err := Capture(func() {
-		Failf("%s %s has an invalid type", lexer.Position{Filename: "/workspace/user.skel", Line: 4, Column: 9}, "field")
-	})
+	err := NewFailuref("%s %s has an invalid type", lexer.Position{Filename: "/workspace/user.skel", Line: 4, Column: 9}, "field")
 
 	var failure *Failure
 	require.ErrorAs(t, err, &failure)
@@ -53,12 +51,4 @@ func TestNewFailurefDoesNotPanic(t *testing.T) {
 	assert.Equal(t, CodeValidation, failure.Code)
 	assert.Equal(t, "user.skel", failure.Position.File)
 	assert.Equal(t, 2, failure.Position.Line)
-}
-
-func TestCapturePreservesWrappedCause(t *testing.T) {
-	cause := errors.New("cause")
-	err := Capture(func() { CheckNilError(cause, "operation failed") })
-
-	require.Error(t, err)
-	assert.ErrorIs(t, err, cause)
 }

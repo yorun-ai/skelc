@@ -10,20 +10,23 @@ import (
 	"go.lsp.dev/jsonrpc2"
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
+	"go.yorun.ai/skelc/internal/parser"
 )
 
 type _Server struct {
 	protocol.UnimplementedServer
 
-	mu            sync.RWMutex
-	documents     map[uri.URI]*_Document
-	open          map[uri.URI]bool
-	semantic      map[uri.URI][]protocol.Diagnostic
-	client        protocol.Client
-	generation    uint64
-	semanticTimer *time.Timer
-	exit          chan struct{}
-	exitOnce      sync.Once
+	mu             sync.RWMutex
+	documents      map[uri.URI]*_Document
+	open           map[uri.URI]bool
+	semantic       map[uri.URI][]protocol.Diagnostic
+	client         protocol.Client
+	generation     uint64
+	semanticTimer  *time.Timer
+	semanticCancel context.CancelFunc
+	analyzer       *parser.WorkspaceAnalyzer
+	exit           chan struct{}
+	exitOnce       sync.Once
 }
 
 type _ReadWriteCloser struct {
@@ -59,6 +62,7 @@ func newServer() *_Server {
 	return &_Server{
 		documents: map[uri.URI]*_Document{}, open: map[uri.URI]bool{},
 		semantic: map[uri.URI][]protocol.Diagnostic{}, exit: make(chan struct{}),
+		analyzer: parser.NewWorkspaceAnalyzer(),
 	}
 }
 
@@ -87,6 +91,7 @@ func (s *_Server) Initialize(_ context.Context, params *protocol.InitializeParam
 			WorkspaceSymbolProvider:    protocol.Boolean(true),
 			DocumentFormattingProvider: protocol.Boolean(true),
 			RenameProvider:             &protocol.RenameOptions{PrepareProvider: &prepareRename},
+			CodeActionProvider:         protocol.Boolean(true),
 		},
 		ServerInfo: protocol.ServerInfo{Name: "skelc"},
 	}, nil

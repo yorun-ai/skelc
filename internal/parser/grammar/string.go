@@ -1,26 +1,26 @@
 package grammar
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
-
-	"go.yorun.ai/skelc/internal/util/checkutil"
 )
 
-func UnquoteDescriptionString(raw string) string {
+func UnquoteDescriptionString(raw string) (string, error) {
 	if strings.HasPrefix(raw, `"""`) && strings.HasSuffix(raw, `"""`) && len(raw) >= 6 {
 		return unquoteTripleQuotedDescription(raw)
 	}
 	return UnquoteDoubleQuotedString(raw)
 }
 
-func unquoteTripleQuotedDescription(raw string) string {
+func unquoteTripleQuotedDescription(raw string) (string, error) {
 	content := raw[3 : len(raw)-3]
 	content = strings.ReplaceAll(content, "\r\n", "\n")
 	lines := strings.Split(content, "\n")
-	checkutil.Check(len(lines) >= 2 && strings.TrimSpace(lines[0]) == "" && strings.TrimSpace(lines[len(lines)-1]) == "",
-		"expected triple-quoted string to use standalone delimiter lines")
-	return dedentTripleQuotedDescription(strings.Join(lines[1:len(lines)-1], "\n"))
+	if len(lines) < 2 || strings.TrimSpace(lines[0]) != "" || strings.TrimSpace(lines[len(lines)-1]) != "" {
+		return "", fmt.Errorf("expected triple-quoted string to use standalone delimiter lines")
+	}
+	return dedentTripleQuotedDescription(strings.Join(lines[1:len(lines)-1], "\n")), nil
 }
 
 func dedentTripleQuotedDescription(content string) string {
@@ -56,8 +56,10 @@ func leadingWhitespaceLen(line string) int {
 	return len(line)
 }
 
-func UnquoteDoubleQuotedString(raw string) string {
-	checkutil.Check(len(raw) >= 2 && raw[0] == '"' && raw[len(raw)-1] == '"', "expected double-quoted string literal")
+func UnquoteDoubleQuotedString(raw string) (string, error) {
+	if len(raw) < 2 || raw[0] != '"' || raw[len(raw)-1] != '"' {
+		return "", fmt.Errorf("expected double-quoted string literal")
+	}
 
 	var output strings.Builder
 	content := raw[1 : len(raw)-1]
@@ -69,7 +71,9 @@ func UnquoteDoubleQuotedString(raw string) string {
 		}
 
 		unquoted, multiByte, tail, err := strconv.UnquoteChar(content, '"')
-		checkutil.CheckNilError(err, "unquote char failed")
+		if err != nil {
+			return "", fmt.Errorf("unquote char: %w", err)
+		}
 		if multiByte {
 			output.WriteRune(unquoted)
 		} else {
@@ -78,5 +82,5 @@ func UnquoteDoubleQuotedString(raw string) string {
 		content = tail
 	}
 
-	return output.String()
+	return output.String(), nil
 }

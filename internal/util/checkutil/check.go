@@ -19,6 +19,12 @@ type Failure struct {
 	Position model.Position
 	Message  string
 	Cause    error
+	Related  []RelatedLocation
+}
+
+type RelatedLocation struct {
+	Position model.Position
+	Message  string
 }
 
 func (f *Failure) Error() string { return f.Message }
@@ -86,29 +92,6 @@ func NewFailureWithCause(cause error, message string, args ...any) *Failure {
 	return &Failure{
 		Code: CodeValidation, Position: positionFromArgs(args), Message: message, Cause: cause,
 	}
-}
-
-// Recover converts a recovered compiler abort into an error.
-func Recover(value any) error {
-	if value == nil {
-		return nil
-	}
-	if err, ok := value.(error); ok {
-		return err
-	}
-	return fmt.Errorf("%v", value)
-}
-
-// Capture runs operation and converts a compiler abort into an error. Runtime
-// panics remain observable as errors at public compiler boundaries.
-func Capture(operation func()) (err error) {
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			err = Recover(recovered)
-		}
-	}()
-	operation()
-	return nil
 }
 
 // Position returns the structured source position carried by err.

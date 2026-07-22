@@ -4,18 +4,21 @@ import (
 	"strings"
 	"testing"
 
-	"go.yorun.ai/skelc/internal/codegen"
+	"go.yorun.ai/skelc/internal/codegen/common"
 )
 
 func TestBuildPackageJSONPayload(t *testing.T) {
-	payload := buildPackageJSONPayload(Option{PackageName: "@yorun-ai/skeled-example"})
+	payload, err := buildPackageJSONPayload(Option{PackageName: "@yorun-ai/skeled-example"})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if payload.PackageName != "@yorun-ai/skeled-example" {
 		t.Fatalf("unexpected package name: %s", payload.PackageName)
 	}
 	if got := joinPackageJSONDependencies(payload.PeerDependencies); got != "@yorun-ai/vrpc@*" {
 		t.Fatalf("unexpected peer dependencies: %#v", payload.PeerDependencies)
 	}
-	output := codegen.RenderTemplate(packageJSONTemplate, payload)
+	output := common.RenderTemplate(packageJSONTemplate, payload)
 	if !strings.Contains(output, `"@yorun-ai/vrpc": "*"`) {
 		t.Fatalf("expected rendered package.json to include @yorun-ai/vrpc, got:\n%s", output)
 	}
@@ -25,7 +28,7 @@ func TestBuildPackageJSONPayload(t *testing.T) {
 }
 
 func TestBuildPackageJSONPayloadIncludesConfiguredAndResolvedImports(t *testing.T) {
-	payload := buildPackageJSONPayload(Option{
+	payload, err := buildPackageJSONPayload(Option{
 		PackageName: "@yorun-ai/skeled-example",
 		Imports: map[string]string{
 			"demo.user": "@vine-demo/skeled-user@workspace:*",
@@ -36,6 +39,9 @@ func TestBuildPackageJSONPayloadIncludesConfiguredAndResolvedImports(t *testing.
 			"inventory": "@vine-demo/skeled-inventory",
 		},
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	want := "@vine-demo/skeled-app@*,@vine-demo/skeled-inventory@*,@vine-demo/skeled-user@workspace:*,@yorun-ai/vrpc@*"
 	if got := joinPackageJSONDependencies(payload.PeerDependencies); got != want {
@@ -44,13 +50,23 @@ func TestBuildPackageJSONPayloadIncludesConfiguredAndResolvedImports(t *testing.
 }
 
 func TestImportPathStripsVersion(t *testing.T) {
-	if got := ImportPath("@vine-demo/skeled-user@workspace:*"); got != "@vine-demo/skeled-user" {
+	got, err := ImportPath("@vine-demo/skeled-user@workspace:*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "@vine-demo/skeled-user" {
 		t.Fatalf("unexpected import path: %s", got)
 	}
 }
 
+func TestImportPathRejectsMissingVersion(t *testing.T) {
+	if _, err := ImportPath("@vine-demo/skeled-user@"); err == nil {
+		t.Fatal("expected missing version error")
+	}
+}
+
 func TestPackageJSONTemplateUsesPureTypeScriptEntry(t *testing.T) {
-	output := codegen.RenderTemplate(packageJSONTemplate, &PackageJSONPayload{
+	output := common.RenderTemplate(packageJSONTemplate, &PackageJSONPayload{
 		PackageName: "@yorun-ai/skeled-example",
 		PeerDependencies: []PackageJSONDependency{
 			{Package: "@vine-demo/skeled-user", Version: "workspace:*"},

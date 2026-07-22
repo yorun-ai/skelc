@@ -1,4 +1,4 @@
-package codegen
+package common
 
 import "strings"
 

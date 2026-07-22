@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"go.yorun.ai/skelc"
@@ -44,6 +45,41 @@ func TestParseExposesSemanticModel(t *testing.T) {
 	}
 }
 
+func TestPublicOptionsRejectEmptyImportMappings(t *testing.T) {
+	if _, err := skelc.Parse(skelc.Input{SkelIn: "input.skel", SkelImports: map[string]string{"demo.user": ""}}); err == nil {
+		t.Fatal("expected empty Skel import path error")
+	}
+	domain := model.NewDomainFromSpec(model.DomainSpec{Name: "demo.test"})
+	if err := skelc.GenerateGolang(domain, skelc.GolangOption{
+		Out: filepath.Join(t.TempDir(), "golang"), Imports: map[string]string{"demo.user": ""},
+	}); err == nil {
+		t.Fatal("expected empty Go import path error")
+	}
+	if err := skelc.GenerateTypeScript(domain, skelc.TypeScriptOption{
+		Out: filepath.Join(t.TempDir(), "typescript"), Imports: map[string]string{"demo.user": ""},
+	}); err == nil {
+		t.Fatal("expected empty TypeScript import path error")
+	}
+}
+
+func TestParseReturnsStructuredWarnings(t *testing.T) {
+	skelDir := t.TempDir()
+	writeTestFile(t, filepath.Join(skelDir, "domain.skel"), "domain demo.user")
+	writeTestFile(t, filepath.Join(skelDir, ".ignored.skel"), "domain ignored")
+
+	result, err := skelc.Parse(skelc.Input{SkelIn: skelDir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Diagnostics) != 1 {
+		t.Fatalf("unexpected diagnostics: %+v", result.Diagnostics)
+	}
+	diagnostic := result.Diagnostics[0]
+	if diagnostic.Code != "loader.ignored-hidden-file" || diagnostic.Severity != skelc.DiagnosticSeverityWarning {
+		t.Fatalf("unexpected warning: %+v", diagnostic)
+	}
+}
+
 func TestGenerateGolang(t *testing.T) {
 	skelDir := t.TempDir()
 	goOut := filepath.Join(t.TempDir(), "generated")
@@ -56,8 +92,8 @@ func TestGenerateGolang(t *testing.T) {
 	if err != nil {
 		t.Fatalf("generate Go: %v", err)
 	}
-	if len(result.Warnings) != 0 {
-		t.Fatalf("unexpected warnings: %v", result.Warnings)
+	if len(result.Diagnostics) != 0 {
+		t.Fatalf("unexpected diagnostics: %v", result.Diagnostics)
 	}
 	assertTestFileExists(t, filepath.Join(goOut, "doc.go"))
 	assertTestFileExists(t, filepath.Join(goOut, "schema.go"))
@@ -128,6 +164,32 @@ func TestGenerateGolangReturnsErrorBeforeCleaningOutput(t *testing.T) {
 		t.Fatal("expected generation error")
 	}
 	assertTestFileExists(t, oldFile)
+}
+
+func TestGeneratorsReturnErrorsForMissingExternalImportMappings(t *testing.T) {
+	userDir := t.TempDir()
+	writeTestFile(t, filepath.Join(userDir, "domain.skel"), "domain demo.user")
+	writeTestFile(t, filepath.Join(userDir, "user.skel"), "domain demo.user\npub data User { id: string }")
+	orderDir := t.TempDir()
+	writeTestFile(t, filepath.Join(orderDir, "domain.skel"), "domain demo.order")
+	writeTestFile(t, filepath.Join(orderDir, "order.skel"), "domain demo.order\nimport demo.user\ndata Order { user: user.User }")
+
+	parsed, err := skelc.Parse(skelc.Input{
+		SkelIn:      orderDir,
+		SkelImports: map[string]string{"demo.user": userDir},
+	})
+	if err != nil {
+		t.Fatalf("parse imported domain: %v", err)
+	}
+
+	goErr := skelc.GenerateGolang(parsed.Domain, skelc.GolangOption{Out: filepath.Join(t.TempDir(), "golang")})
+	if goErr == nil || !strings.Contains(goErr.Error(), "missing Go import for domain demo.user") {
+		t.Fatalf("expected missing Go import error, got %v", goErr)
+	}
+	tsErr := skelc.GenerateTypeScript(parsed.Domain, skelc.TypeScriptOption{Out: filepath.Join(t.TempDir(), "typescript")})
+	if tsErr == nil || !strings.Contains(tsErr.Error(), "missing TypeScript import for domain demo.user") {
+		t.Fatalf("expected missing TypeScript import error, got %v", tsErr)
+	}
 }
 
 func writeTestFile(t *testing.T, path string, content string) {

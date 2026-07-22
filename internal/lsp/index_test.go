@@ -21,7 +21,6 @@ data Order {
 }
 `
 	document := indexDocument(uri.File("/workspace/order.skel"), "/workspace/order.skel", source, 1)
-	require.NoError(t, document.ParseError)
 	require.Len(t, document.Definitions, 1)
 	assert.Equal(t, "demo.order.Order", document.Definitions[0].Key)
 
@@ -35,14 +34,14 @@ data Order {
 func TestIndexDocumentUsesUTF16Positions(t *testing.T) {
 	source := "domain demo\n// 𐐀\ndata User {}\n"
 	document := indexDocument(uri.File("/workspace/user.skel"), "/workspace/user.skel", source, 1)
-	require.NoError(t, document.ParseError)
 	require.Len(t, document.Definitions, 1)
 	assert.Equal(t, protocol.Position{Line: 2, Character: 5}, document.Definitions[0].Range.Start)
 }
 
 func TestIndexDocumentKeepsSyntaxError(t *testing.T) {
 	document := indexDocument(uri.File("/workspace/invalid.skel"), "/workspace/invalid.skel", "domain demo\ndata User {", 1)
-	assert.Error(t, document.ParseError)
+	require.Len(t, document.ParseDiagnostics, 1)
+	assert.Equal(t, "syntax.unexpected-eof", document.ParseDiagnostics[0].Code)
 	require.Len(t, document.Definitions, 1)
 	assert.Equal(t, "demo.User", document.Definitions[0].Key)
 	require.Len(t, document.Occurrences, 1)
@@ -61,7 +60,6 @@ service UserService {
 }
 `
 	document := indexDocument(uri.File("/workspace/service.skel"), "/workspace/service.skel", source, 1)
-	require.NoError(t, document.ParseError)
 	require.Len(t, document.Symbols, 1)
 	service := document.Symbols[0]
 	assert.Equal(t, "UserService", service.Name)

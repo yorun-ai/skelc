@@ -4,7 +4,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/alecthomas/participle/v2/lexer"
 	"go.yorun.ai/skelc/internal/util/checkutil"
+	"go.yorun.ai/skelc/model"
 )
 
 // MaxDiagnosticsPerDomain bounds validation work and prevents a badly broken
@@ -33,7 +35,28 @@ func (r *diagnosticReporter) checkNot(condition bool, message string, args ...an
 }
 
 func (r *diagnosticReporter) reportf(message string, args ...any) {
-	r.report(checkutil.NewFailuref(message, args...))
+	failure := checkutil.NewFailuref(message, args...)
+	if strings.Contains(strings.ToLower(message), "duplicated") {
+		failure.Code = "semantic.duplicate"
+		positions := diagnosticArgumentPositions(args)
+		if len(positions) > 1 {
+			failure.Related = []checkutil.RelatedLocation{{Position: positions[len(positions)-1], Message: "first declaration"}}
+		}
+	}
+	r.report(failure)
+}
+
+func diagnosticArgumentPositions(args []any) []model.Position {
+	positions := []model.Position{}
+	for _, argument := range args {
+		switch position := argument.(type) {
+		case model.Position:
+			positions = append(positions, position)
+		case lexer.Position:
+			positions = append(positions, model.Position{File: position.Filename, Line: position.Line, Column: position.Column})
+		}
+	}
+	return positions
 }
 
 func (r *diagnosticReporter) report(err error) {

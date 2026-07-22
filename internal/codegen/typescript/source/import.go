@@ -1,8 +1,9 @@
 package source
 
 import (
+	"fmt"
+
 	"go.yorun.ai/skelc/internal/codegen/typescript/module"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -24,13 +25,18 @@ func (g *_Gen) resolveExternalTypeImports() {
 }
 
 func (g *_Gen) tsImportPath(domainName string) string {
-	if path := g.tsImports[domainName]; path != "" {
-		return module.ImportPath(path)
+	if g.err != nil {
+		return ""
 	}
-	checkutil.Check(g.moduleScope != "",
-		"missing ts import for domain %s; pass --ts-import %s=PACKAGE or --ts-module-scope",
-		domainName, domainName,
-	)
+	if path := g.tsImports[domainName]; path != "" {
+		var importPath string
+		importPath, g.err = module.ImportPath(path)
+		return importPath
+	}
+	if g.moduleScope == "" {
+		g.err = fmt.Errorf("missing TypeScript import for domain %s; pass --ts-import %s=PACKAGE or --ts-module-scope", domainName, domainName)
+		return ""
+	}
 	return buildPackageName(g.moduleScope, domainName, true)
 }
 
@@ -70,7 +76,7 @@ func (g *_Gen) visitDomainTypes(visit func(*model.Type)) {
 }
 
 func (g *_Gen) visitPubOnlyTypes(visit func(*model.Type)) {
-	for _, dataType := range pubData(g.domain.Data()) {
+	for _, dataType := range g.publicView.Data {
 		visitDataTypes(dataType, visit)
 	}
 	for _, service := range g.clientServices() {

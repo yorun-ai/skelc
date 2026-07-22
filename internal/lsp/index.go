@@ -6,19 +6,21 @@ import (
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
 	"go.yorun.ai/skelc/internal/parser"
+	"go.yorun.ai/skelc/internal/parser/grammar"
 )
 
 type _Document struct {
-	URI         uri.URI
-	Path        string
-	Source      string
-	Version     int32
-	Domain      string
-	Imports     map[string]string
-	Definitions []_Definition
-	Symbols     []_Symbol
-	Occurrences []_Occurrence
-	ParseError  error
+	URI              uri.URI
+	Path             string
+	Source           string
+	Version          int32
+	Domain           string
+	Imports          map[string]string
+	Definitions      []_Definition
+	Symbols          []_Symbol
+	Occurrences      []_Occurrence
+	ParseDiagnostics parser.Diagnostics
+	Parsed           *grammar.SkelContent
 }
 
 type _Definition struct {
@@ -56,9 +58,10 @@ func indexDocument(documentURI uri.URI, path, source string, version int32) *_Do
 	}
 	document := &_Document{URI: documentURI, Path: path, Source: source, Version: version, Imports: map[string]string{}}
 	tokens := scanIdentifiers(source)
-	content, err := parser.ParseSource(path, []byte(source))
-	if err != nil {
-		document.ParseError = err
+	content, diagnostics := parser.ParseSourceRecovering(path, []byte(source))
+	document.Parsed = content
+	document.ParseDiagnostics = diagnostics
+	if len(diagnostics) > 0 {
 		indexIncompleteDocument(document, tokens)
 		document.Occurrences = indexOccurrences(document, tokens)
 		return document

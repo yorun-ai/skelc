@@ -108,7 +108,7 @@ func TestNewGenDerivesExternalTypeImportsFromTypeScriptModuleScope(t *testing.T)
 	})
 
 	if gen.err != nil {
-		t.Fatalf("unexpected generator error: %v", gen.err)
+		t.Fatal(gen.err)
 	}
 	memberType := pkg.Data()[0].Members[0].Type
 	if memberType.ExternalImportPath != "@acme/skeled-demo-userpub" {
@@ -150,7 +150,7 @@ func TestNewGenDerivesPubExternalTypeImportsFromTypeScriptModuleScope(t *testing
 	})
 
 	if gen.err != nil {
-		t.Fatalf("unexpected generator error: %v", gen.err)
+		t.Fatal(gen.err)
 	}
 	memberType := pkg.Data()[0].Members[0].Type
 	if memberType.ExternalImportPath != "@acme/skeled-demo-userpub" {
@@ -188,7 +188,7 @@ func TestNewGenPubOnlyIgnoresInternalExternalTypeImports(t *testing.T) {
 	gen := newGen(pkg, filepath.Join(t.TempDir(), "ts"), Option{PubOnly: true})
 
 	if gen.err != nil {
-		t.Fatalf("unexpected generator error: %v", gen.err)
+		t.Fatal(gen.err)
 	}
 }
 

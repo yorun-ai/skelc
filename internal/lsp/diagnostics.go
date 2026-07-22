@@ -2,9 +2,7 @@ package lsp
 
 import (
 	"context"
-	"errors"
 
-	"github.com/alecthomas/participle/v2"
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
 )
@@ -24,19 +22,14 @@ func (s *_Server) publishDiagnosticsWithClient(ctx context.Context, client proto
 	semantic := append([]protocol.Diagnostic{}, s.semantic[documentURI]...)
 	s.mu.RUnlock()
 	diagnostics := semantic
-	if document != nil && document.ParseError != nil {
-		position := protocol.Position{}
-		message := document.ParseError.Error()
-		var parseError participle.Error
-		if errors.As(document.ParseError, &parseError) {
-			parsePosition := parseError.Position()
-			position = identifierRange(document.Source, parsePosition, "").Start
-			message = parseError.Message()
+	if document != nil {
+		for _, diagnostic := range document.ParseDiagnostics {
+			diagnostics = append(diagnostics, protocol.Diagnostic{
+				Range: sourceRangeToProtocol(document.Source, diagnostic.Range), Severity: diagnosticSeverityToProtocol(diagnostic.Severity),
+				Code: protocol.String(diagnostic.Code), Source: protocol.NewOptional("skelc"),
+				Message: protocol.String(diagnostic.Message), Data: diagnosticSuggestionData(diagnostic.Suggestion),
+			})
 		}
-		diagnostics = append(diagnostics, protocol.Diagnostic{
-			Range: protocol.Range{Start: position, End: protocol.Position{Line: position.Line, Character: position.Character + 1}}, Severity: protocol.DiagnosticSeverityError,
-			Source: protocol.NewOptional("skelc"), Message: protocol.String(message),
-		})
 	}
 	params := &protocol.PublishDiagnosticsParams{URI: documentURI, Diagnostics: diagnostics}
 	if document != nil {

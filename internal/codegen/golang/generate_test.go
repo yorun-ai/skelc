@@ -1,7 +1,6 @@
 package golang
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -13,12 +12,15 @@ import (
 func TestNewGenDerivesModuleAndPackageName(t *testing.T) {
 	pkg := buildModelDomainForTest(t, domainModelForTest("demo.user.profile"))
 
-	gen := newGen(_GenOption{
+	gen, err := newGen(_GenOption{
 		VineVersion: "v0.9.0",
 		Mode:        view.ModeFull,
 		Domain:      pkg,
 		Out:         filepath.Join(t.TempDir(), "skeled"),
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if gen.modName != "" {
 		t.Fatalf("unexpected module name: %s", gen.modName)
@@ -31,7 +33,7 @@ func TestNewGenDerivesModuleAndPackageName(t *testing.T) {
 func TestNewGenKeepsDomainDerivedPackageNameForModuleOutput(t *testing.T) {
 	pkg := buildModelDomainForTest(t, domainModelForTest("demo.user.profile"))
 
-	gen := newGen(_GenOption{
+	gen, err := newGen(_GenOption{
 		ModulePrefix: "github.com/acme/skel",
 		VineVersion:  "v0.9.0",
 		Mode:         view.ModeFull,
@@ -39,6 +41,9 @@ func TestNewGenKeepsDomainDerivedPackageNameForModuleOutput(t *testing.T) {
 		Out:          filepath.Join(t.TempDir(), "skeled"),
 		AsModule:     true,
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if gen.modName != "github.com/acme/skel/demo/user/profile" {
 		t.Fatalf("unexpected module name: %s", gen.modName)
@@ -51,7 +56,7 @@ func TestNewGenKeepsDomainDerivedPackageNameForModuleOutput(t *testing.T) {
 func TestNewGenDerivesPubModuleAndPackageName(t *testing.T) {
 	pkg := buildModelDomainForTest(t, domainModelForTest("demo.user.profile"))
 
-	gen := newGen(_GenOption{
+	gen, err := newGen(_GenOption{
 		ModulePrefix: "github.com/acme/skel",
 		VineVersion:  "v0.9.0",
 		Mode:         view.ModePub,
@@ -59,6 +64,9 @@ func TestNewGenDerivesPubModuleAndPackageName(t *testing.T) {
 		Out:          filepath.Join(t.TempDir(), "skeled"),
 		AsModule:     true,
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if gen.modName != "github.com/acme/skel/demo/user/profilepub" {
 		t.Fatalf("unexpected module name: %s", gen.modName)
@@ -71,41 +79,29 @@ func TestNewGenDerivesPubModuleAndPackageName(t *testing.T) {
 func TestNewGenRejectsInvalidLocalPackageNameFromOutputDir(t *testing.T) {
 	pkg := buildModelDomainForTest(t, domainModelForTest("demo.user.profile"))
 
-	expectPanicContains(t, `go output directory name "my-skel go" is not a valid package name`, func() {
-		newGen(_GenOption{
-			VineVersion: "v0.9.0",
-			Mode:        view.ModeFull,
-			Domain:      pkg,
-			Out:         filepath.Join(t.TempDir(), "my-skel go"),
-		})
+	_, err := newGen(_GenOption{
+		VineVersion: "v0.9.0",
+		Mode:        view.ModeFull,
+		Domain:      pkg,
+		Out:         filepath.Join(t.TempDir(), "my-skel go"),
 	})
+	if err == nil || !strings.Contains(err.Error(), `go output directory name "my-skel go" is not a valid package name`) {
+		t.Fatalf("unexpected error: %v", err)
+	}
 }
 
 func TestNewGenRejectsKeywordLocalPackageNameFromOutputDir(t *testing.T) {
 	pkg := buildModelDomainForTest(t, domainModelForTest("demo.user.profile"))
 
-	expectPanicContains(t, `go output directory name "go" is not a valid package name`, func() {
-		newGen(_GenOption{
-			VineVersion: "v0.9.0",
-			Mode:        view.ModeFull,
-			Domain:      pkg,
-			Out:         filepath.Join(t.TempDir(), "go"),
-		})
+	_, err := newGen(_GenOption{
+		VineVersion: "v0.9.0",
+		Mode:        view.ModeFull,
+		Domain:      pkg,
+		Out:         filepath.Join(t.TempDir(), "go"),
 	})
-}
-
-func expectPanicContains(t *testing.T, expected string, fn func()) {
-	t.Helper()
-	defer func() {
-		recovered := recover()
-		if recovered == nil {
-			t.Fatalf("expected panic containing %q", expected)
-		}
-		if !strings.Contains(fmt.Sprint(recovered), expected) {
-			t.Fatalf("unexpected panic: %v", recovered)
-		}
-	}()
-	fn()
+	if err == nil || !strings.Contains(err.Error(), `go output directory name "go" is not a valid package name`) {
+		t.Fatalf("unexpected error: %v", err)
+	}
 }
 
 func buildModelDomainForTest(t *testing.T, spec model.DomainSpec) *model.Domain {

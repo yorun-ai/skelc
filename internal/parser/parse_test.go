@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -142,13 +141,12 @@ data Booking {
 	}
 }
 
-func TestParsePanicsWhenDomainFileMissing(t *testing.T) {
+func TestParseReturnsErrorWhenDomainFileMissing(t *testing.T) {
 	skelDir := t.TempDir()
 	writeParseFile(t, filepath.Join(skelDir, "user.skel"), "data User { id: string }\n")
 
-	expectParsePanicContains(t, "domain.skel not found", func() {
-		Parse(Option{SkelIn: skelDir})
-	})
+	_, err := Parse(Option{SkelIn: skelDir})
+	expectErrorContains(t, err, "domain.skel not found")
 }
 
 func TestParseSingleSkelFile(t *testing.T) {
@@ -190,20 +188,6 @@ service UserService {
 	if err == nil || !strings.Contains(err.Error(), "definition of MissingUser not found") {
 		t.Fatalf("expected semantic error, got %v", err)
 	}
-}
-
-func expectParsePanicContains(t *testing.T, expected string, fn func()) {
-	t.Helper()
-	defer func() {
-		recovered := recover()
-		if recovered == nil {
-			t.Fatalf("expected panic containing %q", expected)
-		}
-		if !strings.Contains(fmt.Sprint(recovered), expected) {
-			t.Fatalf("unexpected panic: %v", recovered)
-		}
-	}()
-	fn()
 }
 
 func writeParseFile(t *testing.T, path string, content string) {

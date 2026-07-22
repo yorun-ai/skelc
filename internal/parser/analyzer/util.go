@@ -63,7 +63,7 @@ func checkCaseAdvanced(
 	body = strings.TrimSuffix(body, suffix)
 	valid = reporter.check(body != "", "%s missing body after trimming prefix & suffix: found=%s", pos, name) && valid
 	if !matchesCase(body, expectedCase) {
-		expectedName := fmt.Sprintf("%s%s%s", prefix, caseTypeExample(expectedCase), suffix)
+		expectedName := fmt.Sprintf("%s%s%s", prefix, convertCase(body, expectedCase), suffix)
 		reporter.reportf("%s incorrect case: found=%s, expected=%s (%s -> %s)", pos, name, expectedName, kindName, expectedFormat)
 		valid = false
 	}
@@ -85,17 +85,17 @@ func matchesCase(value string, expected caseType) bool {
 	}
 }
 
-func caseTypeExample(expected caseType) string {
+func convertCase(value string, expected caseType) string {
 	switch expected {
 	case caseTypeSnake:
-		return "snake_case"
+		return nameutil.ToSnake(value)
 	case caseTypeScreamingSnake:
-		return "SCREAMING_SNAKE_CASE"
+		return nameutil.ToScreamingSnake(value)
 	case caseTypeCamel:
-		return "CamelCase"
+		return nameutil.ToCamel(value)
 	case caseTypeLowerCamel:
-		return "lowerCamelCase"
+		return nameutil.ToLowerCamel(value)
 	default:
-		return string(expected)
+		return value
 	}
 }

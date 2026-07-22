@@ -22,11 +22,22 @@ func TestMatchesCase(t *testing.T) {
 	}
 }
 
-func TestCaseTypeExample(t *testing.T) {
-	if got := caseTypeExample(caseTypeCamel); got != "CamelCase" {
-		t.Fatalf("unexpected case type example: %s", got)
+func TestConvertCase(t *testing.T) {
+	tests := []struct {
+		value    string
+		caseType caseType
+		want     string
+	}{
+		{value: "UserName", caseType: caseTypeSnake, want: "user_name"},
+		{value: "userName", caseType: caseTypeScreamingSnake, want: "USER_NAME"},
+		{value: "user_name", caseType: caseTypeCamel, want: "UserName"},
+		{value: "UserName", caseType: caseTypeLowerCamel, want: "userName"},
+		{value: "unchanged", caseType: caseType("custom"), want: "unchanged"},
 	}
-	if got := caseTypeExample(caseType("custom")); got != "custom" {
-		t.Fatalf("unexpected fallback case type example: %s", got)
+
+	for _, test := range tests {
+		if got := convertCase(test.value, test.caseType); got != test.want {
+			t.Errorf("convertCase(%q, %q) = %q, want %q", test.value, test.caseType, got, test.want)
+		}
 	}
 }

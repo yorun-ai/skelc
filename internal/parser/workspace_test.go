@@ -60,6 +60,19 @@ data Order { missing: MissingOrder }
 	assert.Contains(t, diagnostics[1].Message, "definition of MissingOrder not found")
 }
 
+func TestAnalyzeWorkspaceSuggestsCorrectedIdentifierCase(t *testing.T) {
+	diagnostics := AnalyzeWorkspace([]Source{{
+		Path: "/workspace/data.skel", Content: []byte("domain demo\ndata user_profile {}\n"),
+	}})
+
+	require.Len(t, diagnostics, 1)
+	assert.Equal(t, DiagnosticCodeSemanticNaming, diagnostics[0].Code)
+	require.NotNil(t, diagnostics[0].Suggestion)
+	assert.Equal(t, "replace with UserProfile", diagnostics[0].Suggestion.Message)
+	assert.Equal(t, "UserProfile", diagnostics[0].Suggestion.Replacement)
+	assert.True(t, diagnostics[0].Suggestion.Replace)
+}
+
 func TestAnalyzeWorkspaceSuppressesInvalidDeclarationCascades(t *testing.T) {
 	diagnostics := AnalyzeWorkspace([]Source{{
 		Path: "/workspace/data.skel",

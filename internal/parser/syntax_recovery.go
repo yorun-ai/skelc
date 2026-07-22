@@ -29,14 +29,16 @@ type _OffsetLexer struct {
 // initial token pass isolates top-level declarations so recovery reparses only
 // the declaration containing an error, never the complete source file.
 func ParseSourceRecovering(path string, source []byte) (*grammar.SkelContent, Diagnostics) {
+	content, err, _ := parseSourceOnce(path, source)
+	if err == nil {
+		return content, nil
+	}
+
 	segments := splitSourceSegments(path, source)
-	content := new(grammar.SkelContent)
+	content = new(grammar.SkelContent)
 	diagnostics := Diagnostics{}
 	for _, segment := range segments {
 		remaining := analyzer.MaxDiagnosticsPerDomain - len(diagnostics)
-		if remaining == 0 {
-			break
-		}
 		fragment, fragmentDiagnostics := parseSourceSegmentRecovering(path, source, segment, remaining)
 		diagnostics = append(diagnostics, fragmentDiagnostics...)
 		orderDiagnostics := mergeRecoveredContent(path, source, content, fragment)

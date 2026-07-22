@@ -37,73 +37,52 @@ func (g *_Gen) goImportPath(domainName string) (string, error) {
 }
 
 func (g *_Gen) visitDomainTypes(visit common.TypeVisitor) error {
+	types := make([]*model.Type, 0)
 	for _, dataType := range g.domain.Data() {
-		if err := visitDataTypes(dataType, visit); err != nil {
-			return err
-		}
+		types = appendDataTypes(types, dataType)
 	}
 	for _, config := range g.domain.Configs() {
-		if err := visitDataTypes(config, visit); err != nil {
-			return err
-		}
+		types = appendDataTypes(types, config)
 	}
 	for _, event := range g.domain.Events() {
-		if err := visitDataTypes(event, visit); err != nil {
-			return err
-		}
+		types = appendDataTypes(types, event)
 	}
 	for _, service := range g.domain.Services() {
-		if err := visitServiceTypes(service, visit); err != nil {
-			return err
-		}
+		types = appendServiceTypes(types, service)
 	}
 	for _, actor := range g.domain.Actors() {
-		if err := visitServiceTypes(actor.AuthService, visit); err != nil {
-			return err
-		}
-		if err := visitServiceTypes(actor.PermService, visit); err != nil {
-			return err
-		}
+		types = appendServiceTypes(types, actor.AuthService)
+		types = appendServiceTypes(types, actor.PermService)
 	}
 	for _, resource := range g.domain.Resources() {
-		if err := visitServiceTypes(resource.CheckService, visit); err != nil {
-			return err
-		}
+		types = appendServiceTypes(types, resource.CheckService)
 	}
 	for _, task := range g.domain.Tasks() {
 		for _, trigger := range task.Triggers {
 			for _, argument := range trigger.Arguments {
-				if err := common.WalkType(argument.Type, visit); err != nil {
-					return err
-				}
+				types = append(types, argument.Type)
 			}
 		}
 	}
-	return nil
+	return common.WalkTypes(types, visit)
 }
 
-func visitServiceTypes(service *model.Service, visit common.TypeVisitor) error {
+func appendServiceTypes(types []*model.Type, service *model.Service) []*model.Type {
 	if service == nil {
-		return nil
+		return types
 	}
 	for _, method := range service.Methods {
-		if err := common.WalkType(method.ResultType, visit); err != nil {
-			return err
-		}
+		types = append(types, method.ResultType)
 		for _, argument := range method.Arguments {
-			if err := common.WalkType(argument.Type, visit); err != nil {
-				return err
-			}
+			types = append(types, argument.Type)
 		}
 	}
-	return nil
+	return types
 }
 
-func visitDataTypes(dataType *model.Data, visit common.TypeVisitor) error {
+func appendDataTypes(types []*model.Type, dataType *model.Data) []*model.Type {
 	for _, member := range dataType.Members {
-		if err := common.WalkType(member.Type, visit); err != nil {
-			return err
-		}
+		types = append(types, member.Type)
 	}
-	return nil
+	return types
 }

@@ -50,58 +50,56 @@ func (g *_Gen) resolvedModuleImports() map[string]string {
 }
 
 func (g *_Gen) visitDomainTypes(visit func(*model.Type)) {
+	types := make([]*model.Type, 0)
 	for _, dataType := range g.domain.Data() {
-		visitDataTypes(dataType, visit)
+		types = appendDataTypeRoots(types, dataType)
 	}
 	for _, config := range g.domain.Configs() {
-		visitDataTypes(config, visit)
+		types = appendDataTypeRoots(types, config)
 	}
 	for _, event := range g.domain.Events() {
-		visitDataTypes(event, visit)
+		types = appendDataTypeRoots(types, event)
 	}
 	for _, service := range g.domain.Services() {
 		for _, method := range service.Methods {
-			visitType(method.ResultType, visit)
+			types = append(types, method.ResultType)
 			for _, arg := range method.Arguments {
-				visitType(arg.Type, visit)
+				types = append(types, arg.Type)
 			}
 		}
 	}
 	for _, task := range g.domain.Tasks() {
 		for _, trigger := range task.Triggers {
 			for _, arg := range trigger.Arguments {
-				visitType(arg.Type, visit)
+				types = append(types, arg.Type)
 			}
 		}
 	}
+	common.VisitTypes(types, visit)
 }
 
 func (g *_Gen) visitPubOnlyTypes(visit func(*model.Type)) {
+	types := make([]*model.Type, 0)
 	for _, dataType := range g.publicView.Data {
-		visitDataTypes(dataType, visit)
+		types = appendDataTypeRoots(types, dataType)
 	}
 	for _, service := range g.clientServices() {
 		if !service.Pub {
 			continue
 		}
 		for _, method := range service.Methods {
-			visitType(method.ResultType, visit)
+			types = append(types, method.ResultType)
 			for _, arg := range method.Arguments {
-				visitType(arg.Type, visit)
+				types = append(types, arg.Type)
 			}
 		}
 	}
+	common.VisitTypes(types, visit)
 }
 
-func visitDataTypes(dataType *model.Data, visit func(*model.Type)) {
+func appendDataTypeRoots(types []*model.Type, dataType *model.Data) []*model.Type {
 	for _, member := range dataType.Members {
-		visitType(member.Type, visit)
+		types = append(types, member.Type)
 	}
-}
-
-func visitType(type_ *model.Type, visit func(*model.Type)) {
-	_ = common.WalkType(type_, func(current *model.Type) error {
-		visit(current)
-		return nil
-	})
+	return types
 }

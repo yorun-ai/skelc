@@ -9,61 +9,69 @@ import (
 
 func collectTypeImports(domain *model.Domain, view *common.PublicView) []*model.Import {
 	used := map[string]struct{}{}
+	types := make([]*model.Type, 0)
 	for _, data := range view.Data {
-		collectImportsFromData(used, data)
+		types = appendDataImportTypes(types, data)
 	}
 	for _, config := range view.Configs {
-		collectImportsFromData(used, config)
+		types = appendDataImportTypes(types, config)
 	}
 	for _, resource := range view.Resources {
 		for _, check := range resource.Checks {
 			for _, argument := range renderResourceCheckArguments(check) {
-				collectImportsFromType(used, argument.Type)
+				types = append(types, argument.Type)
 			}
 		}
 		for _, action := range resource.Actions {
 			for _, check := range action.Checks {
 				for _, argument := range renderResourceCheckArguments(check) {
-					collectImportsFromType(used, argument.Type)
+					types = append(types, argument.Type)
 				}
 			}
 		}
 	}
+	collectImportsFromTypes(used, types)
 	return selectUsedImports(domain.Imports(), used)
 }
 
 func collectDataImports(domain *model.Domain, dataList []*model.Data) []*model.Import {
 	used := map[string]struct{}{}
+	types := make([]*model.Type, 0)
 	for _, data := range dataList {
-		collectImportsFromData(used, data)
+		types = appendDataImportTypes(types, data)
 	}
+	collectImportsFromTypes(used, types)
 	return selectUsedImports(domain.Imports(), used)
 }
 
 func collectActorImports(domain *model.Domain, actors []*model.Actor) []*model.Import {
 	used := map[string]struct{}{}
+	types := make([]*model.Type, 0)
 	for _, actor := range actors {
 		if actor.AuthEnabled {
-			collectImportsFromData(used, actor.AuthCredential)
-			collectImportsFromData(used, actor.AuthInfo)
+			types = appendDataImportTypes(types, actor.AuthCredential)
+			types = appendDataImportTypes(types, actor.AuthInfo)
 		}
 	}
+	collectImportsFromTypes(used, types)
 	return selectUsedImports(domain.Imports(), used)
 }
 
 func collectServiceImports(domain *model.Domain, services []*model.Service) []*model.Import {
 	used := map[string]struct{}{}
+	types := make([]*model.Type, 0)
 	for _, service := range services {
 		for _, audience := range service.Audiences {
 			collectImportFromQualifiedName(used, audience.Actor)
 		}
 		for _, method := range service.Methods {
-			collectImportsFromType(used, method.ResultType)
+			types = append(types, method.ResultType)
 			for _, argument := range method.Arguments {
-				collectImportsFromType(used, argument.Type)
+				types = append(types, argument.Type)
 			}
 		}
 	}
+	collectImportsFromTypes(used, types)
 	return selectUsedImports(domain.Imports(), used)
 }
 
@@ -74,18 +82,18 @@ func collectImportFromQualifiedName(used map[string]struct{}, name string) {
 	}
 }
 
-func collectImportsFromData(used map[string]struct{}, data *model.Data) {
+func appendDataImportTypes(types []*model.Type, data *model.Data) []*model.Type {
 	for _, member := range data.Members {
-		collectImportsFromType(used, member.Type)
+		types = append(types, member.Type)
 	}
+	return types
 }
 
-func collectImportsFromType(used map[string]struct{}, type_ *model.Type) {
-	_ = common.WalkType(type_, func(current *model.Type) error {
+func collectImportsFromTypes(used map[string]struct{}, types []*model.Type) {
+	common.VisitTypes(types, func(current *model.Type) {
 		if current.ExternalDomain != "" {
 			used[current.ExternalDomain] = struct{}{}
 		}
-		return nil
 	})
 }
 

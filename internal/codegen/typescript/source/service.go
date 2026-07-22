@@ -166,19 +166,8 @@ func castMethodArgument(p *model.Argument) *MethodArgument {
 func buildServiceTypeImports(services []*model.Service) []string {
 	imports := make([]string, 0)
 	seen := make(map[string]struct{})
-	for _, service := range services {
-		for _, method := range service.Methods {
-			imports = appendServiceTypeImports(imports, seen, method.ResultType)
-			for _, argument := range method.Arguments {
-				imports = appendServiceTypeImports(imports, seen, argument.Type)
-			}
-		}
-	}
-	return imports
-}
-
-func appendServiceTypeImports(imports []string, seen map[string]struct{}, typeToken *model.Type) []string {
-	_ = common.WalkType(typeToken, func(current *model.Type) error {
+	types := serviceTypeRoots(services)
+	common.VisitTypes(types, func(current *model.Type) {
 		switch current.Kind {
 		case model.TypeKindEnum:
 			if current.ExternalImportPath == "" {
@@ -189,9 +178,21 @@ func appendServiceTypeImports(imports []string, seen map[string]struct{}, typeTo
 				imports = appendUniqueServiceTypeImport(imports, seen, transDataName(current.Data))
 			}
 		}
-		return nil
 	})
 	return imports
+}
+
+func serviceTypeRoots(services []*model.Service) []*model.Type {
+	types := make([]*model.Type, 0)
+	for _, service := range services {
+		for _, method := range service.Methods {
+			types = append(types, method.ResultType)
+			for _, argument := range method.Arguments {
+				types = append(types, argument.Type)
+			}
+		}
+	}
+	return types
 }
 
 func appendUniqueServiceTypeImport(imports []string, seen map[string]struct{}, name string) []string {
@@ -203,17 +204,7 @@ func appendUniqueServiceTypeImport(imports []string, seen map[string]struct{}, n
 }
 
 func buildServiceExternalTypeImports(services []*model.Service) []*TypeImport {
-	imports := make([]*TypeImport, 0)
-	seen := make(map[string]struct{})
-	for _, service := range services {
-		for _, method := range service.Methods {
-			imports = appendExternalTypeImports(imports, seen, method.ResultType)
-			for _, argument := range method.Arguments {
-				imports = appendExternalTypeImports(imports, seen, argument.Type)
-			}
-		}
-	}
-	return imports
+	return buildExternalTypeImports(serviceTypeRoots(services))
 }
 
 func tsDocLines(description string) []string {

@@ -1,6 +1,8 @@
 package common
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -89,6 +91,93 @@ func TestManagedOutputRejectsSymlinkedTargetParent(t *testing.T) {
 	assertOutputTestContent(t, filepath.Join(outside, "keep.go"), "outside")
 }
 
+func TestManagedOutputRollsBackPartialCommit(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "generated")
+	initial := newOutputTestTransaction(t, target)
+	writeOutputTestFile(t, filepath.Join(initial.StageDir(), "a.go"), "old a")
+	writeOutputTestFile(t, filepath.Join(initial.StageDir(), "b.go"), "old b")
+	if err := initial.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	manifestBefore, err := os.ReadFile(filepath.Join(target, outputManifestName))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	output := newOutputTestTransaction(t, target)
+	writeOutputTestFile(t, filepath.Join(output.StageDir(), "a.go"), "new a")
+	writeOutputTestFile(t, filepath.Join(output.StageDir(), "b.go"), "new b")
+	writes := 0
+	output.writeFile = func(path string, content []byte, mode fs.FileMode) error {
+		writes++
+		if writes == 2 {
+			return errors.New("injected write failure")
+		}
+		return atomicWriteFile(path, content, mode)
+	}
+	if err := output.Commit(); err == nil || !strings.Contains(err.Error(), "injected write failure") {
+		t.Fatalf("expected injected commit failure, got %v", err)
+	}
+
+	assertOutputTestContent(t, filepath.Join(target, "a.go"), "old a")
+	assertOutputTestContent(t, filepath.Join(target, "b.go"), "old b")
+	assertOutputTestExact(t, filepath.Join(target, outputManifestName), manifestBefore)
+}
+
+func TestManagedOutputRollsBackNewTarget(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "generated")
+	output := newOutputTestTransaction(t, target)
+	writeOutputTestFile(t, filepath.Join(output.StageDir(), "a.go"), "new a")
+	writeOutputTestFile(t, filepath.Join(output.StageDir(), "b.go"), "new b")
+	writes := 0
+	output.writeFile = func(path string, content []byte, mode fs.FileMode) error {
+		writes++
+		if writes == 2 {
+			return errors.New("injected write failure")
+		}
+		return atomicWriteFile(path, content, mode)
+	}
+	if err := output.Commit(); err == nil {
+		t.Fatal("expected commit failure")
+	}
+	assertOutputTestMissing(t, target)
+}
+
+func TestCommitManagedOutputsRollsBackEarlierTargets(t *testing.T) {
+	root := t.TempDir()
+	firstTarget := filepath.Join(root, "regular")
+	secondTarget := filepath.Join(root, "public")
+	manifests := map[string][]byte{}
+	for _, target := range []string{firstTarget, secondTarget} {
+		initial := newOutputTestTransaction(t, target)
+		writeOutputTestFile(t, filepath.Join(initial.StageDir(), "generated.go"), "old")
+		if err := initial.Commit(); err != nil {
+			t.Fatal(err)
+		}
+		manifest, err := os.ReadFile(filepath.Join(target, outputManifestName))
+		if err != nil {
+			t.Fatal(err)
+		}
+		manifests[target] = manifest
+	}
+
+	first := newOutputTestTransaction(t, firstTarget)
+	second := newOutputTestTransaction(t, secondTarget)
+	writeOutputTestFile(t, filepath.Join(first.StageDir(), "generated.go"), "new regular")
+	writeOutputTestFile(t, filepath.Join(second.StageDir(), "generated.go"), "new public")
+	second.writeFile = func(string, []byte, fs.FileMode) error {
+		return errors.New("injected second-output failure")
+	}
+	if err := CommitManagedOutputs([]*ManagedOutput{first, second}); err == nil || !strings.Contains(err.Error(), "injected second-output failure") {
+		t.Fatalf("expected second output failure, got %v", err)
+	}
+
+	assertOutputTestContent(t, filepath.Join(firstTarget, "generated.go"), "old")
+	assertOutputTestContent(t, filepath.Join(secondTarget, "generated.go"), "old")
+	assertOutputTestExact(t, filepath.Join(firstTarget, outputManifestName), manifests[firstTarget])
+	assertOutputTestExact(t, filepath.Join(secondTarget, outputManifestName), manifests[secondTarget])
+}
+
 func newOutputTestTransaction(t *testing.T, target string) *ManagedOutput {
 	t.Helper()
 	output, err := NewManagedOutput(target)
@@ -124,5 +213,16 @@ func assertOutputTestMissing(t *testing.T, path string) {
 	t.Helper()
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("expected %s to be missing, err=%v", path, err)
+	}
+}
+
+func assertOutputTestExact(t *testing.T, path string, expected []byte) {
+	t.Helper()
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(content) != string(expected) {
+		t.Fatalf("expected %s to contain %q, got %q", path, expected, content)
 	}
 }

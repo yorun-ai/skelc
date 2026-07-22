@@ -11,26 +11,20 @@ import (
 func (b *_WireSchemaBuilder) collectMethod(method *model.Method) {
 	if methodArgumentsContainBinary(method) {
 		for _, argument := range method.Arguments {
-			b.collectType(argument.Type)
+			b.types = append(b.types, argument.Type)
 		}
 	}
 	if methodResultContainsBinary(method) {
-		b.collectType(method.ResultType)
-	}
-}
-
-func (b *_WireSchemaBuilder) collectType(type_ *model.Type) {
-	if err := common.WalkTypeGraph(type_, func(current *model.Type) error {
-		if current.Kind == model.TypeKindData {
-			b.data[current.Data] = true
-		}
-		return nil
-	}); err != nil {
-		b.fail("collect TypeScript wire schema types: %v", err)
+		b.types = append(b.types, method.ResultType)
 	}
 }
 
 func (b *_WireSchemaBuilder) prepareFactoryNames() {
+	common.VisitTypeGraphs(b.types, func(current *model.Type) {
+		if current.Kind == model.TypeKindData {
+			b.data[current.Data] = true
+		}
+	})
 	dataList := b.sortedData()
 	nameCounts := map[string]int{}
 	for _, dataType := range dataList {

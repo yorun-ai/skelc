@@ -50,3 +50,31 @@ func TestWalkTypePropagatesVisitorError(t *testing.T) {
 		t.Fatalf("expected visitor error, got %v", err)
 	}
 }
+
+func TestVisitTypesSharesTraversalStateAcrossRoots(t *testing.T) {
+	shared := &model.Type{Kind: model.TypeKindScalar, Scalar: model.ScalarString}
+	roots := []*model.Type{
+		{Kind: model.TypeKindList, List: &model.ListType{Value: shared}},
+		{Kind: model.TypeKindMap, Map: &model.MapType{Key: shared, Value: shared}},
+	}
+	visits := map[*model.Type]int{}
+	VisitTypes(roots, func(kind *model.Type) {
+		visits[kind]++
+	})
+	if visits[shared] != 1 {
+		t.Fatalf("expected shared type to be visited once, got %d", visits[shared])
+	}
+}
+
+func TestVisitTypeGraphsSharesReferencedDataAcrossRoots(t *testing.T) {
+	data := &model.Data{Name: "Shared", Kind: model.DataKindData}
+	reference := &model.Type{Kind: model.TypeKindData, Data: data}
+	data.Members = []*model.DataMember{{Name: "value", Type: &model.Type{Kind: model.TypeKindScalar, Scalar: model.ScalarString}}}
+	visits := map[*model.Type]int{}
+	VisitTypeGraphs([]*model.Type{reference, reference}, func(kind *model.Type) {
+		visits[kind]++
+	})
+	if visits[reference] != 1 || len(visits) != 2 {
+		t.Fatalf("expected one shared graph traversal, got %+v", visits)
+	}
+}

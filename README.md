@@ -101,7 +101,7 @@ const userService = createUserService(client);
 const user = await userService.getUser({ userId: 1001 });
 ```
 
-Generation supports shared output directories. skelc records owned files in `.skelc-manifest.json`, preserves untracked files, and removes a stale generated file only when its content still matches the previous manifest.
+Generation supports shared output directories. skelc records owned files in `.skelc-manifest.json`, preserves untracked files, and removes a stale generated file only when its content still matches the previous manifest. Every target is staged before commit; if any target fails, files and manifests already changed by that generation run are rolled back.
 
 A runnable version of this walkthrough lives in [`examples/quickstart`](examples/quickstart). From a repository checkout, validate the contract and generate every supported target with:
 
@@ -187,7 +187,7 @@ for _, diagnostic := range result.Diagnostics {
 }
 ```
 
-The API also provides `CompileTypeScript` and `CompileSkeleton`. Parser and loader warnings use the same structured diagnostic model instead of a separate string list. All public-contract generators consume one validated `internal/codegen/common` projection, preventing Go, Skel, and TypeScript visibility rules from drifting. Generation records owned files in `.skelc-manifest.json`, atomically replaces individual generated files, removes only unchanged stale generated files, and preserves every untracked file in a shared output directory.
+The API also provides `CompileTypeScript` and `CompileSkeleton`. Parser and loader warnings use the same structured diagnostic model instead of a separate string list. All public-contract generators consume one validated `internal/codegen/common` projection, preventing Go, Skel, and TypeScript visibility rules from drifting. Generation records owned files in `.skelc-manifest.json`, atomically replaces individual generated files, rolls back every affected output target when a commit fails, removes only unchanged stale generated files, and preserves every untracked file in a shared output directory.
 
 Custom generators can call `skelc.Parse` and consume the returned `*model.Domain` through the parser-independent `go.yorun.ai/skelc/model` package. Parsed models already contain compatibility hashes calculated by skelc. Built-in generators accept the same parsed domain through `GenerateGolang`, `GenerateTypeScript`, and `GenerateSkeleton`, so several targets can share one parse result.
 

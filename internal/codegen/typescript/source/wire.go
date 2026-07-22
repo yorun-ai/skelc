@@ -19,6 +19,7 @@ type _WireFactory struct {
 type _WireSchemaBuilder struct {
 	data         map[*model.Data]bool
 	factoryNames map[*model.Data]string
+	types        []*model.Type
 	err          error
 }
 
@@ -32,5 +33,6 @@ func newWireSchemaBuilder() *_WireSchemaBuilder {
 	return &_WireSchemaBuilder{
 		data:         map[*model.Data]bool{},
 		factoryNames: map[*model.Data]string{},
+		types:        make([]*model.Type, 0),
 	}
 }

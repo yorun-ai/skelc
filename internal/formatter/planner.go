@@ -102,9 +102,19 @@ func (p *_Planner) addBlockComment(token _Token) {
 	} else {
 		p.startTopLine(token.value, "BlockComment")
 	}
-	p.raw(token.value, max(0, token.pos.Column-1))
+	p.raw(token.value, p.indentLevel()*indentWidth)
 	p.previous = "comment"
 	p.lineTokenCount++
+}
+
+func (p *_Planner) indentLevel() int {
+	level := p.depth
+	for _, indented := range p.parenIndents {
+		if indented {
+			level++
+		}
+	}
+	return level
 }
 
 func (p *_Planner) addSyntax(index int, token _Token) {
@@ -258,7 +268,7 @@ func (p *_Planner) breakLine(lines int) {
 
 func (p *_Planner) textOrRaw(token _Token) {
 	if token.kind == "TripleString" {
-		p.raw(token.value, max(0, token.pos.Column-1))
+		p.raw(normalizeTripleString(token.value), 0)
 		return
 	}
 	if strings.Contains(token.value, "\n") {
@@ -266,6 +276,36 @@ func (p *_Planner) textOrRaw(token _Token) {
 		return
 	}
 	p.text(token.value)
+}
+
+func normalizeTripleString(value string) string {
+	lines := strings.Split(value, "\n")
+	if len(lines) < 2 {
+		return value
+	}
+
+	baseIndent := -1
+	for _, line := range lines[1 : len(lines)-1] {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		indent := len(line) - len(strings.TrimLeft(line, " \t"))
+		if baseIndent < 0 || indent < baseIndent {
+			baseIndent = indent
+		}
+	}
+	if baseIndent < 0 {
+		baseIndent = 0
+	}
+	for index := 1; index < len(lines)-1; index++ {
+		if strings.TrimSpace(lines[index]) == "" {
+			lines[index] = ""
+		} else {
+			lines[index] = trimBaseIndent(lines[index], baseIndent)
+		}
+	}
+	lines[len(lines)-1] = strings.TrimLeft(lines[len(lines)-1], " \t")
+	return strings.Join(lines, "\n")
 }
 
 func (p *_Planner) text(value string) {

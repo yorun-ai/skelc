@@ -18,6 +18,9 @@ func parseRequire(reporter *diagnosticReporter, gr *grammar.Require) (*model.Per
 }
 
 func parseRequireExpr(reporter *diagnosticReporter, expr *grammar.RequireExpr) (*model.PermissionExpr, bool) {
+	if expr == nil {
+		return nil, false
+	}
 	if expr.Term != nil {
 		return &model.PermissionExpr{Check: parseRequireTerm(expr.Term)}, true
 	}
@@ -29,7 +32,9 @@ func parseRequireExpr(reporter *diagnosticReporter, expr *grammar.RequireExpr) (
 	for _, child := range expr.Children {
 		parsed, childValid := parseRequireExpr(reporter, child)
 		valid = childValid && valid
-		children = append(children, parsed)
+		if parsed != nil {
+			children = append(children, parsed)
+		}
 	}
 	return &model.PermissionExpr{
 		Mode:     mode,

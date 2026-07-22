@@ -32,10 +32,10 @@ data Order {
 }
 
 func TestIndexDocumentUsesUTF16Positions(t *testing.T) {
-	source := "domain demo\n// 𐐀\ndata User {}\n"
+	source := "domain demo\n@desc(\"𐐀\") data User {}\n"
 	document := indexDocument(uri.File("/workspace/user.skel"), "/workspace/user.skel", source, 1)
 	require.Len(t, document.Definitions, 1)
-	assert.Equal(t, protocol.Position{Line: 2, Character: 5}, document.Definitions[0].Range.Start)
+	assert.Equal(t, protocol.Position{Line: 1, Character: 17}, document.Definitions[0].Range.Start)
 }
 
 func TestIndexDocumentKeepsSyntaxError(t *testing.T) {

@@ -184,10 +184,10 @@ email:"a@b.com",
         }
         @desc("The returned user entity")
         @example({
-            id:10001,
-            username:"zhangsan",
-            displayName:"Alice",
-            email:"a@b.com",
+            id: 10001,
+            username: "zhangsan",
+            displayName: "Alice",
+            email: "a@b.com",
         })
         output User
     }`) {

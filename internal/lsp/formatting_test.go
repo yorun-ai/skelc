@@ -19,7 +19,7 @@ func TestServerFormatsValidDocuments(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Len(t, edits, 1)
-	assert.Equal(t, "domain demo\ndata User {\n    id: int\n}\n", edits[0].NewText)
+	assert.Equal(t, "domain demo\n\ndata User {\n    id: int\n}\n", edits[0].NewText)
 }
 
 func TestServerDoesNotFormatInvalidDocuments(t *testing.T) {

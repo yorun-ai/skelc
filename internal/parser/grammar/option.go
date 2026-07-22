@@ -17,9 +17,16 @@ var skelLexerRules = []lexer.SimpleRule{
 	{Name: "Punctuation", Pattern: `[@\(\)\{\}\<\>\[\].,*:;=?"]`},
 }
 
+var skelLexer = lexer.MustSimple(skelLexerRules)
+
+// LexerDefinition returns the lossless lexer used by the Skel parser.
+func LexerDefinition() lexer.Definition {
+	return skelLexer
+}
+
 var Options = []participle.Option{
 	participle.UseLookahead(8),
-	participle.Lexer(lexer.MustSimple(skelLexerRules)),
+	participle.Lexer(skelLexer),
 	participle.Elide("Whitespace"),
 	participle.Elide("LineComment"),
 	participle.Elide("BlockComment"),

@@ -153,7 +153,7 @@ skelc symbol get demo.user.User --skel-in ./skel
 skelc format --skel-in ./skel
 ```
 
-`format` modifies files in place after validating all inputs. Tool integrations can request machine-readable diagnostics with the global `--log-format jsonl` option.
+`format` modifies files in place after validating all inputs. It applies one canonical style: four-space indentation, compact type and permission punctuation, one space after field and argument colons, compact empty blocks, and one blank line between top-level declarations. Declaration order and comment or string values are preserved. Tool integrations can request machine-readable diagnostics with the global `--log-format jsonl` option.
 
 `check` reports up to 50 independent diagnostics per domain in one run. Invalid declarations are isolated so dependent errors do not cascade; text output prints one error per line, while JSONL emits one object per diagnostic.
 

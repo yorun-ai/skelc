@@ -1,0 +1,81 @@
+@desc("Domain")
+domain demo.user
+
+import common.types as common
+import common.auth
+
+@desc("Status")
+pub enum Status {
+    @desc("Enabled")
+    ENABLED
+    DISABLED
+}
+
+pub data Page<TItem?> {
+    items: list<TItem?>
+    metadata: map<string, json>?
+}
+
+pub config Database eternal {
+    url: string
+}
+
+pub event Created {
+    payload {
+        id: uuid
+    }
+}
+
+pub actor ClientActor {
+    via client {}
+    auth {
+        credential {
+            subject: string
+        }
+        info {
+            roles: list<string>
+        }
+    }
+    permission {}
+}
+
+pub resource User {
+    check byId(id: uuid, tenantId: string)
+    action read
+    @desc("Update")
+    action update {
+        check owner(id: uuid)
+    }
+}
+
+pub service UserService {
+    for ClientActor via client
+    auth
+
+    require any(
+        User:read,
+        User:update:owner(actor.info.subject)
+    )
+    @desc("Get user")
+    method get {
+        noauth
+        input {
+            @example("42")
+            id: uuid
+        }
+        output Page<common.types.User?>?
+    }
+}
+
+task RefreshTask {
+    @desc("Daily")
+    trigger daily {
+        input {
+            at: localdatetime
+        }
+    }
+}
+
+web Portal {
+    for ClientActor via openapi
+}

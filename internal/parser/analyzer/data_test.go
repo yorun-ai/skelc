@@ -8,7 +8,7 @@ import (
 )
 
 func TestParseData(t *testing.T) {
-	data := parseData(&grammar.Data{
+	data := parseDataTest(t, &grammar.Data{
 		Decorators: []*grammar.Decorator{
 			{Name: ident("desc"), Value: decoratorValue(`"Pagination information"`)},
 		},
@@ -65,59 +65,51 @@ func TestParseData(t *testing.T) {
 }
 
 func TestParseDataReturnsErrorForDuplicatedMember(t *testing.T) {
-	expectPanicContains(t, "duplicated DataMember id", func() {
-		parseData(&grammar.Data{
-			Name: ident("User"),
-			Members: []*grammar.DataMember{
-				{Name: ident("id"), Type: plainType(grammar.Int)},
-				{Name: ident("id"), Type: plainType(grammar.String)},
-			},
-		})
+	expectDataDiagnostic(t, "duplicated DataMember id", &grammar.Data{
+		Name: ident("User"),
+		Members: []*grammar.DataMember{
+			{Name: ident("id"), Type: plainType(grammar.Int)},
+			{Name: ident("id"), Type: plainType(grammar.String)},
+		},
 	})
 }
 
 func TestParseDataReturnsErrorForReservedKindSuffix(t *testing.T) {
 	for _, name := range []string{"UserConfig", "UserEvent", "UserActor", "UserService", "UserWeb"} {
 		t.Run(name, func(t *testing.T) {
-			expectPanicContains(t, "Data name must not end with", func() {
-				parseData(&grammar.Data{
-					Name: ident(name),
-				})
+			expectDataDiagnostic(t, "Data name must not end with", &grammar.Data{
+				Name: ident(name),
 			})
 		})
 	}
 }
 
 func TestParseDataReturnsErrorForNullableTypeParameter(t *testing.T) {
-	expectPanicContains(t, "TypeParameter TItem cannot be nullable", func() {
-		parseData(&grammar.Data{
-			Name: ident("Page"),
-			TypeParameters: []*grammar.TypeParameter{
-				{Name: ident("TItem"), Nullable: true},
-			},
-		})
+	expectDataDiagnostic(t, "TypeParameter TItem cannot be nullable", &grammar.Data{
+		Name: ident("Page"),
+		TypeParameters: []*grammar.TypeParameter{
+			{Name: ident("TItem"), Nullable: true},
+		},
 	})
 }
 
 func TestParseDataReturnsErrorWhenMemberExampleHasNoDescription(t *testing.T) {
-	expectPanicContains(t, "decorator @example must be used with @desc", func() {
-		parseData(&grammar.Data{
-			Name: ident("UserProfile"),
-			Members: []*grammar.DataMember{
-				{
-					Decorators: []*grammar.Decorator{
-						{Name: ident("example"), Value: decoratorValue(`"https://xxx.com/a.png"`)},
-					},
-					Name: ident("avatarUrl"),
-					Type: nullableType(plainType(grammar.String)),
+	expectDataDiagnostic(t, "decorator @example must be used with @desc", &grammar.Data{
+		Name: ident("UserProfile"),
+		Members: []*grammar.DataMember{
+			{
+				Decorators: []*grammar.Decorator{
+					{Name: ident("example"), Value: decoratorValue(`"https://xxx.com/a.png"`)},
 				},
+				Name: ident("avatarUrl"),
+				Type: nullableType(plainType(grammar.String)),
 			},
-		})
+		},
 	})
 }
 
 func TestParseConfig(t *testing.T) {
-	config := parseConfig(&grammar.Data{
+	config := parseConfigTest(t, &grammar.Data{
 		Decorators: []*grammar.Decorator{
 			{Name: ident("desc"), Value: decoratorValue(`"Database configuration"`)},
 		},
@@ -148,54 +140,44 @@ func TestParseConfig(t *testing.T) {
 }
 
 func TestParseConfigReturnsErrorWhenNameDoesNotEndWithConfig(t *testing.T) {
-	expectPanicContains(t, "Config name must end with Config", func() {
-		parseConfig(&grammar.Data{
-			Name:      ident("Database"),
-			Qualifier: ident("eternal"),
-		})
+	expectConfigDiagnostic(t, "Config name must end with Config", &grammar.Data{
+		Name:      ident("Database"),
+		Qualifier: ident("eternal"),
 	})
 }
 
 func TestParseConfigReturnsErrorForTypeParameters(t *testing.T) {
-	expectPanicContains(t, "does not support type parameters", func() {
-		parseConfig(&grammar.Data{
-			Name:      ident("PageConfig"),
-			Qualifier: ident("instant"),
-			TypeParameters: []*grammar.TypeParameter{
-				{Name: ident("TItem")},
-			},
-		})
+	expectConfigDiagnostic(t, "does not support type parameters", &grammar.Data{
+		Name:      ident("PageConfig"),
+		Qualifier: ident("instant"),
+		TypeParameters: []*grammar.TypeParameter{
+			{Name: ident("TItem")},
+		},
 	})
 }
 
 func TestParseConfigReturnsErrorWithoutLifecycleQualifier(t *testing.T) {
-	expectPanicContains(t, "requires lifecycle qualifier eternal/instant", func() {
-		parseConfig(&grammar.Data{
-			Name: ident("DatabaseConfig"),
-		})
+	expectConfigDiagnostic(t, "requires lifecycle qualifier eternal/instant", &grammar.Data{
+		Name: ident("DatabaseConfig"),
 	})
 }
 
 func TestParseConfigReturnsErrorForInvalidLifecycleQualifier(t *testing.T) {
-	expectPanicContains(t, "invalid lifecycle qualifier", func() {
-		parseConfig(&grammar.Data{
-			Name:      ident("DatabaseConfig"),
-			Qualifier: ident("cached"),
-		})
+	expectConfigDiagnostic(t, "invalid lifecycle qualifier", &grammar.Data{
+		Name:      ident("DatabaseConfig"),
+		Qualifier: ident("cached"),
 	})
 }
 
 func TestParseDataReturnsErrorForQualifier(t *testing.T) {
-	expectPanicContains(t, "does not support qualifier", func() {
-		parseData(&grammar.Data{
-			Name:      ident("User"),
-			Qualifier: ident("eternal"),
-		})
+	expectDataDiagnostic(t, "does not support qualifier", &grammar.Data{
+		Name:      ident("User"),
+		Qualifier: ident("eternal"),
 	})
 }
 
 func TestParseEvent(t *testing.T) {
-	event := parseEvent(&grammar.Event{
+	event := parseEventTest(t, &grammar.Event{
 		Decorators: []*grammar.Decorator{
 			{Name: ident("desc"), Value: decoratorValue(`"User created event"`)},
 		},
@@ -222,7 +204,7 @@ func TestParseEvent(t *testing.T) {
 }
 
 func TestParseDataAllowsPub(t *testing.T) {
-	data := parseData(&grammar.Data{
+	data := parseDataTest(t, &grammar.Data{
 		Pub:  true,
 		Name: ident("User"),
 	})
@@ -232,7 +214,7 @@ func TestParseDataAllowsPub(t *testing.T) {
 }
 
 func TestParseConfigAllowsPub(t *testing.T) {
-	config := parseConfig(&grammar.Data{
+	config := parseConfigTest(t, &grammar.Data{
 		Pub:       true,
 		Name:      ident("DatabaseConfig"),
 		Qualifier: ident("instant"),

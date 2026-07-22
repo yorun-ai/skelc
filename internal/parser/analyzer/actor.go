@@ -1,12 +1,10 @@
 package analyzer
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/alecthomas/participle/v2/lexer"
 	"go.yorun.ai/skelc/internal/parser/grammar"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/internal/util/sliceutil"
 	"go.yorun.ai/skelc/model"
 )
@@ -22,21 +20,25 @@ type _ActorAuth struct {
 	Info       *model.Data
 }
 
-func parseActor(ga *grammar.Actor) *model.Actor {
-	checkCaseAdvanced("Actor", "", "Actor", caseTypeCamel, ga.Name)
-	meta := parseDecoratorMeta(ga.Decorators, decoratorContext{
+func parseActor(reporter *diagnosticReporter, ga *grammar.Actor) (*model.Actor, bool) {
+	valid := checkCaseAdvanced(reporter, "Actor", "", "Actor", caseTypeCamel, ga.Name)
+	meta, metaValid := parseDecoratorMeta(reporter, ga.Decorators, decoratorContext{
 		allowDesc: true,
 	})
-	checkutil.CheckNot(meta.HasExample, "%s actor does not support decorator @example", ga.Name.Pos)
-	vias := parseActorVias(ga.Name, ga.Vias)
-	auth := parseActorAuth(ga)
+	valid = metaValid && valid
+	valid = reporter.checkNot(meta.HasExample, "%s actor does not support decorator @example", ga.Name.Pos) && valid
+	vias, viasValid := parseActorVias(reporter, ga.Name, ga.Vias)
+	valid = viasValid && valid
+	auth, authValid := parseActorAuth(reporter, ga)
+	valid = authValid && valid
 	var authCredential *model.Data
 	var authInfo *model.Data
 	if auth != nil {
 		authCredential = auth.Credential
 		authInfo = auth.Info
 	}
-	permEnabled := actorPermissionDeclared(ga)
+	permEnabled, permissionValid := actorPermissionDeclared(reporter, ga)
+	valid = permissionValid && valid
 	return &model.Actor{
 		Pos:            position(ga.Name.Pos),
 		Name:           ga.Name.Value,
@@ -48,49 +50,48 @@ func parseActor(ga *grammar.Actor) *model.Actor {
 		AuthCredential: authCredential,
 		AuthInfo:       authInfo,
 		PermEnabled:    permEnabled,
-	}
+	}, valid
 }
 
-func parseActorAuth(ga *grammar.Actor) *_ActorAuth {
-	authSection := actorAuthSection(ga)
+func parseActorAuth(reporter *diagnosticReporter, ga *grammar.Actor) (*_ActorAuth, bool) {
+	authSection, valid := actorAuthSection(reporter, ga)
 	if authSection == nil {
-		return nil
+		return nil, valid
 	}
-	return &_ActorAuth{
-		Credential: parseActorCredential(ga, authSection),
-		Info:       parseActorInfo(ga, authSection),
-	}
+	credential, credentialValid := parseActorCredential(reporter, ga, authSection)
+	info, infoValid := parseActorInfo(reporter, ga, authSection)
+	return &_ActorAuth{Credential: credential, Info: info}, credentialValid && infoValid && valid
 }
 
-func parseActorCredential(ga *grammar.Actor, authSection *grammar.ActorAuth) *model.Data {
+func parseActorCredential(reporter *diagnosticReporter, ga *grammar.Actor, authSection *grammar.ActorAuth) (*model.Data, bool) {
 	credentialSection := authSection.Credential
 	name := &grammar.Identifier{
 		Pos:   ga.Name.Pos,
 		Value: ga.Name.Value + "Credential",
 	}
-	credential := parseDataLike(&grammar.Data{
+	credential, valid := parseDataLike(reporter, &grammar.Data{
 		Pos:        credentialSection.Pos,
 		Pub:        ga.Pub,
 		Name:       name,
 		Members:    credentialSection.Members,
 		Decorators: []*grammar.Decorator{},
 	}, model.DataKindData)
-	checkutil.Check(len(credential.Members) > 0, "%s actor credential must have at least one member", credentialSection.Pos)
+	valid = reporter.check(len(credential.Members) > 0, "%s actor credential must have at least one member", credentialSection.Pos) && valid
 	for _, member := range credential.Members {
-		checkutil.Check(member.Type.Kind == model.TypeKindScalar && member.Type.Scalar == model.ScalarString && !member.Type.Nullable,
-			"%s actor credential member %s must be string", member.Pos, member.Name)
+		valid = reporter.check(member.Type.Kind == model.TypeKindScalar && member.Type.Scalar == model.ScalarString && !member.Type.Nullable,
+			"%s actor credential member %s must be string", member.Pos, member.Name) && valid
 	}
 	credential.Pub = ga.Pub
-	return credential
+	return credential, valid
 }
 
-func parseActorInfo(ga *grammar.Actor, authSection *grammar.ActorAuth) *model.Data {
+func parseActorInfo(reporter *diagnosticReporter, ga *grammar.Actor, authSection *grammar.ActorAuth) (*model.Data, bool) {
 	infoSection := authSection.Info
 	name := &grammar.Identifier{
 		Pos:   ga.Name.Pos,
 		Value: ga.Name.Value + "Info",
 	}
-	info := parseDataLike(&grammar.Data{
+	info, valid := parseDataLike(reporter, &grammar.Data{
 		Pos:        infoSection.Pos,
 		Pub:        ga.Pub,
 		Name:       name,
@@ -98,77 +99,88 @@ func parseActorInfo(ga *grammar.Actor, authSection *grammar.ActorAuth) *model.Da
 		Decorators: []*grammar.Decorator{},
 	}, model.DataKindData)
 	info.Pub = ga.Pub
-	return info
+	return info, valid
 }
 
-func actorAuthSection(ga *grammar.Actor) *grammar.ActorAuth {
+func actorAuthSection(reporter *diagnosticReporter, ga *grammar.Actor) (*grammar.ActorAuth, bool) {
 	var auth *grammar.ActorAuth
 	var authPos lexer.Position
+	valid := true
 	for _, section := range ga.Sections {
 		if section.Auth == nil {
 			continue
 		}
-		checkutil.CheckFuncAt(section.Auth.Pos, auth == nil, func() string {
-			return fmt.Sprintf("%s duplicated actor auth found, also present at %s", section.Auth.Pos, authPos)
-		})
+		if auth != nil {
+			reporter.reportf("%s duplicated actor auth found, also present at %s", section.Auth.Pos, authPos)
+			valid = false
+			continue
+		}
 		auth = section.Auth
 		authPos = section.Auth.Pos
 	}
 	if auth == nil {
-		return nil
+		return nil, valid
 	}
-	checkutil.Check(auth.Credential != nil && auth.Info != nil,
-		"%s actor %s auth must define credential and info together", ga.Name.Pos, ga.Name.Value)
-	return auth
+	valid = reporter.check(auth.Credential != nil && auth.Info != nil,
+		"%s actor %s auth must define credential and info together", ga.Name.Pos, ga.Name.Value) && valid
+	if auth.Credential == nil || auth.Info == nil {
+		return nil, false
+	}
+	return auth, valid
 }
 
-func actorPermissionDeclared(ga *grammar.Actor) bool {
+func actorPermissionDeclared(reporter *diagnosticReporter, ga *grammar.Actor) (bool, bool) {
 	var permission *grammar.ActorPermission
 	var permissionPos lexer.Position
+	valid := true
 	for _, section := range ga.Sections {
 		if section.Permission == nil {
 			continue
 		}
-		checkutil.CheckFuncAt(section.Permission.Pos, permission == nil, func() string {
-			return fmt.Sprintf("%s duplicated actor permission found, also present at %s", section.Permission.Pos, permissionPos)
-		})
+		if permission != nil {
+			reporter.reportf("%s duplicated actor permission found, also present at %s", section.Permission.Pos, permissionPos)
+			valid = false
+			continue
+		}
 		permission = section.Permission
 		permissionPos = section.Permission.Pos
 	}
 	if permission == nil {
-		return false
+		return false, valid
 	}
-	return true
+	return true, valid
 }
 
-func parseActorVias(owner *grammar.Identifier, grammarVias []*grammar.ActorVia) []*model.ActorVia {
-	checkutil.Check(len(grammarVias) > 0, "%s actor %s must have at least one via", owner.Pos, owner.Value)
+func parseActorVias(reporter *diagnosticReporter, owner *grammar.Identifier, grammarVias []*grammar.ActorVia) ([]*model.ActorVia, bool) {
+	valid := reporter.check(len(grammarVias) > 0, "%s actor %s must have at least one via", owner.Pos, owner.Value)
 
 	parsedVias := make([]*model.ActorVia, 0, len(grammarVias))
 	viaPos := map[string]lexer.Position{}
 	for _, grammarVia := range grammarVias {
-		via := parseActorVia(grammarVia)
+		via, viaValid := parseActorVia(reporter, grammarVia)
+		valid = viaValid && valid
 		duplicatedPosition, duplicated := viaPos[via.Name]
-		checkutil.CheckFuncAt(via.Pos, !duplicated, func() string {
-			return fmt.Sprintf("%s duplicated actor via %s found, also present at %s",
-				via.Pos, via.Name, duplicatedPosition)
-		})
+		if duplicated {
+			reporter.reportf("%s duplicated actor via %s found, also present at %s", via.Pos, via.Name, duplicatedPosition)
+			valid = false
+			continue
+		}
 		viaPos[via.Name] = lexer.Position{Filename: via.Pos.File, Line: via.Pos.Line, Column: via.Pos.Column}
 		parsedVias = append(parsedVias, via)
 	}
-	return parsedVias
+	return parsedVias, valid
 }
 
-func parseActorVia(gv *grammar.ActorVia) *model.ActorVia {
-	checkCase("ActorVia", caseTypeLowerCamel, gv.Name)
+func parseActorVia(reporter *diagnosticReporter, gv *grammar.ActorVia) (*model.ActorVia, bool) {
+	valid := checkCase(reporter, "ActorVia", caseTypeLowerCamel, gv.Name)
 	_, ok := sliceutil.Find(actorViaKinds, func(candidate model.ActorViaKind) bool {
 		return string(candidate) == gv.Name.Value
 	})
-	checkutil.Check(ok, "%s unexpected actor via %s, supported=client/agent/openapi", gv.Name.Pos, gv.Name.Value)
+	valid = reporter.check(ok, "%s unexpected actor via %s, supported=client/agent/openapi", gv.Name.Pos, gv.Name.Value) && valid
 	return &model.ActorVia{
 		Name: gv.Name.Value,
 		Pos:  position(gv.Name.Pos),
-	}
+	}, valid
 }
 
 func buildActorAuthService(actor *model.Actor) *model.Service {

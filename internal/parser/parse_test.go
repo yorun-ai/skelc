@@ -33,7 +33,10 @@ config SiteConfig eternal {
 }
 `)
 
-	result := Parse(Option{SkelIn: skelDir})
+	result, err := Parse(Option{SkelIn: skelDir})
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
 
 	if result.Domain.Name() != "demo.user" {
 		t.Fatalf("unexpected domain name: %s", result.Domain.Name())
@@ -100,10 +103,13 @@ pub data Loan {
 }
 `)
 
-	result := Parse(Option{
+	result, err := Parse(Option{
 		SkelIn:      bookerDir,
 		SkelImports: map[string]string{"user": userDir},
 	})
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
 
 	if len(result.Domain.Data()) != 1 || result.Domain.Data()[0].Name != "Loan" {
 		t.Fatalf("unexpected data: %#v", result.Domain.Data())
@@ -126,7 +132,10 @@ data Booking {
 }
 `)
 
-	result := ParseImport(skelDir)
+	result, err := ParseImport(skelDir)
+	if err != nil {
+		t.Fatalf("ParseImport() error = %v", err)
+	}
 
 	if result.Domain.Name() != "demo.booker" {
 		t.Fatalf("unexpected domain name: %s", result.Domain.Name())
@@ -152,7 +161,10 @@ data User {
 }
 `)
 
-	result := Parse(Option{SkelIn: skelFile})
+	result, err := Parse(Option{SkelIn: skelFile})
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
 
 	if result.Domain.Name() != "demo.user" || len(result.Domain.Data()) != 1 {
 		t.Fatalf("unexpected domain: %#v", result.Domain)
@@ -174,9 +186,10 @@ service UserService {
 }
 `)
 
-	expectParsePanicContains(t, "definition of MissingUser not found", func() {
-		Parse(Option{SkelIn: skelFile})
-	})
+	_, err := Parse(Option{SkelIn: skelFile})
+	if err == nil || !strings.Contains(err.Error(), "definition of MissingUser not found") {
+		t.Fatalf("expected semantic error, got %v", err)
+	}
 }
 
 func expectParsePanicContains(t *testing.T, expected string, fn func()) {

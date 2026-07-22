@@ -1,9 +1,6 @@
 package analyzer
 
-import (
-	"go.yorun.ai/skelc/internal/util/checkutil"
-	"go.yorun.ai/skelc/model"
-)
+import "go.yorun.ai/skelc/model"
 
 const (
 	typeKindReference model.TypeKind = -1
@@ -22,14 +19,16 @@ type refContext struct {
 	dataList       map[string]*model.Data
 	typeParameters map[string]*model.TypeParameter
 	imports        map[string]*domainImport
+	invalidData    map[*model.Data]bool
+	unavailable    map[string]bool
 }
 
-func fixTypeRef(t *model.Type, refCtx *refContext) {
+func fixTypeRef(reporter *diagnosticReporter, t *model.Type, refCtx *refContext) bool {
 	// 1. fix Enum/Data/TypeParameter type references
 	// 2. check map key type (int/string/Enum)
 
 	if t == nil {
-		return
+		return true
 	}
 
 	switch t.Kind {
@@ -38,80 +37,99 @@ func fixTypeRef(t *model.Type, refCtx *refContext) {
 		refQualifier := t.ExternalAlias
 		if refQualifier != "" {
 			import_ := refCtx.imports[refQualifier]
-			checkutil.CheckNotNil(import_, "%s import alias %s not found", t.Pos, refQualifier)
+			if !reporter.check(import_ != nil, "%s import alias %s not found", t.Pos, refQualifier) {
+				return false
+			}
 			enum, enumOK := import_.Domain.enumsMap[refName]
 			dataType, dataOK := import_.Domain.dataMap[refName]
-			checkutil.Check(enumOK || dataOK, "%s definition of %s.%s not found", t.Pos, refQualifier, refName)
+			if !reporter.check(enumOK || dataOK, "%s definition of %s.%s not found", t.Pos, refQualifier, refName) {
+				return false
+			}
 			if enumOK {
-				checkutil.Check(enum.Pub, "%s imported enum %s.%s is not public", t.Pos, import_.Model.Alias, refName)
+				if !reporter.check(enum.Pub, "%s imported enum %s.%s is not public", t.Pos, import_.Model.Alias, refName) {
+					return false
+				}
 				t.Kind = model.TypeKindEnum
 				t.Enum = enum
 				t.SkelName = enum.SkelName
 				t.ExternalDomain = import_.Domain.name
 				t.ExternalAlias = import_.Model.Alias
 				t.ExternalAliasExplicit = import_.Model.ExplicitAlias
-				return
+				return true
 			}
-			checkutil.Check(dataType.Pub, "%s imported data %s.%s is not public", t.Pos, import_.Model.Alias, refName)
+			if !reporter.check(dataType.Pub, "%s imported data %s.%s is not public", t.Pos, import_.Model.Alias, refName) {
+				return false
+			}
 			t.Kind = model.TypeKindData
 			t.Data = dataType
 			t.SkelName = dataType.SkelName
 			t.ExternalAlias = import_.Model.Alias
 			t.ExternalDomain = import_.Domain.name
 			t.ExternalAliasExplicit = import_.Model.ExplicitAlias
+			valid := true
 			for _, typeArg := range t.TypeArguments {
-				fixTypeRef(typeArg, refCtx)
+				valid = fixTypeRef(reporter, typeArg, refCtx) && valid
 			}
-			checkTypeArguments(t, refName)
-			return
+			return checkTypeArguments(reporter, t, refName) && valid
+		}
+		if refCtx.unavailable[refName] {
+			return false
 		}
 		enum, enumOK := refCtx.enums[refName]
 		dataType, dataOK := refCtx.dataList[refName]
 		param, paramOK := refCtx.typeParameters[refName]
-		checkutil.Check(enumOK || dataOK || paramOK, "%s definition of %s not found", t.Pos, refName)
+		if dataOK && refCtx.invalidData[dataType] {
+			return false
+		}
+		if !reporter.check(enumOK || dataOK || paramOK, "%s definition of %s not found", t.Pos, refName) {
+			return false
+		}
 		if enumOK {
 			t.Kind = model.TypeKindEnum
 			t.Enum = enum
 			t.SkelName = enum.SkelName
-			break
+			return true
 		}
 		if dataOK {
 			t.Kind = model.TypeKindData
 			t.Data = dataType
 			t.SkelName = dataType.SkelName
+			valid := true
 			for _, typeArg := range t.TypeArguments {
-				fixTypeRef(typeArg, refCtx)
+				valid = fixTypeRef(reporter, typeArg, refCtx) && valid
 			}
-			checkTypeArguments(t, refName)
-			return
+			return checkTypeArguments(reporter, t, refName) && valid
 		}
 		t.Kind = model.TypeKindTypeParameter
 		t.TypeParameter = param
-		return
+		return true
 
 	case model.TypeKindList:
-		fixTypeRef(t.List.Value, refCtx)
+		return fixTypeRef(reporter, t.List.Value, refCtx)
 
 	case model.TypeKindMap:
-		fixTypeRef(t.Map.Key, refCtx)
-		checkTypeCanBeMapKey(t.Map.Key)
-		fixTypeRef(t.Map.Value, refCtx)
+		keyValid := fixTypeRef(reporter, t.Map.Key, refCtx)
+		if keyValid {
+			keyValid = checkTypeCanBeMapKey(reporter, t.Map.Key)
+		}
+		return fixTypeRef(reporter, t.Map.Value, refCtx) && keyValid
 	}
+	return true
 }
 
-func checkTypeArguments(t *model.Type, refName string) {
+func checkTypeArguments(reporter *diagnosticReporter, t *model.Type, refName string) bool {
 	referencePos := t.ReferencePos
 	if referencePos == (model.Position{}) {
 		referencePos = t.Pos
 	}
 	if len(t.Data.TypeParameters) == 0 {
-		checkutil.Check(len(t.TypeArguments) == 0,
+		return reporter.check(len(t.TypeArguments) == 0,
 			"%s data %s do not support type argument(s)", referencePos, refName)
-		return
 	}
-	checkutil.Check(len(t.TypeArguments) > 0,
+	valid := reporter.check(len(t.TypeArguments) > 0,
 		"%s generic data %s need type argument(s)", referencePos, refName)
-	checkutil.Check(len(t.Data.TypeParameters) == len(t.TypeArguments),
+	valid = reporter.check(len(t.Data.TypeParameters) == len(t.TypeArguments),
 		"%s generic data %s have mismatched type arguments(s), found=%d, expected=%d",
-		referencePos, refName, len(t.TypeArguments), len(t.Data.TypeParameters))
+		referencePos, refName, len(t.TypeArguments), len(t.Data.TypeParameters)) && valid
+	return valid
 }

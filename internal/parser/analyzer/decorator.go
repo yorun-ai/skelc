@@ -3,7 +3,6 @@ package analyzer
 import (
 	"github.com/alecthomas/participle/v2/lexer"
 	"go.yorun.ai/skelc/internal/parser/grammar"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 )
 
 type decoratorMeta struct {
@@ -20,35 +19,44 @@ type decoratorContext struct {
 	requireDesc  bool
 }
 
-func parseDecoratorMeta(decorators []*grammar.Decorator, ctx decoratorContext) decoratorMeta {
+func parseDecoratorMeta(reporter *diagnosticReporter, decorators []*grammar.Decorator, ctx decoratorContext) (decoratorMeta, bool) {
 	meta := decoratorMeta{}
+	valid := true
 	for _, decorator := range decorators {
 		switch decorator.Name.Value {
 		case "desc":
-			checkutil.Check(ctx.allowDesc, "%s unexpected decorator %s", decorator.Name.Pos, "@"+decorator.Name.Value)
-			checkutil.Check(meta.Description == "", "%s duplicated decorator @desc", decorator.Name.Pos)
-			checkutil.CheckNotNil(decorator.Value, "%s decorator @desc requires a string argument", decorator.Name.Pos)
+			accepted := reporter.check(ctx.allowDesc, "%s unexpected decorator %s", decorator.Name.Pos, "@"+decorator.Name.Value)
+			accepted = reporter.check(meta.Description == "", "%s duplicated decorator @desc", decorator.Name.Pos) && accepted
+			accepted = reporter.check(decorator.Value != nil, "%s decorator @desc requires a string argument", decorator.Name.Pos) && accepted
+			valid = accepted && valid
+			if !accepted {
+				continue
+			}
 			meta.Description = grammar.UnquoteDescriptionString(decorator.Value.Raw)
 		case "example":
-			checkutil.Check(ctx.allowExample, "%s unexpected decorator %s", decorator.Name.Pos, "@"+decorator.Name.Value)
-			checkutil.CheckNot(meta.HasExample, "%s duplicated decorator @example", decorator.Name.Pos)
-			checkutil.Check(decorator.Value != nil && decorator.Value.Raw != "",
-				"%s decorator @example requires a value", decorator.Name.Pos)
+			accepted := reporter.check(ctx.allowExample, "%s unexpected decorator %s", decorator.Name.Pos, "@"+decorator.Name.Value)
+			accepted = reporter.checkNot(meta.HasExample, "%s duplicated decorator @example", decorator.Name.Pos) && accepted
+			accepted = reporter.check(decorator.Value != nil && decorator.Value.Raw != "",
+				"%s decorator @example requires a value", decorator.Name.Pos) && accepted
+			valid = accepted && valid
+			if !accepted {
+				continue
+			}
 			meta.Example = decorator.Value.Raw
 			meta.HasExample = true
 			meta.examplePos = decorator.Name.Pos
 		default:
-			checkutil.Check(ctx.ignoreOthers,
-				"%s unexpected decorator %s, only @desc/@example supported here", decorator.Name.Pos, "@"+decorator.Name.Value)
+			valid = reporter.check(ctx.ignoreOthers,
+				"%s unexpected decorator %s, only @desc/@example supported here", decorator.Name.Pos, "@"+decorator.Name.Value) && valid
 		}
 	}
-	checkutil.CheckNot(ctx.requireDesc && meta.HasExample && meta.Description == "",
-		"%s decorator @example must be used with @desc", meta.examplePos)
-	return meta
+	valid = reporter.checkNot(ctx.requireDesc && meta.HasExample && meta.Description == "",
+		"%s decorator @example must be used with @desc", meta.examplePos) && valid
+	return meta, valid
 }
 
-func parseAnnotations(decorators []*grammar.Decorator) decoratorMeta {
-	return parseDecoratorMeta(decorators, decoratorContext{
+func parseAnnotations(reporter *diagnosticReporter, decorators []*grammar.Decorator) (decoratorMeta, bool) {
+	return parseDecoratorMeta(reporter, decorators, decoratorContext{
 		allowDesc:    true,
 		allowExample: true,
 		requireDesc:  true,

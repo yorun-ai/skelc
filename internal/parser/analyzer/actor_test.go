@@ -7,7 +7,7 @@ import (
 )
 
 func TestParseActor(t *testing.T) {
-	actor := parseActor(&grammar.Actor{
+	actor := parseActorTest(t, &grammar.Actor{
 		Decorators: []*grammar.Decorator{
 			{Name: ident("desc"), Value: decoratorValue(`"Portal admin"`)},
 		},
@@ -60,118 +60,100 @@ func TestParseActor(t *testing.T) {
 }
 
 func TestParseActorRejectsNonStringCredentialMember(t *testing.T) {
-	expectPanicContains(t, "actor credential member userId must be string", func() {
-		parseActor(&grammar.Actor{
-			Name: ident("PortalAdminActor"),
-			Vias: []*grammar.ActorVia{{Name: ident("client")}},
-			Sections: []*grammar.ActorSection{
-				grammarActorAuthSection(
-					[]*grammar.DataMember{{Name: ident("userId"), Type: plainType(grammar.Int)}},
-					[]*grammar.DataMember{{Name: ident("userId"), Type: plainType(grammar.Int)}},
-				),
-			},
-		})
+	expectActorDiagnostic(t, "actor credential member userId must be string", &grammar.Actor{
+		Name: ident("PortalAdminActor"),
+		Vias: []*grammar.ActorVia{{Name: ident("client")}},
+		Sections: []*grammar.ActorSection{
+			grammarActorAuthSection(
+				[]*grammar.DataMember{{Name: ident("userId"), Type: plainType(grammar.Int)}},
+				[]*grammar.DataMember{{Name: ident("userId"), Type: plainType(grammar.Int)}},
+			),
+		},
 	})
 }
 
 func TestParseActorRejectsEmptyCredential(t *testing.T) {
-	expectPanicContains(t, "actor credential must have at least one member", func() {
-		parseActor(&grammar.Actor{
-			Name: ident("PortalAdminActor"),
-			Vias: []*grammar.ActorVia{{Name: ident("client")}},
-			Sections: []*grammar.ActorSection{
-				grammarActorAuthSection([]*grammar.DataMember{}, []*grammar.DataMember{{Name: ident("userId"), Type: plainType(grammar.Int)}}),
-			},
-		})
+	expectActorDiagnostic(t, "actor credential must have at least one member", &grammar.Actor{
+		Name: ident("PortalAdminActor"),
+		Vias: []*grammar.ActorVia{{Name: ident("client")}},
+		Sections: []*grammar.ActorSection{
+			grammarActorAuthSection([]*grammar.DataMember{}, []*grammar.DataMember{{Name: ident("userId"), Type: plainType(grammar.Int)}}),
+		},
 	})
 }
 
 func TestParseActorRejectsNullableCredentialMember(t *testing.T) {
-	expectPanicContains(t, "actor credential member subject must be string", func() {
-		credentialType := plainType(grammar.String)
-		credentialType.Nullable = true
-		parseActor(&grammar.Actor{
-			Name: ident("PortalAdminActor"),
-			Vias: []*grammar.ActorVia{{Name: ident("client")}},
-			Sections: []*grammar.ActorSection{
-				grammarActorAuthSection(
-					[]*grammar.DataMember{{Name: ident("subject"), Type: credentialType}},
-					[]*grammar.DataMember{{Name: ident("userId"), Type: plainType(grammar.Int)}},
-				),
-			},
-		})
+	credentialType := plainType(grammar.String)
+	credentialType.Nullable = true
+	expectActorDiagnostic(t, "actor credential member subject must be string", &grammar.Actor{
+		Name: ident("PortalAdminActor"),
+		Vias: []*grammar.ActorVia{{Name: ident("client")}},
+		Sections: []*grammar.ActorSection{
+			grammarActorAuthSection(
+				[]*grammar.DataMember{{Name: ident("subject"), Type: credentialType}},
+				[]*grammar.DataMember{{Name: ident("userId"), Type: plainType(grammar.Int)}},
+			),
+		},
 	})
 }
 
 func TestParseActorRejectsCredentialWithoutInfo(t *testing.T) {
-	expectPanicContains(t, "auth must define credential and info together", func() {
-		parseActor(&grammar.Actor{
-			Name: ident("PortalAdminActor"),
-			Vias: []*grammar.ActorVia{{Name: ident("client")}},
-			Sections: []*grammar.ActorSection{
-				grammarActorAuthSection([]*grammar.DataMember{{Name: ident("subject"), Type: plainType(grammar.String)}}, nil),
-			},
-		})
+	expectActorDiagnostic(t, "auth must define credential and info together", &grammar.Actor{
+		Name: ident("PortalAdminActor"),
+		Vias: []*grammar.ActorVia{{Name: ident("client")}},
+		Sections: []*grammar.ActorSection{
+			grammarActorAuthSection([]*grammar.DataMember{{Name: ident("subject"), Type: plainType(grammar.String)}}, nil),
+		},
 	})
 }
 
 func TestParseActorRejectsInfoWithoutCredential(t *testing.T) {
-	expectPanicContains(t, "auth must define credential and info together", func() {
-		parseActor(&grammar.Actor{
-			Name: ident("PortalAdminActor"),
-			Vias: []*grammar.ActorVia{{Name: ident("client")}},
-			Sections: []*grammar.ActorSection{
-				grammarActorAuthSection(nil, []*grammar.DataMember{{Name: ident("userId"), Type: plainType(grammar.Int)}}),
-			},
-		})
+	expectActorDiagnostic(t, "auth must define credential and info together", &grammar.Actor{
+		Name: ident("PortalAdminActor"),
+		Vias: []*grammar.ActorVia{{Name: ident("client")}},
+		Sections: []*grammar.ActorSection{
+			grammarActorAuthSection(nil, []*grammar.DataMember{{Name: ident("userId"), Type: plainType(grammar.Int)}}),
+		},
 	})
 }
 
 func TestParseActorRejectsDuplicatedAuth(t *testing.T) {
-	expectPanicContains(t, "duplicated actor auth", func() {
-		parseActor(&grammar.Actor{
-			Name: ident("PortalAdminActor"),
-			Vias: []*grammar.ActorVia{{Name: ident("client")}},
-			Sections: []*grammar.ActorSection{
-				grammarActorAuthSection(
-					[]*grammar.DataMember{{Name: ident("subject"), Type: plainType(grammar.String)}},
-					[]*grammar.DataMember{{Name: ident("userId"), Type: plainType(grammar.Int)}},
-				),
-				grammarActorAuthSection(
-					[]*grammar.DataMember{{Name: ident("tenant"), Type: plainType(grammar.String)}},
-					[]*grammar.DataMember{{Name: ident("tenantId"), Type: plainType(grammar.Int)}},
-				),
-			},
-		})
+	expectActorDiagnostic(t, "duplicated actor auth", &grammar.Actor{
+		Name: ident("PortalAdminActor"),
+		Vias: []*grammar.ActorVia{{Name: ident("client")}},
+		Sections: []*grammar.ActorSection{
+			grammarActorAuthSection(
+				[]*grammar.DataMember{{Name: ident("subject"), Type: plainType(grammar.String)}},
+				[]*grammar.DataMember{{Name: ident("userId"), Type: plainType(grammar.Int)}},
+			),
+			grammarActorAuthSection(
+				[]*grammar.DataMember{{Name: ident("tenant"), Type: plainType(grammar.String)}},
+				[]*grammar.DataMember{{Name: ident("tenantId"), Type: plainType(grammar.Int)}},
+			),
+		},
 	})
 }
 
 func TestParseActorRequiresVia(t *testing.T) {
-	expectPanicContains(t, "must have at least one via", func() {
-		parseActor(&grammar.Actor{
-			Name: ident("PortalAdminActor"),
-		})
+	expectActorDiagnostic(t, "must have at least one via", &grammar.Actor{
+		Name: ident("PortalAdminActor"),
 	})
 }
 
 func TestParseActorRejectsDuplicatedVia(t *testing.T) {
-	expectPanicContains(t, "duplicated actor via client", func() {
-		parseActor(&grammar.Actor{
-			Name: ident("PortalAdminActor"),
-			Vias: []*grammar.ActorVia{
-				{Name: ident("client")},
-				{Name: ident("client")},
-			},
-		})
+	expectActorDiagnostic(t, "duplicated actor via client", &grammar.Actor{
+		Name: ident("PortalAdminActor"),
+		Vias: []*grammar.ActorVia{
+			{Name: ident("client")},
+			{Name: ident("client")},
+		},
 	})
 }
 
 func TestParseActorRejectsUnsupportedVia(t *testing.T) {
-	expectPanicContains(t, "unexpected actor via partner", func() {
-		parseActor(&grammar.Actor{
-			Name: ident("PortalAdminActor"),
-			Vias: []*grammar.ActorVia{{Name: ident("partner")}},
-		})
+	expectActorDiagnostic(t, "unexpected actor via partner", &grammar.Actor{
+		Name: ident("PortalAdminActor"),
+		Vias: []*grammar.ActorVia{{Name: ident("partner")}},
 	})
 }
 

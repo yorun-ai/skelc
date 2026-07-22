@@ -1,20 +1,18 @@
 package analyzer
 
 import (
-	"fmt"
+	"strings"
 
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/internal/util/graphutil"
 	"go.yorun.ai/skelc/internal/util/sliceutil"
 	"go.yorun.ai/skelc/model"
-	"strings"
 )
 
-func (p *Analysis) checkHardCycleReferences() {
+func (p *Analysis) checkHardCycleReferences(dataList []*model.Data) {
 	graph := graphutil.New[*model.Data]()
 	refs := _RefsMatrix{}
 
-	for _, dataType := range p.dataMap {
+	for _, dataType := range dataList {
 		if refs.has(dataType) {
 			continue
 		}
@@ -39,12 +37,10 @@ func (p *Analysis) checkHardCycleReferences() {
 			}
 		}
 
-		checkutil.CheckFuncAt(cycle[0].Pos, !isHard, func() string {
-			names := sliceutil.Map(cycle, func(dataType *model.Data) string {
-				return dataType.Name
-			})
-			return fmt.Sprintf("hard reference chain detected: %s, try nullable/list/map instead", strings.Join(names, " -> "))
-		})
+		if isHard {
+			names := sliceutil.Map(cycle, func(dataType *model.Data) string { return dataType.Name })
+			p.reporter.reportf("%s hard reference chain detected: %s, try nullable/list/map instead", cycle[0].Pos, strings.Join(names, " -> "))
+		}
 	}
 }
 
@@ -55,7 +51,7 @@ func (p *Analysis) checkDataDoesNotReferenceConfigs(dataList []*model.Data) {
 		}
 		for _, member := range dataType.Members {
 			for refData := range referencedData(member.Type) {
-				checkutil.Check(refData.Kind != model.DataKindConfig,
+				p.reporter.check(refData.Kind != model.DataKindConfig,
 					"%s data %s cannot reference config %s", member.Pos, dataType.Name, refData.Name)
 			}
 		}

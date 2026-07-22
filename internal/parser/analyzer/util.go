@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"go.yorun.ai/skelc/internal/parser/grammar"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 )
 
@@ -20,22 +19,32 @@ const (
 
 var reservedKindSuffixes = []string{"Config", "Event", "Actor", "Service", "Web"}
 
-func checkCase(kindName string, expectedCase caseType, ident *grammar.Identifier) {
-	checkCaseAdvanced(kindName, "", "", expectedCase, ident)
+func checkCase(reporter *diagnosticReporter, kindName string, expectedCase caseType, ident *grammar.Identifier) bool {
+	return checkCaseAdvanced(reporter, kindName, "", "", expectedCase, ident)
 }
 
-func checkNotReservedKindSuffix(kindName string, ident *grammar.Identifier) {
+func checkNotReservedKindSuffix(reporter *diagnosticReporter, kindName string, ident *grammar.Identifier) bool {
+	valid := true
 	for _, suffix := range reservedKindSuffixes {
-		checkutil.CheckNot(strings.HasSuffix(ident.Value, suffix),
-			"%s %s name must not end with %s", ident.Pos, kindName, suffix)
+		valid = reporter.checkNot(strings.HasSuffix(ident.Value, suffix),
+			"%s %s name must not end with %s", ident.Pos, kindName, suffix) && valid
 	}
+	return valid
 }
 
-func checkCaseAdvanced(kindName string, prefix string, suffix string, expectedCase caseType, ident *grammar.Identifier) {
+func checkCaseAdvanced(
+	reporter *diagnosticReporter,
+	kindName string,
+	prefix string,
+	suffix string,
+	expectedCase caseType,
+	ident *grammar.Identifier,
+) bool {
 	name := ident.Value
 	pos := ident.Pos
+	valid := true
 
-	checkutil.CheckNot(strings.HasPrefix(name, "_"), "%s unexpected leading underscore for %s: %s ", pos, kindName, name)
+	valid = reporter.checkNot(strings.HasPrefix(name, "_"), "%s unexpected leading underscore for %s: %s ", pos, kindName, name) && valid
 
 	expectedFormat := string(expectedCase)
 	if prefix != "" {
@@ -45,18 +54,20 @@ func checkCaseAdvanced(kindName string, prefix string, suffix string, expectedCa
 		expectedFormat = fmt.Sprintf("%s[%s]", expectedFormat, suffix)
 	}
 
-	checkutil.Check(prefix == "" || strings.HasPrefix(name, prefix),
-		"%s missing prefix: found=%s, expected=%s... (%s -> %s)", pos, name, prefix, kindName, expectedFormat)
-	checkutil.Check(suffix == "" || strings.HasSuffix(ident.Value, suffix),
-		"%s missing suffix: found=%s, expected=...%s (%s -> %s)", pos, name, suffix, kindName, expectedFormat)
+	valid = reporter.check(prefix == "" || strings.HasPrefix(name, prefix),
+		"%s missing prefix: found=%s, expected=%s... (%s -> %s)", pos, name, prefix, kindName, expectedFormat) && valid
+	valid = reporter.check(suffix == "" || strings.HasSuffix(ident.Value, suffix),
+		"%s missing suffix: found=%s, expected=...%s (%s -> %s)", pos, name, suffix, kindName, expectedFormat) && valid
 
 	body := strings.TrimPrefix(name, prefix)
 	body = strings.TrimSuffix(body, suffix)
-	checkutil.Check(body != "", "%s missing body after trimming prefix & suffix: found=%s", pos, name)
-	checkutil.CheckFuncAt(pos, matchesCase(body, expectedCase), func() string {
+	valid = reporter.check(body != "", "%s missing body after trimming prefix & suffix: found=%s", pos, name) && valid
+	if !matchesCase(body, expectedCase) {
 		expectedName := fmt.Sprintf("%s%s%s", prefix, caseTypeExample(expectedCase), suffix)
-		return fmt.Sprintf("%s incorrect case: found=%s, expected=%s (%s -> %s)", pos, name, expectedName, kindName, expectedFormat)
-	})
+		reporter.reportf("%s incorrect case: found=%s, expected=%s (%s -> %s)", pos, name, expectedName, kindName, expectedFormat)
+		valid = false
+	}
+	return valid
 }
 
 func matchesCase(value string, expected caseType) bool {

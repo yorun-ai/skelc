@@ -5,21 +5,20 @@ import (
 
 	"github.com/alecthomas/participle/v2/lexer"
 	"go.yorun.ai/skelc/internal/parser/grammar"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/model"
 )
 
 type _RefKind int
 
 const (
-	_rkNone _RefKind = iota
-	_rkDirect
-	_rkNullable
-	_rkList
-	_rkMap
+	refKindNone _RefKind = iota
+	refKindDirect
+	refKindNullable
+	refKindList
+	refKindMap
 )
 
-var hardRefKinds = []_RefKind{_rkDirect}
+var hardRefKinds = []_RefKind{refKindDirect}
 
 func (rk _RefKind) isHard() bool {
 	return slices.Contains(hardRefKinds, rk)
@@ -55,10 +54,10 @@ func (rm _RefsMatrix) has(src *model.Data) bool {
 
 func (rm _RefsMatrix) refKind(src *model.Data, dst *model.Data) _RefKind {
 	if _, exists := rm[src]; !exists {
-		return _rkNone
+		return refKindNone
 	}
 	if _, exists := rm[src][dst]; !exists {
-		return _rkNone
+		return refKindNone
 	}
 	return rm[src][dst]
 }
@@ -67,24 +66,24 @@ func referencedData(t *model.Type) _Refs {
 	refs := _Refs{}
 	switch t.Kind {
 	case model.TypeKindData:
-		rk := _rkDirect
+		rk := refKindDirect
 		if t.Nullable {
-			rk = _rkNullable
+			rk = refKindNullable
 		}
 		refs.put(rk, t.Data)
 		for _, arg := range t.TypeArguments {
 			refs.override(rk, referencedData(arg))
 		}
 	case model.TypeKindList:
-		refs.override(_rkList, referencedData(t.List.Value))
+		refs.override(refKindList, referencedData(t.List.Value))
 	case model.TypeKindMap:
-		refs.override(_rkMap, referencedData(t.Map.Value))
+		refs.override(refKindMap, referencedData(t.Map.Value))
 	}
 	return refs
 }
 
-func checkTypeCanBeMapKey(t *model.Type) {
-	checkutil.CheckNot(t.Nullable, "%s incorrect key type, must not be nullable", t.Pos)
+func checkTypeCanBeMapKey(reporter *diagnosticReporter, t *model.Type) bool {
+	valid := reporter.checkNot(t.Nullable, "%s incorrect key type, must not be nullable", t.Pos)
 
 	canBeMapKey := false
 	if slices.Contains(mapKeyTypes, t.Kind) {
@@ -94,13 +93,15 @@ func checkTypeCanBeMapKey(t *model.Type) {
 			canBeMapKey = true
 		}
 	}
-	checkutil.Check(canBeMapKey, "%s incorrect key type, int/string or Enum expected", t.Pos)
+	valid = reporter.check(canBeMapKey, "%s incorrect key type, int/string or Enum expected", t.Pos) && valid
+	return valid
 }
 
-func parseType(s *grammar.Type) *model.Type {
+func parseType(reporter *diagnosticReporter, s *grammar.Type) (*model.Type, bool) {
 	if s == nil {
-		return nil
+		return nil, true
 	}
+	valid := true
 
 	t := &model.Type{
 		Pos:           position(s.Pos),
@@ -146,19 +147,22 @@ func parseType(s *grammar.Type) *model.Type {
 		case grammar.SkelPermissionCode:
 			t.Kind = model.TypeKindSkelPermissionCode
 		default:
-			checkutil.Failf("%s unknown PlainType %s", s.Pos, *s.Plain)
+			reporter.reportf("%s unknown PlainType %s", s.Pos, *s.Plain)
+			valid = false
 		}
 
 	case s.List != nil:
-		valueType := parseType(s.List.Value)
+		valueType, valueValid := parseType(reporter, s.List.Value)
+		valid = valueValid && valid
 		t.Kind = model.TypeKindList
 		t.List = &model.ListType{
 			Value: valueType,
 		}
 
 	case s.Map != nil:
-		keyType := parseType(s.Map.Key)
-		valueType := parseType(s.Map.Value)
+		keyType, keyValid := parseType(reporter, s.Map.Key)
+		valueType, valueValid := parseType(reporter, s.Map.Value)
+		valid = keyValid && valueValid && valid
 		t.Kind = model.TypeKindMap
 		t.Map = &model.MapType{
 			Key:   keyType,
@@ -166,12 +170,14 @@ func parseType(s *grammar.Type) *model.Type {
 		}
 
 	case s.Reference != nil:
-		refName, refQualifier, refPos := parseReferenceName(s.Reference.Name)
-		checkCase("Enum/Data/TypeParameter", caseTypeCamel, &grammar.Identifier{Value: refName, Pos: refPos})
+		refName, refQualifier, refPos, referenceValid := parseReferenceName(reporter, s.Reference.Name)
+		valid = referenceValid && valid
+		valid = checkCase(reporter, "Enum/Data/TypeParameter", caseTypeCamel, &grammar.Identifier{Value: refName, Pos: refPos}) && valid
 		t.Kind = typeKindReference
 		typeArgs := make([]*model.Type, 0, len(s.Reference.TypeArguments))
 		for _, typeArg := range s.Reference.TypeArguments {
-			parsedTypeArg := parseType(typeArg)
+			parsedTypeArg, argumentValid := parseType(reporter, typeArg)
+			valid = argumentValid && valid
 			typeArgs = append(typeArgs, parsedTypeArg)
 		}
 		t.ReferencePos = position(refPos)
@@ -180,22 +186,25 @@ func parseType(s *grammar.Type) *model.Type {
 		t.TypeArguments = typeArgs
 
 	default:
-		checkutil.Failf("%s unknown Type %+v", s.Pos, s)
+		reporter.reportf("%s unknown Type %+v", s.Pos, s)
+		valid = false
 	}
 
 	t.Nullable = s.Nullable
 
-	return t
+	return t, valid
 }
 
-func parseReferenceName(name *grammar.QualifiedName) (string, string, lexer.Position) {
-	checkutil.Check(name != nil && len(name.Parts) > 0, "missing reference type")
+func parseReferenceName(reporter *diagnosticReporter, name *grammar.QualifiedName) (string, string, lexer.Position, bool) {
+	if !reporter.check(name != nil && len(name.Parts) > 0, "missing reference type") {
+		return "", "", lexer.Position{}, false
+	}
 	if len(name.Parts) == 1 {
-		return name.Parts[0].Value, "", name.Parts[0].Pos
+		return name.Parts[0].Value, "", name.Parts[0].Pos, true
 	}
 	if len(name.Parts) == 2 {
-		return name.Parts[1].Value, name.Parts[0].Value, name.Parts[1].Pos
+		return name.Parts[1].Value, name.Parts[0].Value, name.Parts[1].Pos, true
 	}
-	checkutil.Check(len(name.Parts) <= 2, "%s reference type supports at most one import qualifier", name.Pos)
-	return name.Parts[1].Value, name.Parts[0].Value, name.Parts[1].Pos
+	reporter.reportf("%s reference type supports at most one import qualifier", name.Pos)
+	return name.Parts[1].Value, name.Parts[0].Value, name.Parts[1].Pos, false
 }

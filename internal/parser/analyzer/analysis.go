@@ -34,6 +34,10 @@ type Analysis struct {
 	servicesMap  map[string]*model.Service
 	tasksMap     map[string]*model.Task
 	importsMap   map[string]*domainImport
+
+	reporter    *diagnosticReporter
+	invalidData map[*model.Data]bool
+	unavailable map[string]bool
 }
 
 type domainImport struct {
@@ -41,27 +45,35 @@ type domainImport struct {
 	Model  *model.Import
 }
 
-func Analyze(content *grammar.SkelContent) *Analysis {
-	return AnalyzeWithImports(content, nil)
-}
-
-func AnalyzeWithImports(content *grammar.SkelContent, importedDomains []*Analysis) *Analysis {
+// Analyze analyzes a domain and explicitly reports independent
+// validation failures. Invalid declarations are excluded from later global
+// validation stages to avoid dependent cascade diagnostics.
+func Analyze(content *grammar.SkelContent, importedDomains []*Analysis) (*Analysis, []error) {
 	domain := newAnalysis(content)
 	domainByName := map[string]*Analysis{}
 	for _, importedDomain := range importedDomains {
 		domainByName[importedDomain.Model().Name()] = importedDomain
 	}
-	domain.load()
+	if !domain.load() {
+		return domain, domain.reporter.result()
+	}
+	diagnosticsBeforeImports := len(domain.reporter.errors)
 	domain.loadImports(domainByName)
-	domain.normalize()
-	return domain
+	if len(domain.reporter.errors) == diagnosticsBeforeImports {
+		domain.normalize()
+	}
+	if len(domain.reporter.errors) == 0 {
+		domain.finalize()
+	}
+	return domain, domain.reporter.result()
 }
 
-func AnalyzeImport(content *grammar.SkelContent) *Analysis {
+func AnalyzeImport(content *grammar.SkelContent) (*Analysis, []error) {
 	domain := newAnalysis(content)
-	domain.load()
-	domain.finalize()
-	return domain
+	if domain.load() && len(domain.reporter.errors) == 0 {
+		domain.finalize()
+	}
+	return domain, domain.reporter.result()
 }
 
 func newAnalysis(content *grammar.SkelContent) *Analysis {
@@ -78,6 +90,10 @@ func newAnalysis(content *grammar.SkelContent) *Analysis {
 		servicesMap:  map[string]*model.Service{},
 		tasksMap:     map[string]*model.Task{},
 		importsMap:   map[string]*domainImport{},
+
+		reporter:    newDiagnosticReporter(),
+		invalidData: map[*model.Data]bool{},
+		unavailable: map[string]bool{},
 	}
 }
 

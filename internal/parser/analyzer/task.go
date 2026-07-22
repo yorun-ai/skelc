@@ -5,37 +5,41 @@ import (
 
 	"github.com/alecthomas/participle/v2/lexer"
 	"go.yorun.ai/skelc/internal/parser/grammar"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/model"
 )
 
-func parseTask(gt *grammar.Task) *model.Task {
-	checkCaseAdvanced("Task", "", "Task", caseTypeCamel, gt.Name)
-	meta := parseDecoratorMeta(gt.Decorators, decoratorContext{
+func parseTask(reporter *diagnosticReporter, gt *grammar.Task) (*model.Task, bool) {
+	valid := checkCaseAdvanced(reporter, "Task", "", "Task", caseTypeCamel, gt.Name)
+	meta, metaValid := parseDecoratorMeta(reporter, gt.Decorators, decoratorContext{
 		allowDesc: true,
 	})
-	checkutil.CheckNot(meta.HasExample, "%s task does not support decorator @example", gt.Name.Pos)
-	triggers := parseTaskTriggers(gt.Name, gt.Triggers)
+	valid = metaValid && valid
+	valid = reporter.checkNot(meta.HasExample, "%s task does not support decorator @example", gt.Name.Pos) && valid
+	triggers, triggersValid := parseTaskTriggers(reporter, gt.Name, gt.Triggers)
+	valid = triggersValid && valid
 	return &model.Task{
 		Pos:         position(gt.Name.Pos),
 		Name:        gt.Name.Value,
 		Description: meta.Description,
 		Triggers:    triggers,
-	}
+	}, valid
 }
 
-func parseTaskTriggers(owner *grammar.Identifier, triggers []*grammar.TaskTrigger) []*model.TaskTrigger {
+func parseTaskTriggers(reporter *diagnosticReporter, owner *grammar.Identifier, triggers []*grammar.TaskTrigger) ([]*model.TaskTrigger, bool) {
 	parsedTriggers := make([]*model.TaskTrigger, 0, len(triggers))
 	triggerPos := map[string]lexer.Position{}
+	valid := true
 
 	for _, grammarTrigger := range triggers {
-		trigger := parseTaskTrigger(grammarTrigger)
+		trigger, triggerValid := parseTaskTrigger(reporter, grammarTrigger)
+		valid = triggerValid && valid
 		duplicatedPosition, duplicated := triggerPos[trigger.Name]
-		checkutil.CheckFuncAt(trigger.Pos, !duplicated, func() string {
-			return fmt.Sprintf("%s duplicated task trigger %s found, also present at %s",
-				trigger.Pos, trigger.Name, duplicatedPosition)
-		})
+		if duplicated {
+			reporter.reportf("%s duplicated task trigger %s found, also present at %s", trigger.Pos, trigger.Name, duplicatedPosition)
+			valid = false
+			continue
+		}
 		if trigger.ArgumentsData != nil {
 			trigger.ArgumentsData.Name = fmt.Sprintf("%s%s", owner.Value, trigger.ArgumentsData.Name)
 		}
@@ -43,16 +47,17 @@ func parseTaskTriggers(owner *grammar.Identifier, triggers []*grammar.TaskTrigge
 		parsedTriggers = append(parsedTriggers, trigger)
 	}
 
-	checkutil.Check(len(parsedTriggers) > 0, "%s missing task trigger for %s", owner.Pos, owner.Value)
+	valid = reporter.check(len(parsedTriggers) > 0, "%s missing task trigger for %s", owner.Pos, owner.Value) && valid
 
-	return parsedTriggers
+	return parsedTriggers, valid
 }
 
-func parseTaskTrigger(gt *grammar.TaskTrigger) *model.TaskTrigger {
-	checkCase("TaskTrigger", caseTypeLowerCamel, gt.Name)
-	meta := parseDecoratorMeta(gt.Decorators, decoratorContext{
+func parseTaskTrigger(reporter *diagnosticReporter, gt *grammar.TaskTrigger) (*model.TaskTrigger, bool) {
+	valid := checkCase(reporter, "TaskTrigger", caseTypeLowerCamel, gt.Name)
+	meta, metaValid := parseDecoratorMeta(reporter, gt.Decorators, decoratorContext{
 		allowDesc: true,
 	})
+	valid = metaValid && valid
 
 	trigger := &model.TaskTrigger{
 		Pos:         position(gt.Name.Pos),
@@ -62,21 +67,24 @@ func parseTaskTrigger(gt *grammar.TaskTrigger) *model.TaskTrigger {
 		Arguments:   []*model.Argument{},
 	}
 	if gt.Input == nil {
-		return trigger
+		return trigger, valid
 	}
 
-	inputMeta := parseDecoratorMeta(gt.Input.Decorators, decoratorContext{
+	inputMeta, inputValid := parseDecoratorMeta(reporter, gt.Input.Decorators, decoratorContext{
 		allowDesc: true,
 	})
+	valid = inputValid && valid
 	trigger.InputDescription = inputMeta.Description
 	argPos := map[string]lexer.Position{}
 	for _, grammarArgument := range gt.Input.Arguments {
-		arg := parseArgument(grammarArgument)
+		arg, argumentValid := parseArgument(reporter, grammarArgument)
+		valid = argumentValid && valid
 		duplicatedPosition, duplicated := argPos[arg.Name]
-		checkutil.CheckFuncAt(arg.Pos, !duplicated, func() string {
-			return fmt.Sprintf("%s duplicated Argument %s found, also present at %s",
-				arg.Pos, arg.Name, duplicatedPosition)
-		})
+		if duplicated {
+			reporter.reportf("%s duplicated Argument %s found, also present at %s", arg.Pos, arg.Name, duplicatedPosition)
+			valid = false
+			continue
+		}
 		argPos[arg.Name] = lexer.Position{Filename: arg.Pos.File, Line: arg.Pos.Line, Column: arg.Pos.Column}
 		trigger.Arguments = append(trigger.Arguments, arg)
 	}
@@ -88,5 +96,5 @@ func parseTaskTrigger(gt *grammar.TaskTrigger) *model.TaskTrigger {
 		}
 	}
 
-	return trigger
+	return trigger, valid
 }

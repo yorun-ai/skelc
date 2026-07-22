@@ -2,9 +2,10 @@ package analyzer
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -13,9 +14,6 @@ func (p *Analysis) skelName(name string) string {
 }
 
 func (p *Analysis) loadImports(domainByName map[string]*Analysis) {
-	if len(p.content.Imports) == 0 {
-		return
-	}
 	for _, grammarImport := range p.content.Imports {
 		domainName := grammarImport.Domain.String()
 		alias := defaultImportAlias(domainName)
@@ -24,13 +22,13 @@ func (p *Analysis) loadImports(domainByName map[string]*Analysis) {
 		}
 		importedDomain := domainByName[domainName]
 		if importedDomain == nil {
-			panic(&MissingImportError{Position: position(grammarImport.Pos), Domain: domainName})
+			p.reporter.report(&MissingImportError{Position: position(grammarImport.Pos), Domain: domainName})
+			continue
 		}
-		if prev, exists := p.importsMap[alias]; exists {
-			checkutil.Check(prev.Model.Name == domainName,
+		if previous, exists := p.importsMap[alias]; exists {
+			p.reporter.check(previous.Model.Name == domainName,
 				"%s duplicated import alias %s found, already used by %s",
-				grammarImport.Pos, alias, prev.Model.Name,
-			)
+				grammarImport.Pos, alias, previous.Model.Name)
 			continue
 		}
 		importModel := &model.Import{
@@ -40,8 +38,7 @@ func (p *Analysis) loadImports(domainByName map[string]*Analysis) {
 			Alias:         alias,
 			ExplicitAlias: grammarImport.Alias != nil,
 		}
-		import_ := &domainImport{Domain: importedDomain, Model: importModel}
-		p.importsMap[alias] = import_
+		p.importsMap[alias] = &domainImport{Domain: importedDomain, Model: importModel}
 		p.imports = append(p.imports, importModel)
 	}
 }
@@ -51,44 +48,48 @@ func defaultImportAlias(domainName string) string {
 	return parts[len(parts)-1]
 }
 
-func (p *Analysis) checkDuplicated(name string, namePos model.Position) {
-	errMsg := `%s duplicated identifier "%s" found, also present at %s`
-	previousEnum, exists := p.enumsMap[name]
-	checkutil.CheckFuncAt(namePos, !exists, func() string {
-		return fmt.Sprintf(errMsg, namePos, name, previousEnum.Pos)
-	})
-	previousData, exists := p.dataMap[name]
-	checkutil.CheckFuncAt(namePos, !exists, func() string {
-		return fmt.Sprintf(errMsg, namePos, name, previousData.Pos)
-	})
-	previousActor, exists := p.actorsMap[name]
-	checkutil.CheckFuncAt(namePos, !exists, func() string {
-		return fmt.Sprintf(errMsg, namePos, name, previousActor.Pos)
-	})
-	previousService, exists := p.servicesMap[name]
-	checkutil.CheckFuncAt(namePos, !exists, func() string {
-		return fmt.Sprintf(errMsg, namePos, name, previousService.Pos)
-	})
-	previousWeb, exists := p.websMap[name]
-	checkutil.CheckFuncAt(namePos, !exists, func() string {
-		return fmt.Sprintf(errMsg, namePos, name, previousWeb.Pos)
-	})
-	previousTask, exists := p.tasksMap[name]
-	checkutil.CheckFuncAt(namePos, !exists, func() string {
-		return fmt.Sprintf(errMsg, namePos, name, previousTask.Pos)
-	})
+func (p *Analysis) checkDuplicated(name string, namePos model.Position) bool {
+	message := `%s duplicated identifier "%s" found, also present at %s`
+	valid := true
+	if previous := p.enumsMap[name]; previous != nil {
+		p.reporter.reportf(message, namePos, name, previous.Pos)
+		valid = false
+	}
+	if previous := p.dataMap[name]; previous != nil {
+		p.reporter.reportf(message, namePos, name, previous.Pos)
+		valid = false
+	}
+	if previous := p.actorsMap[name]; previous != nil {
+		p.reporter.reportf(message, namePos, name, previous.Pos)
+		valid = false
+	}
+	if previous := p.servicesMap[name]; previous != nil {
+		p.reporter.reportf(message, namePos, name, previous.Pos)
+		valid = false
+	}
+	if previous := p.websMap[name]; previous != nil {
+		p.reporter.reportf(message, namePos, name, previous.Pos)
+		valid = false
+	}
+	if previous := p.tasksMap[name]; previous != nil {
+		p.reporter.reportf(message, namePos, name, previous.Pos)
+		valid = false
+	}
+	return valid
 }
 
-func (p *Analysis) checkDuplicatedResource(name string, namePos model.Position) {
-	previous, exists := p.resourcesMap[name]
-	checkutil.CheckFuncAt(namePos, !exists, func() string {
-		return fmt.Sprintf(`%s duplicated resource "%s" found, also present at %s`, namePos, name, previous.Pos)
-	})
+func (p *Analysis) checkDuplicatedResource(name string, namePos model.Position) bool {
+	if previous := p.resourcesMap[name]; previous != nil {
+		p.reporter.reportf(`%s duplicated resource "%s" found, also present at %s`, namePos, name, previous.Pos)
+		return false
+	}
+	return true
 }
 
 func (p *Analysis) checkActorGeneratedNames() {
 	generated := map[string]model.Position{}
-	for _, actor := range p.actorsMap {
+	for _, name := range slices.Sorted(maps.Keys(p.actorsMap)) {
+		actor := p.actorsMap[name]
 		if actor.AuthEnabled {
 			p.checkGeneratedIdentifier(actor.AuthCredential.Name, actor.AuthCredential.Pos, generated)
 			p.checkGeneratedIdentifier(actor.AuthInfo.Name, actor.AuthInfo.Pos, generated)
@@ -98,7 +99,8 @@ func (p *Analysis) checkActorGeneratedNames() {
 			p.checkGeneratedIdentifier(actor.PermService.Name, actor.Pos, generated)
 		}
 	}
-	for _, resource := range p.resourcesMap {
+	for _, name := range slices.Sorted(maps.Keys(p.resourcesMap)) {
+		resource := p.resourcesMap[name]
 		if resource.CheckService != nil {
 			p.checkGeneratedIdentifier(resource.CheckService.Name, resource.Pos, generated)
 		}
@@ -106,10 +108,12 @@ func (p *Analysis) checkActorGeneratedNames() {
 }
 
 func (p *Analysis) checkGeneratedIdentifier(name string, namePos model.Position, generated map[string]model.Position) {
-	p.checkDuplicated(name, namePos)
-	duplicatedPosition, duplicated := generated[name]
-	checkutil.CheckFuncAt(namePos, !duplicated, func() string {
-		return fmt.Sprintf(`%s duplicated identifier "%s" found, also present at %s`, namePos, name, duplicatedPosition)
-	})
-	generated[name] = namePos
+	valid := p.checkDuplicated(name, namePos)
+	if previous, duplicated := generated[name]; duplicated {
+		p.reporter.reportf(`%s duplicated identifier "%s" found, also present at %s`, namePos, name, previous)
+		valid = false
+	}
+	if valid {
+		generated[name] = namePos
+	}
 }

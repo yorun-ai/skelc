@@ -63,7 +63,7 @@ service UserService {
 	if len(content.Entries) != 3 {
 		t.Fatalf("unexpected entry count: %d", len(content.Entries))
 	}
-	domain := Analyze(content).Model()
+	domain := mustAnalyze(t, content).Model()
 	if len(domain.Services()) != 1 {
 		t.Fatalf("unexpected service count: %d", len(domain.Services()))
 	}
@@ -141,12 +141,7 @@ resource User {
 	if err = content.Finalize(); err != nil {
 		t.Fatalf("Finalize() error = %v", err)
 	}
-	defer func() {
-		if recover() == nil {
-			t.Fatalf("NewDomain() did not panic")
-		}
-	}()
-	Analyze(content)
+	expectAnalyzeDiagnosticsContains(t, "duplicated resource action check", content)
 }
 
 func TestPermissionRequireCheckSupportsSingleListWildcardPath(t *testing.T) {
@@ -172,7 +167,7 @@ service UserService {
     }
 }
 `)
-	domain := Analyze(content).Model()
+	domain := mustAnalyze(t, content).Model()
 	require := domain.Services()[0].Methods[0].Require
 	checkArgument := require.Expr.Children[1].Check.Arguments[0]
 	if checkArgument.JsonPath != "users[*].id" {
@@ -210,12 +205,7 @@ service OrderService {
     }
 }
 `)
-	defer func() {
-		if recover() == nil {
-			t.Fatalf("NewDomain() did not panic")
-		}
-	}()
-	Analyze(content)
+	expectAnalyzeDiagnosticsContains(t, "supports at most one [*]", content)
 }
 
 func TestPermissionRequireCheckRejectsTrailingListWildcardPath(t *testing.T) {
@@ -241,12 +231,7 @@ service UserService {
     }
 }
 `)
-	defer func() {
-		if recover() == nil {
-			t.Fatalf("NewDomain() did not panic")
-		}
-	}()
-	Analyze(content)
+	expectAnalyzeDiagnosticsContains(t, "cannot end with [*]", content)
 }
 
 func parseResourceTestContent(t *testing.T, content string) *grammar.SkelContent {

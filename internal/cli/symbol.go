@@ -47,7 +47,10 @@ func newSymbolListCommand() *ucli.Command {
 		Usage: "list skel symbols",
 		Flags: newSymbolFlags("symbol list output format: text/json"),
 		Action: func(_ context.Context, cmd *ucli.Command) error {
-			result := parser.ParseImport(parseSymbolListCommand(cmd).SkelIn)
+			result, err := parser.ParseImport(parseSymbolListCommand(cmd).SkelIn)
+			if err != nil {
+				return err
+			}
 			symbols := buildSymbols(result.Domain)
 			if commandOutputFormat(cmd) == outputFormatJSON {
 				output, err := json.MarshalIndent(symbols, "", "  ")
@@ -86,7 +89,10 @@ func newSymbolGetCommand() *ucli.Command {
 		Flags:     newSymbolFlags("symbol output format: text/json"),
 		Action: func(_ context.Context, cmd *ucli.Command) error {
 			skelName := parseSymbolGetCommand(cmd)
-			result := parser.ParseImport(parseSymbolGetFlags(cmd).SkelIn)
+			result, err := parser.ParseImport(parseSymbolGetFlags(cmd).SkelIn)
+			if err != nil {
+				return err
+			}
 			for _, symbol := range buildSymbols(result.Domain) {
 				if symbol.SkelName != skelName {
 					continue

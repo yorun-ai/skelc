@@ -1,31 +1,35 @@
 package analyzer
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
 	"go.yorun.ai/skelc/internal/parser/grammar"
 )
 
-func expectPanicContains(t *testing.T, expected string, fn func()) {
+func expectAnalyzeDiagnosticsContains(t *testing.T, expected string, content *grammar.SkelContent) {
 	t.Helper()
-	defer func() {
-		recovered := recover()
-		if recovered == nil {
-			t.Fatalf("expected panic containing %q", expected)
-		}
-		if !strings.Contains(fmt.Sprint(recovered), expected) {
-			t.Fatalf("unexpected panic: %v", recovered)
-		}
-	}()
-	fn()
+	_, diagnostics := Analyze(content, nil)
+	assertDiagnosticsContain(t, diagnostics, expected)
 }
-func expectAnalyzePanicContains(t *testing.T, expected string, content *grammar.SkelContent) {
+
+func assertDiagnosticsContain(t *testing.T, diagnostics []error, expected string) {
 	t.Helper()
-	expectPanicContains(t, expected, func() {
-		Analyze(content)
-	})
+	for _, diagnostic := range diagnostics {
+		if strings.Contains(diagnostic.Error(), expected) {
+			return
+		}
+	}
+	t.Fatalf("expected diagnostic containing %q, got %v", expected, diagnostics)
+}
+
+func mustAnalyze(t *testing.T, content *grammar.SkelContent, importedDomains ...*Analysis) *Analysis {
+	t.Helper()
+	analysis, diagnostics := Analyze(content, importedDomains)
+	if len(diagnostics) > 0 {
+		t.Fatalf("unexpected diagnostics: %v", diagnostics)
+	}
+	return analysis
 }
 
 func ident(value string) *grammar.Identifier {

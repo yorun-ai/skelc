@@ -104,7 +104,10 @@ type SkeletonOption struct {
 func Parse(input Input) (result ParseResult, err error) {
 	defer recoverAPIError(&err)
 
-	parsed := parser.Parse(normalizeInput(input))
+	parsed, parseErr := parser.Parse(normalizeInput(input))
+	if parseErr != nil {
+		return ParseResult{}, parseErr
+	}
 	return ParseResult{Domain: parsed.Domain, Warnings: parsed.Warnings}, nil
 }
 

@@ -278,7 +278,11 @@ func parseDomainForTest(t *testing.T, domainPath string, domainContent string, i
 	if err := os.WriteFile(filepath.Join(dir, filepath.Base(inputPath)), []byte(inputContent), 0o644); err != nil {
 		t.Fatalf("write input fixture: %v", err)
 	}
-	return skelparser.Parse(skelparser.Option{SkelIn: dir, SkelImports: imports}).Domain, dir
+	parsed, err := skelparser.Parse(skelparser.Option{SkelIn: dir, SkelImports: imports})
+	if err != nil {
+		t.Fatalf("parse test domain: %v", err)
+	}
+	return parsed.Domain, dir
 }
 
 func readGeneratedFileForTest(t *testing.T, path string) string {
@@ -292,7 +296,9 @@ func readGeneratedFileForTest(t *testing.T, path string) string {
 
 func assertGeneratedSkelParses(t *testing.T, outputDir string) {
 	t.Helper()
-	skelparser.Parse(skelparser.Option{SkelIn: outputDir})
+	if _, err := skelparser.Parse(skelparser.Option{SkelIn: outputDir}); err != nil {
+		t.Fatalf("parse generated skel: %v", err)
+	}
 }
 
 func assertNoExtraTopLevelBlankLines(t *testing.T, content string) {

@@ -5,7 +5,6 @@ import (
 
 	"github.com/alecthomas/participle/v2/lexer"
 	"go.yorun.ai/skelc/internal/parser/grammar"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/internal/util/sliceutil"
 	"go.yorun.ai/skelc/model"
@@ -22,16 +21,20 @@ func buildArgumentMembers(args []*model.Argument) []*model.DataMember {
 	})
 }
 
-func parseMethods(owner *grammar.Identifier, methods []*grammar.Method) []*model.Method {
+func parseMethods(reporter *diagnosticReporter, owner *grammar.Identifier, methods []*grammar.Method) ([]*model.Method, bool) {
 	parsedMethods := make([]*model.Method, 0, len(methods))
 	methodPos := map[string]lexer.Position{}
+	valid := true
 
 	for _, grammarMethod := range methods {
-		method := parseMethod(grammarMethod)
+		method, methodValid := parseMethod(reporter, grammarMethod)
+		valid = methodValid && valid
 		duplicatedPosition, duplicated := methodPos[method.Name]
-		checkutil.CheckFuncAt(method.Pos, !duplicated, func() string {
-			return fmt.Sprintf("%s duplicated method %s found, also present at %s", method.Pos, method.Name, duplicatedPosition)
-		})
+		if duplicated {
+			reporter.reportf("%s duplicated method %s found, also present at %s", method.Pos, method.Name, duplicatedPosition)
+			valid = false
+			continue
+		}
 		if method.ArgumentsData != nil {
 			method.ArgumentsData.Name = fmt.Sprintf("%s%s", owner.Value, method.ArgumentsData.Name)
 		}
@@ -39,50 +42,61 @@ func parseMethods(owner *grammar.Identifier, methods []*grammar.Method) []*model
 		parsedMethods = append(parsedMethods, method)
 	}
 
-	checkutil.Check(len(parsedMethods) > 0, "%s missing method for %s", owner.Pos, owner.Value)
-	return parsedMethods
+	valid = reporter.check(len(parsedMethods) > 0, "%s missing method for %s", owner.Pos, owner.Value) && valid
+	return parsedMethods, valid
 }
 
-func parseMethod(gm *grammar.Method) *model.Method {
-	checkCase("Method", caseTypeLowerCamel, gm.Name)
-	meta := parseDecoratorMeta(gm.Decorators, decoratorContext{
+func parseMethod(reporter *diagnosticReporter, gm *grammar.Method) (*model.Method, bool) {
+	valid := checkCase(reporter, "Method", caseTypeLowerCamel, gm.Name)
+	meta, metaValid := parseDecoratorMeta(reporter, gm.Decorators, decoratorContext{
 		allowDesc: true,
 	})
+	valid = metaValid && valid
+	require, requireValid := parseRequire(reporter, gm.Require)
+	valid = requireValid && valid
+	authMode, authModeValid := parseAuthMode(reporter, methodAuthMarker(gm), model.AuthModeUnset)
+	valid = authModeValid && valid
 	method := &model.Method{
 		Pos:         position(gm.Name.Pos),
 		Name:        gm.Name.Value,
 		SkelName:    gm.Name.Value,
 		Description: meta.Description,
-		Auth:        parseAuthMode(methodAuthMarker(gm), model.AuthModeUnset),
-		Require:     parseRequire(gm.Require),
+		Auth:        authMode,
+		Require:     require,
 		Arguments:   []*model.Argument{},
 	}
 	input := methodInput(gm)
 	output := methodOutput(gm)
 
 	if input != nil {
-		inputMeta := parseDecoratorMeta(input.Decorators, decoratorContext{
+		inputMeta, inputValid := parseDecoratorMeta(reporter, input.Decorators, decoratorContext{
 			allowDesc: true,
 		})
+		valid = inputValid && valid
 		method.InputDescription = inputMeta.Description
 		argPos := map[string]lexer.Position{}
 		for _, grammarArgument := range input.Arguments {
-			arg := parseArgument(grammarArgument)
+			arg, argumentValid := parseArgument(reporter, grammarArgument)
+			valid = argumentValid && valid
 			duplicatedPosition, duplicated := argPos[arg.Name]
-			checkutil.CheckFuncAt(arg.Pos, !duplicated, func() string {
-				return fmt.Sprintf("%s duplicated Argument %s found, also present at %s", arg.Pos, arg.Name, duplicatedPosition)
-			})
+			if duplicated {
+				reporter.reportf("%s duplicated Argument %s found, also present at %s", arg.Pos, arg.Name, duplicatedPosition)
+				valid = false
+				continue
+			}
 			argPos[arg.Name] = lexer.Position{Filename: arg.Pos.File, Line: arg.Pos.Line, Column: arg.Pos.Column}
 			method.Arguments = append(method.Arguments, arg)
 		}
 	}
 	if output != nil {
-		outputMeta := parseAnnotations(output.Decorators)
+		outputMeta, outputValid := parseAnnotations(reporter, output.Decorators)
+		valid = outputValid && valid
 		method.OutputDescription = outputMeta.Description
 		if outputMeta.HasExample {
 			method.OutputExample = outputMeta.Example
 		}
-		method.ResultType = parseType(output.Type)
+		method.ResultType, outputValid = parseType(reporter, output.Type)
+		valid = outputValid && valid
 	}
 
 	if len(method.Arguments) > 0 {
@@ -92,7 +106,7 @@ func parseMethod(gm *grammar.Method) *model.Method {
 		}
 	}
 
-	return method
+	return method, valid
 }
 
 func methodAuthMarker(gm *grammar.Method) *grammar.AuthMarker {
@@ -107,10 +121,12 @@ func methodOutput(gm *grammar.Method) *grammar.MethodOutput {
 	return gm.Output
 }
 
-func parseArgument(ga *grammar.Argument) *model.Argument {
-	checkCase("Argument", caseTypeLowerCamel, ga.Name)
-	meta := parseAnnotations(ga.Decorators)
-	argType := parseType(ga.Type)
+func parseArgument(reporter *diagnosticReporter, ga *grammar.Argument) (*model.Argument, bool) {
+	valid := checkCase(reporter, "Argument", caseTypeLowerCamel, ga.Name)
+	meta, metaValid := parseAnnotations(reporter, ga.Decorators)
+	valid = metaValid && valid
+	argType, typeValid := parseType(reporter, ga.Type)
+	valid = typeValid && valid
 	arg := &model.Argument{
 		Pos:         position(ga.Name.Pos),
 		Name:        ga.Name.Value,
@@ -120,5 +136,5 @@ func parseArgument(ga *grammar.Argument) *model.Argument {
 	if meta.HasExample {
 		arg.Example = meta.Example
 	}
-	return arg
+	return arg, valid
 }

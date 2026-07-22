@@ -3,8 +3,8 @@ package hasher
 import "testing"
 
 func TestFillHashesChangesOnlyAffectedComponents(t *testing.T) {
-	oldDomain := newHashTestDomain("User service")
-	newDomain := newHashTestDomain("User service (new version)")
+	oldDomain := newHashTestDomain(t, "User service")
+	newDomain := newHashTestDomain(t, "User service (new version)")
 
 	FillHashes(oldDomain)
 	FillHashes(newDomain)

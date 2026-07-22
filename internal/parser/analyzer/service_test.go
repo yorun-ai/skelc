@@ -8,7 +8,7 @@ import (
 )
 
 func TestParseService(t *testing.T) {
-	service := parseService(&grammar.Service{
+	service := parseServiceTest(t, &grammar.Service{
 		Decorators: []*grammar.Decorator{
 			{Name: ident("desc"), Value: decoratorValue(`"Client user service"`)},
 		},
@@ -89,7 +89,7 @@ func TestParseService(t *testing.T) {
 }
 
 func TestParseServiceSupportsTripleQuotedDescription(t *testing.T) {
-	service := parseService(&grammar.Service{
+	service := parseServiceTest(t, &grammar.Service{
 		Decorators: []*grammar.Decorator{
 			{Name: ident("desc"), Value: decoratorValue("\"\"\"\n    User service\n    Second line description\n\"\"\"")},
 		},
@@ -117,7 +117,7 @@ func TestParseServiceSupportsTripleQuotedDescription(t *testing.T) {
 }
 
 func TestParseServiceAudiencesMissingActors(t *testing.T) {
-	service := parseService(&grammar.Service{
+	service := parseServiceTest(t, &grammar.Service{
 		Name: ident("UserService"),
 		Methods: []*grammar.Method{
 			{
@@ -132,7 +132,7 @@ func TestParseServiceAudiencesMissingActors(t *testing.T) {
 }
 
 func TestParseServiceAudiencesPub(t *testing.T) {
-	service := parseService(&grammar.Service{
+	service := parseServiceTest(t, &grammar.Service{
 		Pub:  true,
 		Name: ident("UserService"),
 		Methods: []*grammar.Method{
@@ -148,7 +148,7 @@ func TestParseServiceAudiencesPub(t *testing.T) {
 }
 
 func TestParseServiceSectionsAllowAnyOrderAndMethodAuthOverride(t *testing.T) {
-	service := parseService(&grammar.Service{
+	service := parseServiceTest(t, &grammar.Service{
 		Name: ident("UserService"),
 		Sections: []*grammar.ServiceSection{
 			{
@@ -186,7 +186,7 @@ func TestParseServiceSectionsAllowAnyOrderAndMethodAuthOverride(t *testing.T) {
 }
 
 func TestParseServiceDefaultsAuthToUnset(t *testing.T) {
-	service := parseService(&grammar.Service{
+	service := parseServiceTest(t, &grammar.Service{
 		Name: ident("UserService"),
 		Methods: []*grammar.Method{
 			{Name: ident("ping")},
@@ -202,78 +202,70 @@ func TestParseServiceDefaultsAuthToUnset(t *testing.T) {
 }
 
 func TestParseServiceRejectsExampleDecorator(t *testing.T) {
-	expectPanicContains(t, "unexpected decorator @example", func() {
-		parseService(&grammar.Service{
-			Decorators: []*grammar.Decorator{
-				{Name: ident("example"), Value: decoratorValue(`"demo"`)},
+	expectServiceDiagnostic(t, "unexpected decorator @example", &grammar.Service{
+		Decorators: []*grammar.Decorator{
+			{Name: ident("example"), Value: decoratorValue(`"demo"`)},
+		},
+		Name:      ident("UserService"),
+		Audiences: []*grammar.ServiceAudience{serviceAllow("ClientActor")},
+		Methods: []*grammar.Method{
+			{
+				Name:   ident("getUser"),
+				Output: &grammar.MethodOutput{Type: plainType(grammar.Int)},
 			},
-			Name:      ident("UserService"),
-			Audiences: []*grammar.ServiceAudience{serviceAllow("ClientActor")},
-			Methods: []*grammar.Method{
-				{
-					Name:   ident("getUser"),
-					Output: &grammar.MethodOutput{Type: plainType(grammar.Int)},
-				},
-			},
-		})
+		},
 	})
 }
 
 func TestParseServiceRejectsMethodExampleDecorator(t *testing.T) {
-	expectPanicContains(t, "unexpected decorator @example", func() {
-		parseService(&grammar.Service{
-			Name:      ident("UserService"),
-			Audiences: []*grammar.ServiceAudience{serviceAllow("ClientActor")},
-			Methods: []*grammar.Method{
-				{
-					Decorators: []*grammar.Decorator{
-						{Name: ident("example"), Value: decoratorValue(`"demo"`)},
-					},
-					Name:   ident("getUser"),
-					Output: &grammar.MethodOutput{Type: plainType(grammar.Int)},
+	expectServiceDiagnostic(t, "unexpected decorator @example", &grammar.Service{
+		Name:      ident("UserService"),
+		Audiences: []*grammar.ServiceAudience{serviceAllow("ClientActor")},
+		Methods: []*grammar.Method{
+			{
+				Decorators: []*grammar.Decorator{
+					{Name: ident("example"), Value: decoratorValue(`"demo"`)},
 				},
+				Name:   ident("getUser"),
+				Output: &grammar.MethodOutput{Type: plainType(grammar.Int)},
 			},
-		})
+		},
 	})
 }
 
 func TestParseServiceRejectsInputExampleDecorator(t *testing.T) {
-	expectPanicContains(t, "unexpected decorator @example", func() {
-		parseService(&grammar.Service{
-			Name:      ident("UserService"),
-			Audiences: []*grammar.ServiceAudience{serviceAllow("ClientActor")},
-			Methods: []*grammar.Method{
-				{
-					Name: ident("getUser"),
-					Input: &grammar.MethodInput{
-						Decorators: []*grammar.Decorator{
-							{Name: ident("example"), Value: decoratorValue(`{"userId":10001}`)},
-						},
-						Arguments: []*grammar.Argument{
-							{Name: ident("userId"), Type: plainType(grammar.Int)},
-						},
+	expectServiceDiagnostic(t, "unexpected decorator @example", &grammar.Service{
+		Name:      ident("UserService"),
+		Audiences: []*grammar.ServiceAudience{serviceAllow("ClientActor")},
+		Methods: []*grammar.Method{
+			{
+				Name: ident("getUser"),
+				Input: &grammar.MethodInput{
+					Decorators: []*grammar.Decorator{
+						{Name: ident("example"), Value: decoratorValue(`{"userId":10001}`)},
+					},
+					Arguments: []*grammar.Argument{
+						{Name: ident("userId"), Type: plainType(grammar.Int)},
 					},
 				},
 			},
-		})
+		},
 	})
 }
 
 func TestParseServiceReturnsErrorForDuplicatedMethod(t *testing.T) {
-	expectPanicContains(t, "duplicated method getUser", func() {
-		parseService(&grammar.Service{
-			Name:      ident("UserService"),
-			Audiences: []*grammar.ServiceAudience{serviceAllow("ClientActor")},
-			Methods: []*grammar.Method{
-				{Name: ident("getUser")},
-				{Name: ident("getUser")},
-			},
-		})
+	expectServiceDiagnostic(t, "duplicated method getUser", &grammar.Service{
+		Name:      ident("UserService"),
+		Audiences: []*grammar.ServiceAudience{serviceAllow("ClientActor")},
+		Methods: []*grammar.Method{
+			{Name: ident("getUser")},
+			{Name: ident("getUser")},
+		},
 	})
 }
 
 func TestParseServiceAudiencesArgumentNameMatchingMethodName(t *testing.T) {
-	service := parseService(&grammar.Service{
+	service := parseServiceTest(t, &grammar.Service{
 		Name:      ident("UserService"),
 		Audiences: []*grammar.ServiceAudience{serviceAllow("ClientActor")},
 		Methods: []*grammar.Method{
@@ -293,26 +285,24 @@ func TestParseServiceAudiencesArgumentNameMatchingMethodName(t *testing.T) {
 }
 
 func TestParseServiceReturnsErrorWhenExampleHasNoDescription(t *testing.T) {
-	expectPanicContains(t, "decorator @example must be used with @desc", func() {
-		parseService(&grammar.Service{
-			Name:      ident("UserService"),
-			Audiences: []*grammar.ServiceAudience{serviceAllow("ClientActor")},
-			Methods: []*grammar.Method{
-				{
-					Name: ident("getUser"),
-					Input: &grammar.MethodInput{
-						Arguments: []*grammar.Argument{
-							{
-								Decorators: []*grammar.Decorator{
-									{Name: ident("example"), Value: decoratorValue(`"10001"`)},
-								},
-								Name: ident("userId"),
-								Type: plainType(grammar.Int),
+	expectServiceDiagnostic(t, "decorator @example must be used with @desc", &grammar.Service{
+		Name:      ident("UserService"),
+		Audiences: []*grammar.ServiceAudience{serviceAllow("ClientActor")},
+		Methods: []*grammar.Method{
+			{
+				Name: ident("getUser"),
+				Input: &grammar.MethodInput{
+					Arguments: []*grammar.Argument{
+						{
+							Decorators: []*grammar.Decorator{
+								{Name: ident("example"), Value: decoratorValue(`"10001"`)},
 							},
+							Name: ident("userId"),
+							Type: plainType(grammar.Int),
 						},
 					},
 				},
 			},
-		})
+		},
 	})
 }

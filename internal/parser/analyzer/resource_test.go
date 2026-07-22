@@ -10,7 +10,7 @@ resource User {
     action read
 }
 `)
-	domain := Analyze(content).Model()
+	domain := mustAnalyze(t, content).Model()
 
 	if len(domain.Resources()) != 1 {
 		t.Fatalf("unexpected resource count: %d", len(domain.Resources()))
@@ -28,7 +28,7 @@ pub resource User {
     action read
 }
 `)
-	domain := Analyze(content).Model()
+	domain := mustAnalyze(t, content).Model()
 
 	if len(domain.Resources()) != 1 {
 		t.Fatalf("unexpected resource count: %d", len(domain.Resources()))
@@ -39,7 +39,7 @@ pub resource User {
 }
 
 func TestRequireRejectsImportedNonPubResource(t *testing.T) {
-	imported := Analyze(parseResourceTestContent(t, `
+	imported := mustAnalyze(t, parseResourceTestContent(t, `
 domain app
 
 resource User {
@@ -64,10 +64,6 @@ service UserService {
 }
 `)
 
-	defer func() {
-		if recover() == nil {
-			t.Fatalf("NewDomainWithImports() did not panic")
-		}
-	}()
-	AnalyzeWithImports(content, []*Analysis{imported})
+	_, diagnostics := Analyze(content, []*Analysis{imported})
+	assertDiagnosticsContain(t, diagnostics, "references non-pub resource")
 }

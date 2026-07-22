@@ -2,10 +2,12 @@ package parser
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
 	"go.yorun.ai/skelc/internal/parser/analyzer"
+	"go.yorun.ai/skelc/model"
 )
 
 func TestParseSourceRecoveringCollectsIndependentSyntaxErrors(t *testing.T) {
@@ -52,6 +54,39 @@ data User {}
 	}
 	if len(diagnostics[1].Related) != 1 {
 		t.Fatalf("expected duplicate related location, got %+v", diagnostics[1].Related)
+	}
+}
+
+func TestWorkspaceAnalysisHandlesIncompleteNestedRequire(t *testing.T) {
+	diagnostics := AnalyzeWorkspace([]Source{{
+		Path: "/workspace/service.skel",
+		Content: []byte(`domain demo
+service UserService {
+    require any(all(UserResource:read
+`),
+	}})
+
+	if !slices.ContainsFunc(diagnostics, func(diagnostic Diagnostic) bool {
+		return strings.HasPrefix(diagnostic.Code, "syntax.")
+	}) {
+		t.Fatalf("expected syntax diagnostic, got %v", diagnostics)
+	}
+}
+
+func TestSourceRangeUsesRuneColumns(t *testing.T) {
+	tests := []struct {
+		source    string
+		start     model.Position
+		endColumn int
+	}{
+		{source: `@desc("𐐀") data user {}`, start: model.Position{File: "/workspace/data.skel", Line: 1, Column: 17}, endColumn: 21},
+		{source: `😀`, start: model.Position{File: "/workspace/data.skel", Line: 1, Column: 1}, endColumn: 2},
+	}
+	for _, test := range tests {
+		range_ := sourceRangeAt(test.start, []byte(test.source))
+		if range_.Start != test.start || range_.End.Column != test.endColumn {
+			t.Errorf("unexpected Unicode-aware source range for %q: %+v", test.source, range_)
+		}
 	}
 }
 

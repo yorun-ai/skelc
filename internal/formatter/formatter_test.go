@@ -44,9 +44,22 @@ func TestFormatterIsIdempotentAroundMismatchedParenAndBrace(t *testing.T) {
 	}
 }
 
+func TestFormatterIsIdempotentAroundInlineTripleString(t *testing.T) {
+	for _, source := range [][]byte{
+		[]byte("0\"\"\"\n  \"\"\""),
+		[]byte("{\"\"\"\r \r\"\"\""),
+	} {
+		first := Source(source)
+		second := Source(first)
+		if string(first) != string(second) {
+			t.Errorf("formatter is not idempotent: first=%q second=%q", first, second)
+		}
+	}
+}
+
 func TestSourcePreservesCommentsAndStrings(t *testing.T) {
-	source := []byte("domain demo.user\n\n/* comment { }\n   keep */\n@desc(\"\"\"\n  keep { content }\n\"\"\") // inline\nservice UserService {\nmethod ping {}\n}\n")
-	want := "domain demo.user\n\n/* comment { }\n   keep */\n@desc(\"\"\"\nkeep { content }\n\"\"\") // inline\nservice UserService {\n    method ping {}\n}\n"
+	source := []byte("domain demo.user\n\n/* comment { }\n   keep */\n@desc(\"\"\"\n  keep { content }\n    nested\n\"\"\") // inline\nservice UserService {\nmethod ping {}\n}\n")
+	want := "domain demo.user\n\n/* comment { }\n   keep */\n@desc(\"\"\"\nkeep { content }\n  nested\n\"\"\") // inline\nservice UserService {\n    method ping {}\n}\n"
 
 	got := Source(source)
 	if string(got) != want {

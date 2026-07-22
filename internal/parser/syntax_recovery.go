@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
@@ -441,7 +442,14 @@ func sourceRangeAt(start model.Position, source []byte) SourceRange {
 	if !ok {
 		return SourceRange{Start: start, End: end}
 	}
-	offset := min(lineStart+start.Column-1, lineEnd)
+	offset := lineStart
+	for range start.Column - 1 {
+		if offset >= lineEnd {
+			break
+		}
+		_, width := utf8.DecodeRune(source[offset:lineEnd])
+		offset += width
+	}
 	for offset < lineEnd && (source[offset] == ' ' || source[offset] == '\t') {
 		offset++
 	}
@@ -457,14 +465,22 @@ func sourceRangeAt(start model.Position, source []byte) SourceRange {
 			}
 		}
 	} else {
-		for endOffset < lineEnd && !strings.ContainsRune(" \t,.:;(){}[]<>?=@", rune(source[endOffset])) {
-			endOffset++
+		for endOffset < lineEnd {
+			value, width := utf8.DecodeRune(source[endOffset:lineEnd])
+			if strings.ContainsRune(" \t,.:;(){}[]<>?=@", value) {
+				break
+			}
+			endOffset += width
 		}
 	}
 	if endOffset == offset && endOffset < lineEnd {
-		endOffset++
+		_, width := utf8.DecodeRune(source[endOffset:lineEnd])
+		endOffset += width
 	}
-	end.Column = start.Column + max(endOffset-offset, 1)
+	end.Column = 1 + utf8.RuneCount(source[lineStart:endOffset])
+	if end.Column <= start.Column {
+		end.Column = start.Column + 1
+	}
 	return SourceRange{Start: start, End: end}
 }
 

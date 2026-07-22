@@ -10,7 +10,6 @@ import (
 type _Token struct {
 	kind  string
 	value string
-	pos   lexer.Position
 }
 
 func lex(source []byte) ([]_Token, error) {
@@ -34,6 +33,6 @@ func lex(source []byte) ([]_Token, error) {
 		if kind == "Whitespace" {
 			continue
 		}
-		tokens = append(tokens, _Token{kind: kind, value: token.Value, pos: token.Pos})
+		tokens = append(tokens, _Token{kind: kind, value: token.Value})
 	}
 }

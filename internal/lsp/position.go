@@ -66,9 +66,15 @@ func comparePosition(left, right protocol.Position) int {
 
 func identifierRange(source string, pos lexer.Position, name string) protocol.Range {
 	line := max(pos.Line-1, 0)
-	byteColumn := max(pos.Column-1, 0)
 	lineSource := sourceLine(source, line)
-	byteColumn = min(byteColumn, len(lineSource))
+	byteColumn := 0
+	for range max(pos.Column-1, 0) {
+		if byteColumn >= len(lineSource) {
+			break
+		}
+		_, width := utf8.DecodeRuneInString(lineSource[byteColumn:])
+		byteColumn += width
+	}
 	start := protocol.Position{Line: uint32(line), Character: uint32(utf16Length(lineSource[:byteColumn]))}
 	return protocol.Range{Start: start, End: protocol.Position{Line: start.Line, Character: start.Character + uint32(utf16Length(name))}}
 }

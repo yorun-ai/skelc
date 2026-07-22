@@ -61,18 +61,19 @@ func (g *_Gen) buildPubDataTsPayload() *DataTsPayload {
 }
 
 func buildDataExternalImports(dataList []*model.Data) []*TypeImport {
-	imports := make([]*TypeImport, 0)
-	seen := make(map[string]struct{})
+	types := make([]*model.Type, 0)
 	for _, dataType := range dataList {
 		for _, member := range dataType.Members {
-			imports = appendExternalTypeImports(imports, seen, member.Type)
+			types = append(types, member.Type)
 		}
 	}
-	return imports
+	return buildExternalTypeImports(types)
 }
 
-func appendExternalTypeImports(imports []*TypeImport, seen map[string]struct{}, type_ *model.Type) []*TypeImport {
-	_ = common.WalkType(type_, func(current *model.Type) error {
+func buildExternalTypeImports(types []*model.Type) []*TypeImport {
+	imports := make([]*TypeImport, 0)
+	seen := make(map[string]struct{})
+	common.VisitTypes(types, func(current *model.Type) {
 		if current.ExternalImportPath != "" {
 			key := current.ExternalAlias + "\x00" + current.ExternalImportPath
 			if _, ok := seen[key]; !ok {
@@ -80,7 +81,6 @@ func appendExternalTypeImports(imports []*TypeImport, seen map[string]struct{}, 
 				imports = append(imports, &TypeImport{Alias: current.ExternalAlias, Path: current.ExternalImportPath})
 			}
 		}
-		return nil
 	})
 	sort.Slice(imports, func(i, j int) bool {
 		if imports[i].Path == imports[j].Path {

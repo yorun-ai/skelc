@@ -1,7 +1,6 @@
 package source
 
 import (
-	"fmt"
 	"strings"
 
 	"go.yorun.ai/skelc/internal/codegen/common"
@@ -36,10 +35,8 @@ type Result struct {
 	ResolvedImports map[string]string
 }
 
-func Generate(domain *model.Domain, outputDir string, option Option) (Result, error) {
-	if err := common.ValidateDomain(domain); err != nil {
-		return Result{}, fmt.Errorf("validate TypeScript source model: %w", err)
-	}
+// GenerateValidated renders a domain already checked by common.ValidateDomain.
+func GenerateValidated(domain *model.Domain, outputDir string, option Option) (Result, error) {
 	gen := newGen(domain, outputDir, option)
 	if gen.err != nil {
 		return Result{}, gen.err

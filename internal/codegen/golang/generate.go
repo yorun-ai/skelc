@@ -141,7 +141,7 @@ func (g *_Gen) gen() error {
 			return err
 		}
 	}
-	if err := source.Generate(source.Option{
+	if err := source.GenerateValidated(source.Option{
 		Domain:        g.domain,
 		View:          g.view,
 		Mode:          g.mode,
@@ -151,7 +151,7 @@ func (g *_Gen) gen() error {
 	}); err != nil {
 		return err
 	}
-	return schema.Generate(schema.Option{
+	return schema.GenerateValidated(schema.Option{
 		Domain:          g.domain,
 		View:            g.view,
 		Mode:            g.mode,

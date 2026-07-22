@@ -252,6 +252,55 @@ func TestGeneratorsReturnErrorsForMalformedProgrammaticModels(t *testing.T) {
 	}
 }
 
+func TestGeneratorsReturnErrorsForMalformedNestedModels(t *testing.T) {
+	domains := []struct {
+		name     string
+		domain   *model.Domain
+		expected string
+	}{
+		{
+			name: "incomplete actor auth",
+			domain: model.NewDomainFromSpec(model.DomainSpec{
+				Name: "demo.invalid", Actors: []*model.Actor{{Name: "Client", AuthEnabled: true}},
+			}),
+			expected: "incomplete auth support",
+		},
+		{
+			name: "nil import",
+			domain: model.NewDomainFromSpec(model.DomainSpec{
+				Name: "demo.invalid", Imports: []*model.Import{nil},
+			}),
+			expected: "nil import",
+		},
+	}
+	for _, malformed := range domains {
+		t.Run(malformed.name, func(t *testing.T) {
+			generators := []struct {
+				name     string
+				generate func() error
+			}{
+				{name: "Go", generate: func() error {
+					return skelc.GenerateGolang(malformed.domain, skelc.GolangOption{Out: filepath.Join(t.TempDir(), "generated")})
+				}},
+				{name: "TypeScript", generate: func() error {
+					return skelc.GenerateTypeScript(malformed.domain, skelc.TypeScriptOption{Out: t.TempDir()})
+				}},
+				{name: "Skel", generate: func() error {
+					return skelc.GenerateSkeleton(malformed.domain, skelc.SkeletonOption{Out: t.TempDir(), PubOnly: true})
+				}},
+			}
+			for _, generator := range generators {
+				t.Run(generator.name, func(t *testing.T) {
+					err := generator.generate()
+					if err == nil || !strings.Contains(err.Error(), malformed.expected) {
+						t.Fatalf("expected error containing %q, got %v", malformed.expected, err)
+					}
+				})
+			}
+		})
+	}
+}
+
 func TestGeneratorsReturnErrorsForMissingExternalImportMappings(t *testing.T) {
 	userDir := t.TempDir()
 	writeTestFile(t, filepath.Join(userDir, "domain.skel"), "domain demo.user")

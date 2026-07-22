@@ -39,10 +39,8 @@ type Option struct {
 	Out             string
 }
 
-func Generate(option Option) error {
-	if err := common.ValidateDomain(option.Domain); err != nil {
-		return fmt.Errorf("validate Go schema model: %w", err)
-	}
+// GenerateValidated renders a domain already checked by common.ValidateDomain.
+func GenerateValidated(option Option) error {
 	if schemaGoTemplateError != nil {
 		return schemaGoTemplateError
 	}

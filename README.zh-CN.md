@@ -101,7 +101,7 @@ const userService = createUserService(client);
 const user = await userService.getUser({ userId: 1001 });
 ```
 
-生成命令支持共享输出目录。skelc 会在 `.skelc-manifest.json` 中记录自身管理的文件，保留未登记的文件，并且只在过期生成文件的内容仍与上一份 manifest 一致时删除该文件。
+生成命令支持共享输出目录。skelc 会在 `.skelc-manifest.json` 中记录自身管理的文件，保留未登记的文件，并且只在过期生成文件的内容仍与上一份 manifest 一致时删除该文件。所有目标都会先完成 staging 再提交；任一目标提交失败时，本次生成已经修改的文件和 manifest 都会回滚。
 
 仓库中的 [`examples/quickstart`](examples/quickstart) 提供了这套流程的可运行版本。检出仓库后，可以用下面的命令校验契约并生成全部支持的目标：
 
@@ -187,7 +187,7 @@ for _, diagnostic := range result.Diagnostics {
 }
 ```
 
-API 同时提供 `CompileTypeScript` 和 `CompileSkeleton`。parser 与 loader warning 使用同一套结构化诊断，不再维护独立的字符串列表。所有公开契约生成器共用一次经过校验的 `internal/codegen/common` 投影，避免 Go、Skel 和 TypeScript 的可见性规则漂移。生成过程通过 `.skelc-manifest.json` 记录自身管理的文件，以原子方式逐个替换生成文件，只删除内容未被修改的过期生成文件，并保留共享输出目录中所有未登记的文件。
+API 同时提供 `CompileTypeScript` 和 `CompileSkeleton`。parser 与 loader warning 使用同一套结构化诊断，不再维护独立的字符串列表。所有公开契约生成器共用一次经过校验的 `internal/codegen/common` 投影，避免 Go、Skel 和 TypeScript 的可见性规则漂移。生成过程通过 `.skelc-manifest.json` 记录自身管理的文件，以原子方式逐个替换生成文件；提交失败时回滚所有受影响的输出目标，只删除内容未被修改的过期生成文件，并保留共享输出目录中所有未登记的文件。
 
 自定义 generator 可以调用 `skelc.Parse`，并通过与 parser 无关的 `go.yorun.ai/skelc/model` 使用返回的 `*model.Domain`。解析完成的模型已经包含由 skelc 计算好的兼容性 hash。内置的 `GenerateGolang`、`GenerateTypeScript` 和 `GenerateSkeleton` 也接受同一个已解析 domain，因此多个目标可以共享一次解析结果。
 

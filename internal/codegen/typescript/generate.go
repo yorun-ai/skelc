@@ -13,7 +13,7 @@ func Generate(domain *model.Domain, option Option) error {
 	if err := common.ValidateDomain(domain); err != nil {
 		return fmt.Errorf("validate TypeScript generation model: %w", err)
 	}
-	result, err := source.Generate(domain, option.Out, source.Option{
+	result, err := source.GenerateValidated(domain, option.Out, source.Option{
 		PubOnly:     option.PubOnly,
 		ModuleScope: option.ModuleScope,
 		Module:      option.Module,

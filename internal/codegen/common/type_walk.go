@@ -9,14 +9,60 @@ type TypeVisitor func(*model.Type) error
 // WalkType visits a type and its structural children: list elements, map keys
 // and values, and generic type arguments. Shared type nodes are visited once.
 func WalkType(type_ *model.Type, visit TypeVisitor) error {
-	return walkType(type_, visit, false, map[*model.Type]bool{}, nil)
+	return WalkTypes([]*model.Type{type_}, visit)
+}
+
+// WalkTypes visits several roots while sharing traversal state. A type node
+// referenced by more than one root is visited once.
+func WalkTypes(types []*model.Type, visit TypeVisitor) error {
+	seenTypes := map[*model.Type]bool{}
+	for _, kind := range types {
+		if err := walkType(kind, visit, false, seenTypes, nil); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// VisitType is the non-failing form of WalkType.
+func VisitType(type_ *model.Type, visit func(*model.Type)) {
+	VisitTypes([]*model.Type{type_}, visit)
+}
+
+// VisitTypes is the non-failing form of WalkTypes.
+func VisitTypes(types []*model.Type, visit func(*model.Type)) {
+	_ = WalkTypes(types, func(kind *model.Type) error {
+		visit(kind)
+		return nil
+	})
 }
 
 // WalkTypeGraph additionally follows members of referenced data declarations.
 // It is intended for graph-wide questions such as wire-schema discovery and
 // safely terminates on recursive data definitions.
 func WalkTypeGraph(type_ *model.Type, visit TypeVisitor) error {
-	return walkType(type_, visit, true, map[*model.Type]bool{}, map[*model.Data]bool{})
+	return WalkTypeGraphs([]*model.Type{type_}, visit)
+}
+
+// WalkTypeGraphs follows referenced data from several roots while sharing
+// traversal state across the complete graph.
+func WalkTypeGraphs(types []*model.Type, visit TypeVisitor) error {
+	seenTypes := map[*model.Type]bool{}
+	seenData := map[*model.Data]bool{}
+	for _, kind := range types {
+		if err := walkType(kind, visit, true, seenTypes, seenData); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// VisitTypeGraphs is the non-failing form of WalkTypeGraphs.
+func VisitTypeGraphs(types []*model.Type, visit func(*model.Type)) {
+	_ = WalkTypeGraphs(types, func(kind *model.Type) error {
+		visit(kind)
+		return nil
+	})
 }
 
 func walkType(type_ *model.Type, visit TypeVisitor, followData bool, seenTypes map[*model.Type]bool, seenData map[*model.Data]bool) error {

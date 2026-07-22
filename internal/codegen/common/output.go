@@ -32,6 +32,7 @@ type ManagedOutput struct {
 	targetDir string
 	stageRoot string
 	stageDir  string
+	writeFile func(string, []byte, fs.FileMode) error
 }
 
 func NewManagedOutput(targetDir string) (*ManagedOutput, error) {
@@ -49,7 +50,12 @@ func NewManagedOutput(targetDir string) (*ManagedOutput, error) {
 		_ = os.RemoveAll(stageRoot)
 		return nil, fmt.Errorf("create output staging directory %s: %w", stageDir, err)
 	}
-	return &ManagedOutput{targetDir: targetDir, stageRoot: stageRoot, stageDir: stageDir}, nil
+	return &ManagedOutput{
+		targetDir: targetDir,
+		stageRoot: stageRoot,
+		stageDir:  stageDir,
+		writeFile: atomicWriteFile,
+	}, nil
 }
 
 func (o *ManagedOutput) StageDir() string {
@@ -62,52 +68,6 @@ func (o *ManagedOutput) Abort() {
 	}
 	_ = os.RemoveAll(o.stageRoot)
 	o.stageRoot = ""
-}
-
-func (o *ManagedOutput) Commit() error {
-	if o == nil || o.stageRoot == "" {
-		return errors.New("output staging transaction is closed")
-	}
-	defer o.Abort()
-
-	manifest, err := buildOutputManifest(o.stageDir)
-	if err != nil {
-		return err
-	}
-	previous, err := readOutputManifest(o.targetDir)
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(o.targetDir, 0o755); err != nil {
-		return fmt.Errorf("create output directory %s: %w", o.targetDir, err)
-	}
-	if err := rejectOutputSymlink(o.targetDir, ""); err != nil {
-		return err
-	}
-	for _, file := range manifest.Files {
-		if err := rejectOutputSymlink(o.targetDir, filepath.FromSlash(file.Path)); err != nil {
-			return err
-		}
-	}
-	for _, file := range previous.Files {
-		if err := rejectOutputSymlink(o.targetDir, filepath.FromSlash(file.Path)); err != nil {
-			return err
-		}
-	}
-	for _, file := range manifest.Files {
-		if err := commitOutputFile(o.stageDir, o.targetDir, file.Path); err != nil {
-			return err
-		}
-	}
-	if err := removeStaleOutputFiles(o.targetDir, previous, manifest); err != nil {
-		return err
-	}
-	content, err := json.MarshalIndent(manifest, "", "  ")
-	if err != nil {
-		return fmt.Errorf("encode output manifest: %w", err)
-	}
-	content = append(content, '\n')
-	return atomicWriteFile(filepath.Join(o.targetDir, outputManifestName), content, 0o644)
 }
 
 func buildOutputManifest(stageDir string) (_OutputManifest, error) {
@@ -172,14 +132,14 @@ func readOutputManifest(targetDir string) (_OutputManifest, error) {
 	return manifest, nil
 }
 
-func commitOutputFile(stageDir, targetDir, relative string) error {
+func (o *ManagedOutput) commitOutputFile(relative string) error {
 	relative, err := cleanManifestPath(filepath.FromSlash(relative))
 	if err != nil {
 		return err
 	}
-	source := filepath.Join(stageDir, relative)
-	target := filepath.Join(targetDir, relative)
-	if err := rejectOutputSymlink(targetDir, relative); err != nil {
+	source := filepath.Join(o.stageDir, relative)
+	target := filepath.Join(o.targetDir, relative)
+	if err := rejectOutputSymlink(o.targetDir, relative); err != nil {
 		return err
 	}
 	content, err := os.ReadFile(source)
@@ -189,7 +149,7 @@ func commitOutputFile(stageDir, targetDir, relative string) error {
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		return fmt.Errorf("create output directory for %s: %w", target, err)
 	}
-	if err := atomicWriteFile(target, content, 0o644); err != nil {
+	if err := o.writeFile(target, content, 0o644); err != nil {
 		return fmt.Errorf("commit generated output %s: %w", target, err)
 	}
 	return nil

@@ -1,8 +1,11 @@
 package parser
 
 import (
+	"fmt"
 	"strings"
 	"testing"
+
+	"go.yorun.ai/skelc/internal/parser/analyzer"
 )
 
 func TestParseSourceRecoveringCollectsIndependentSyntaxErrors(t *testing.T) {
@@ -159,5 +162,26 @@ data Order {}
 	}
 	if diagnostics[0].Position.Line != 3 || diagnostics[1].Position.Line != 4 {
 		t.Fatalf("unexpected diagnostic positions: %v", diagnostics)
+	}
+}
+
+func TestParseSourceRecoveringRetainsDeclarationsAfterDiagnosticLimit(t *testing.T) {
+	var source strings.Builder
+	source.WriteString("domain demo\n")
+	for index := range analyzer.MaxDiagnosticsPerDomain {
+		fmt.Fprintf(&source, "data Broken%d { id string }\n", index)
+	}
+	source.WriteString("data Valid { id: string }\n")
+
+	content, diagnostics := ParseSourceRecovering("/workspace/domain.skel", []byte(source.String()))
+	if len(diagnostics) != analyzer.MaxDiagnosticsPerDomain {
+		t.Fatalf("expected diagnostics to stop at %d, got %d", analyzer.MaxDiagnosticsPerDomain, len(diagnostics))
+	}
+	if content == nil || len(content.Entries) == 0 {
+		t.Fatalf("expected recovered declarations, got %+v", content)
+	}
+	last := content.Entries[len(content.Entries)-1].Data
+	if last == nil || last.Name.Value != "Valid" {
+		t.Fatalf("expected declaration after diagnostic limit to survive, got %+v", last)
 	}
 }

@@ -9,7 +9,8 @@ import (
 // Formatting is intentionally syntax preserving: declarations are never
 // reordered, and multiline string or comment indentation is only rebased.
 func Source(source []byte) []byte {
-	normalized := normalizeNewlines(source)
+	normalized := bytes.ReplaceAll(source, []byte("\r\n"), []byte("\n"))
+	normalized = bytes.ReplaceAll(normalized, []byte("\r"), []byte("\n"))
 	tokens, err := lex(normalized)
 	if err != nil {
 		return finishSource(normalized)
@@ -17,11 +18,6 @@ func Source(source []byte) []byte {
 
 	layout := buildLayout(tokens)
 	return render(layout)
-}
-
-func normalizeNewlines(source []byte) []byte {
-	normalized := bytes.ReplaceAll(source, []byte("\r\n"), []byte("\n"))
-	return bytes.ReplaceAll(normalized, []byte("\r"), []byte("\n"))
 }
 
 func finishSource(source []byte) []byte {

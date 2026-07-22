@@ -13,8 +13,6 @@ import (
 
 const domainFileName = "domain.skel"
 
-type _Parser struct{}
-
 var sourceParser = participle.MustBuild[grammar.SkelContent](grammar.Options...)
 
 // ParseSource parses and finalizes one Skel source file without resolving its
@@ -33,16 +31,8 @@ func ValidateSource(path string, source []byte) error {
 	return nil
 }
 
-func newParser() *_Parser {
-	return new(_Parser)
-}
-
-func (p *_Parser) parseFile(sourceFile *loader.SourceFile) (*analyzer.Analysis, error) {
-	return p.parseFileWithImports(sourceFile, nil)
-}
-
-func (p *_Parser) parseImportFile(sourceFile *loader.SourceFile) (*analyzer.Analysis, error) {
-	content, err := p.parseContent(sourceFile, true)
+func parseImportFile(sourceFile *loader.SourceFile) (*analyzer.Analysis, error) {
+	content, err := parseContent(sourceFile, true)
 	if err != nil {
 		return nil, err
 	}
@@ -50,8 +40,8 @@ func (p *_Parser) parseImportFile(sourceFile *loader.SourceFile) (*analyzer.Anal
 	return analysis, errors.Join(diagnostics...)
 }
 
-func (p *_Parser) parseFileWithImports(sourceFile *loader.SourceFile, importedDomains []*analyzer.Analysis) (*analyzer.Analysis, error) {
-	content, err := p.parseContent(sourceFile, true)
+func parseFileWithImports(sourceFile *loader.SourceFile, importedDomains []*analyzer.Analysis) (*analyzer.Analysis, error) {
+	content, err := parseContent(sourceFile, true)
 	if err != nil {
 		return nil, err
 	}
@@ -59,46 +49,42 @@ func (p *_Parser) parseFileWithImports(sourceFile *loader.SourceFile, importedDo
 	return analysis, errors.Join(diagnostics...)
 }
 
-func (p *_Parser) parseDomainFiles(domainFile *loader.SourceFile, inputFiles []*loader.SourceFile) (*analyzer.Analysis, error) {
-	return p.parseDomainFilesWithImports(domainFile, inputFiles, nil)
-}
-
-func (p *_Parser) parseImportFiles(domainFile *loader.SourceFile, inputFiles []*loader.SourceFile) (*analyzer.Analysis, error) {
-	domainFileContent, err := p.parseDomainFile(domainFile)
+func parseImportFiles(domainFile *loader.SourceFile, inputFiles []*loader.SourceFile) (*analyzer.Analysis, error) {
+	domainFileContent, err := parseDomainFile(domainFile)
 	if err != nil {
 		return nil, err
 	}
-	parsedContents, err := p.parseContentsExcept(inputFiles, domainFile.FilePath)
+	parsedContents, err := parseContentsExcept(inputFiles, domainFile.FilePath)
 	if err != nil {
 		return nil, err
 	}
 	domainName := domainFileContent.Domain.Name.String()
-	if err := p.validateDirectoryDomains(domainName, parsedContents); err != nil {
+	if err := validateDirectoryDomains(domainName, parsedContents); err != nil {
 		return nil, err
 	}
 	analysis, diagnostics := analyzer.AnalyzeImport(buildMergedContent(domainFileContent, parsedContents))
 	return analysis, errors.Join(diagnostics...)
 }
 
-func (p *_Parser) parseDomainFilesWithImports(domainFile *loader.SourceFile, inputFiles []*loader.SourceFile, importedDomains []*analyzer.Analysis) (*analyzer.Analysis, error) {
-	domainFileContent, err := p.parseDomainFile(domainFile)
+func parseDomainFilesWithImports(domainFile *loader.SourceFile, inputFiles []*loader.SourceFile, importedDomains []*analyzer.Analysis) (*analyzer.Analysis, error) {
+	domainFileContent, err := parseDomainFile(domainFile)
 	if err != nil {
 		return nil, err
 	}
-	parsedContents, err := p.parseContentsExcept(inputFiles, domainFile.FilePath)
+	parsedContents, err := parseContentsExcept(inputFiles, domainFile.FilePath)
 	if err != nil {
 		return nil, err
 	}
 	domainName := domainFileContent.Domain.Name.String()
-	if err := p.validateDirectoryDomains(domainName, parsedContents); err != nil {
+	if err := validateDirectoryDomains(domainName, parsedContents); err != nil {
 		return nil, err
 	}
 	analysis, diagnostics := analyzer.Analyze(buildMergedContent(domainFileContent, parsedContents), importedDomains)
 	return analysis, errors.Join(diagnostics...)
 }
 
-func (p *_Parser) parseDomainFile(domainFile *loader.SourceFile) (*grammar.SkelContent, error) {
-	content, err := p.parseContent(domainFile, true)
+func parseDomainFile(domainFile *loader.SourceFile) (*grammar.SkelContent, error) {
+	content, err := parseContent(domainFile, true)
 	if err != nil {
 		return nil, err
 	}
@@ -108,17 +94,13 @@ func (p *_Parser) parseDomainFile(domainFile *loader.SourceFile) (*grammar.SkelC
 	return content, nil
 }
 
-func (p *_Parser) parseContents(inputFiles []*loader.SourceFile) ([]*grammar.SkelContent, error) {
-	return p.parseContentsExcept(inputFiles, "")
-}
-
-func (p *_Parser) parseContentsExcept(inputFiles []*loader.SourceFile, excludedPath string) ([]*grammar.SkelContent, error) {
+func parseContentsExcept(inputFiles []*loader.SourceFile, excludedPath string) ([]*grammar.SkelContent, error) {
 	contents := make([]*grammar.SkelContent, 0, len(inputFiles))
 	for _, inputFile := range inputFiles {
 		if excludedPath != "" && filepath.Clean(inputFile.FilePath) == filepath.Clean(excludedPath) {
 			continue
 		}
-		content, err := p.parseContent(inputFile, true)
+		content, err := parseContent(inputFile, true)
 		if err != nil {
 			return nil, err
 		}
@@ -127,7 +109,7 @@ func (p *_Parser) parseContentsExcept(inputFiles []*loader.SourceFile, excludedP
 	return contents, nil
 }
 
-func (p *_Parser) validateDirectoryDomains(domainName string, contents []*grammar.SkelContent) error {
+func validateDirectoryDomains(domainName string, contents []*grammar.SkelContent) error {
 	for _, content := range contents {
 		if filepath.Base(content.Pos.Filename) == domainFileName {
 			if content.Domain == nil || content.Domain.Name == nil {
@@ -170,7 +152,7 @@ func buildMergedContent(domainFileContent *grammar.SkelContent, contents []*gram
 	return merged
 }
 
-func (p *_Parser) parseContent(sourceFile *loader.SourceFile, requireDomain bool) (*grammar.SkelContent, error) {
+func parseContent(sourceFile *loader.SourceFile, requireDomain bool) (*grammar.SkelContent, error) {
 	content, err := ParseSource(sourceFile.FilePath, sourceFile.Content)
 	if err != nil {
 		return nil, fmt.Errorf("parse %s failed: %w", sourceFile.FilePath, err)

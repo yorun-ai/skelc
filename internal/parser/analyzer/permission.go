@@ -68,36 +68,6 @@ func (p *Analysis) normalizeServiceTypes(service *model.Service, refs *refContex
 	return valid
 }
 
-func (p *Analysis) normalizePermissionCodes(codes []string) bool {
-	valid := true
-	for index, code := range codes {
-		resourceRef, actionName, codeValid := splitPermissionCode(p.reporter, code)
-		if !codeValid {
-			valid = false
-			continue
-		}
-		resource, action := p.findResourceAction(resourceRef, actionName)
-		if !p.reporter.check(resource != nil, `permission %s references undefined resource %s`, code, resourceRef) {
-			valid = false
-			continue
-		}
-		if !p.reporter.check(action != nil, `permission %s references undefined action %s`, code, actionName) {
-			valid = false
-			continue
-		}
-		codes[index] = action.PermissionCode
-	}
-	return valid
-}
-
-func splitPermissionCode(reporter *diagnosticReporter, code string) (string, string, bool) {
-	index := strings.LastIndex(code, ":")
-	if !reporter.check(index > 0 && index < len(code)-1, `permission %s must be resource:action`, code) {
-		return "", "", false
-	}
-	return code[:index], code[index+1:], true
-}
-
 func (p *Analysis) normalizeServiceRequire(service *model.Service) bool {
 	valid := p.normalizeRequire(service.Require, false, nil, service.Pos)
 	for _, method := range service.Methods {

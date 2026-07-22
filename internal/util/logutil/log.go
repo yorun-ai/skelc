@@ -24,31 +24,13 @@ type Entry struct {
 	Message string
 }
 
-var entries []Entry
-
-func Clear() {
-	entries = nil
-}
-
 type _JSONLEntry struct {
 	Level   string `json:"level"`
 	Message string `json:"message"`
 }
 
-func Info(format string, args ...any) Entry {
-	return appendEntry(LevelInfo, format, args...)
-}
-
-func Warn(format string, args ...any) Entry {
-	return appendEntry(LevelWarn, format, args...)
-}
-
 func Error(format string, args ...any) Entry {
-	return appendEntry(LevelError, format, args...)
-}
-
-func Entries() []Entry {
-	return append([]Entry{}, entries...)
+	return Entry{Level: LevelError, Message: fmt.Sprintf(format, args...)}
 }
 
 func Format(entry Entry, format string) string {
@@ -66,15 +48,6 @@ func Format(entry Entry, format string) string {
 	default:
 		return message
 	}
-}
-
-func appendEntry(level Level, format string, args ...any) Entry {
-	entry := Entry{
-		Level:   level,
-		Message: fmt.Sprintf(format, args...),
-	}
-	entries = append(entries, entry)
-	return entry
 }
 
 func jsonl(level Level, message string) string {

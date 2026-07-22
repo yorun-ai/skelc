@@ -175,7 +175,7 @@ func TestValidateSkelGenOptionRequiresPub(t *testing.T) {
 func TestNormalizeCheckOption(t *testing.T) {
 	parserOption := parser.Option{SkelIn: "./demo"}
 
-	if err := normalizeCheckOption(&parserOption); err != nil {
+	if err := normalizeParserOption(&parserOption); err != nil {
 		t.Fatal(err)
 	}
 	if !filepath.IsAbs(parserOption.SkelIn) {
@@ -185,7 +185,7 @@ func TestNormalizeCheckOption(t *testing.T) {
 
 func TestNormalizeCheckOptionRequiresInput(t *testing.T) {
 	parserOption := parser.Option{}
-	expectOptionError(t, normalizeCheckOption(&parserOption), "missing flag skel-in")
+	expectOptionError(t, normalizeParserOption(&parserOption), "missing flag skel-in")
 }
 
 func expectOptionError(t *testing.T, err error, expected string) {

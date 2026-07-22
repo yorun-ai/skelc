@@ -37,8 +37,7 @@ data User { id: string }
 `),
 	}
 
-	parser := newParser()
-	analysis, err := parser.parseFile(singleSource)
+	analysis, err := parseFileWithImports(singleSource, nil)
 	if err != nil {
 		t.Fatalf("parse file: %v", err)
 	}

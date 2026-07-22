@@ -100,20 +100,9 @@ func normalizeParserOption(option *parser.Option) error {
 	return nil
 }
 
-func normalizeCheckOption(option *parser.Option) error  { return normalizeParserOption(option) }
-func normalizeSymbolOption(option *parser.Option) error { return normalizeParserOption(option) }
-
 func checkNoTrailingSlash(value, flagName string) error {
 	if value != "" && strings.HasSuffix(value, "/") {
 		return fmt.Errorf("flag %s must not end with /", flagName)
 	}
 	return nil
-}
-
-func normalizeRequiredPath(path string) (string, error) {
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return "", fmt.Errorf("resolve path %s: %w", path, err)
-	}
-	return absPath, nil
 }

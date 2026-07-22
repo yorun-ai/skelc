@@ -9,7 +9,7 @@ import (
 
 func TestParseReturnsErrorWhenDomainNameMissing(t *testing.T) {
 	source := &loader.SourceFile{FilePath: "/tmp/domain.skel", Content: []byte("domain\n")}
-	_, err := newParser().parseFile(source)
+	_, err := parseFileWithImports(source, nil)
 	expectErrorContains(t, err, "/tmp/domain.skel")
 }
 
@@ -26,43 +26,43 @@ service UnitService {
     }
 }
 `)}
-	_, err := newParser().parseFile(source)
+	_, err := parseFileWithImports(source, nil)
 	expectErrorContains(t, err, "parse "+path+" failed")
 }
 
 func TestParseReturnsErrorWhenSkelDomainMismatches(t *testing.T) {
-	parser, files := validationParserForTest(t,
+	files := validationFilesForTest(t,
 		"@desc(\"User domain\")\ndomain demo.user\n",
 		"domain demo.account\ndata User { id: string }\n",
 	)
-	_, err := parser.parseDomainFiles(findDomainFileForTest(t, files), files)
+	_, err := parseDomainFilesWithImports(findDomainFileForTest(t, files), files, nil)
 	expectErrorContains(t, err, "domain mismatch")
 }
 
 func TestParseDirectorySkelFileWithoutDomainReturnsError(t *testing.T) {
-	parser, files := validationParserForTest(t,
+	files := validationFilesForTest(t,
 		"@desc(\"User domain\")\ndomain demo.user\n",
 		"data User { id: string }\n",
 	)
-	_, err := parser.parseDomainFiles(findDomainFileForTest(t, files), files)
+	_, err := parseDomainFilesWithImports(findDomainFileForTest(t, files), files, nil)
 	expectErrorContains(t, err, "missing domain declaration")
 }
 
 func TestParseReturnsErrorWhenDirectorySkelFileDeclaresDomainDecorator(t *testing.T) {
-	parser, files := validationParserForTest(t,
+	files := validationFilesForTest(t,
 		"@desc(\"User domain\")\ndomain demo.user\n",
 		"@desc(\"Not allowed\")\ndomain demo.user\ndata User { id: string }\n",
 	)
-	_, err := parser.parseDomainFiles(findDomainFileForTest(t, files), files)
+	_, err := parseDomainFilesWithImports(findDomainFileForTest(t, files), files, nil)
 	expectErrorContains(t, err, "domain decorator is only allowed in domain.skel")
 }
 
 func TestParseReturnsErrorWhenDomainFileDeclaresEntries(t *testing.T) {
-	parser, files := validationParserForTest(t,
+	files := validationFilesForTest(t,
 		"@desc(\"User domain\")\ndomain demo.user\ndata User { id: string }\n",
 		"domain demo.user\nservice UserService { method ping {} }\n",
 	)
-	_, err := parser.parseDomainFiles(findDomainFileForTest(t, files), files)
+	_, err := parseDomainFilesWithImports(findDomainFileForTest(t, files), files, nil)
 	expectErrorContains(t, err, "can only contain domain declaration and @desc")
 }
 
@@ -77,7 +77,7 @@ func TestValidateSourceReturnsErrorForInvalidSyntax(t *testing.T) {
 	expectErrorContains(t, err, "parse /tmp/demo.skel failed")
 }
 
-func validationParserForTest(t *testing.T, domain, source string) (*_Parser, []*loader.SourceFile) {
+func validationFilesForTest(t *testing.T, domain, source string) []*loader.SourceFile {
 	t.Helper()
 	dir := t.TempDir()
 	writeFile(t, filepath.Join(dir, "domain.skel"), domain)
@@ -86,5 +86,5 @@ func validationParserForTest(t *testing.T, domain, source string) (*_Parser, []*
 	if err != nil {
 		t.Fatal(err)
 	}
-	return newParser(), result.Files
+	return result.Files
 }

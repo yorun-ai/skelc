@@ -75,7 +75,7 @@ func TestRunSkelcGenGoModule(t *testing.T) {
 	if result.Stderr != "" {
 		t.Fatalf("unexpected stderr: %q", result.Stderr)
 	}
-	assertFileContains(t, filepath.Join(goOut, "go.mod"), "go.yorun.ai/vine v0.9.0")
+	assertFileContains(t, filepath.Join(goOut, "go.mod"), "go.yorun.ai/vine v0.9.3")
 }
 
 func TestRunSkelcGenGoModuleWithGoVineVersion(t *testing.T) {
@@ -101,7 +101,7 @@ func TestRunSkelcGenGoModuleRejectsLowGoVineVersion(t *testing.T) {
 	if result.ExitCode != ExitCodeError {
 		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
 	}
-	if result.Stderr != "Error: go-vine-version v0.8.0 is lower than default v0.9.0" {
+	if result.Stderr != "Error: go-vine-version v0.8.0 is lower than default v0.9.3" {
 		t.Fatalf("unexpected stderr: %q", result.Stderr)
 	}
 }

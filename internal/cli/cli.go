@@ -98,7 +98,6 @@ func newCommand() *ucli.Command {
 
 func runCLICommand(command *ucli.Command, args []string) (result Result) {
 	rawLogFormat := rawLogFormatFromArgs(args)
-	logutil.Clear()
 
 	var stdout strings.Builder
 	var stderr strings.Builder
@@ -193,12 +192,6 @@ func printDiagnostics(cmd *ucli.Command, diagnostics []parser.Diagnostic) {
 	}
 }
 
-func printLogs(cmd *ucli.Command, entries []logutil.Entry) {
-	for _, entry := range entries {
-		_, _ = fmt.Fprintln(cmd.Root().Writer, formatLogEntry(cmd, entry))
-	}
-}
-
 func commandLogFormat(cmd *ucli.Command) string {
 	value := cmd.String(flagLogFormat)
 	if value == "" {
@@ -235,14 +228,6 @@ func rawLogFormatFromArgs(args []string) string {
 		}
 	}
 	return logFormatText
-}
-
-func formatWarningLog(cmd *ucli.Command, message string) string {
-	return logutil.Format(logutil.Entry{Level: logutil.LevelWarn, Message: message}, commandLogFormat(cmd))
-}
-
-func formatLogEntry(cmd *ucli.Command, entry logutil.Entry) string {
-	return logutil.Format(entry, commandLogFormat(cmd))
 }
 
 func newOutputFormatFlag(usage string) ucli.Flag {

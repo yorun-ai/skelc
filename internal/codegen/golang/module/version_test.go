@@ -10,7 +10,7 @@ func TestResolveVineVersion(t *testing.T) {
 	}{
 		{name: "default", expected: DefaultVineVersion},
 		{name: "trimmed default", version: "  ", expected: DefaultVineVersion},
-		{name: "explicit default", version: "v0.9.0", expected: "v0.9.0"},
+		{name: "explicit default", version: "v0.9.3", expected: "v0.9.3"},
 		{name: "higher", version: "v1.2.3", expected: "v1.2.3"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -26,7 +26,7 @@ func TestResolveVineVersion(t *testing.T) {
 }
 
 func TestResolveVineVersionRejectsInvalidVersion(t *testing.T) {
-	for _, version := range []string{"0.9.0", "v0.8.0", "v-invalid"} {
+	for _, version := range []string{"0.9.3", "v0.9.0", "v-invalid"} {
 		t.Run(version, func(t *testing.T) {
 			if _, err := ResolveVineVersion(version); err == nil {
 				t.Fatalf("expected %q to return an error", version)

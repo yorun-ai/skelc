@@ -19,11 +19,6 @@ func NewRenderer(outputDir string) *Renderer {
 	return new(Renderer{outputDir: outputDir})
 }
 
-func (r *Renderer) Render(file string, tpl string, data any) {
-	content := renderTemplate(tpl, data)
-	r.Write(file, content)
-}
-
 func (r *Renderer) Write(file string, content string) {
 	if r.err != nil {
 		return
@@ -58,10 +53,6 @@ func RenderTemplateWithFuncs(tplString string, payloadData any, funcs template.F
 	checkutil.CheckNilError(err, "execute template failed")
 
 	return rendered.String()
-}
-
-func renderTemplate(tplString string, payloadData any) string {
-	return RenderTemplateWithFuncs(tplString, payloadData, nil)
 }
 
 func normalizeTrailingNewline(content string) string {

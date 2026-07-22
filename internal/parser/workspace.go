@@ -115,7 +115,12 @@ func (d Diagnostics) Errors() []error {
 }
 
 func (d Diagnostics) HasErrors() bool {
-	return len(d.Errors()) > 0
+	for _, diagnostic := range d {
+		if diagnostic.Severity != DiagnosticSeverityWarning {
+			return true
+		}
+	}
+	return false
 }
 
 func (d Diagnostics) Failures() Diagnostics {
@@ -130,16 +135,6 @@ func (d Diagnostics) Failures() Diagnostics {
 
 func (d Diagnostics) DiagnosticEntries() Diagnostics {
 	return append(Diagnostics{}, d...)
-}
-
-func (d Diagnostics) Warnings() Diagnostics {
-	warnings := Diagnostics{}
-	for _, diagnostic := range d {
-		if diagnostic.Severity == DiagnosticSeverityWarning {
-			warnings = append(warnings, diagnostic)
-		}
-	}
-	return warnings
 }
 
 type _WorkspaceDomain struct {

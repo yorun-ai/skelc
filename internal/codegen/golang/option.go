@@ -37,7 +37,3 @@ type _GenOption struct {
 
 	Domain *model.Domain
 }
-
-func isValidMode(mode view.Mode) bool {
-	return mode == view.ModeFull || mode == view.ModePub || mode == view.ModeRegular
-}

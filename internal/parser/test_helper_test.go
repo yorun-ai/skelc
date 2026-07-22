@@ -28,8 +28,7 @@ func parseDomain(t *testing.T, files map[string]string) *model.Domain {
 	}
 	sourceFiles := loadResult.Files
 
-	parser := newParser()
-	domain, err := parser.parseDomainFiles(findDomainFileForTest(t, sourceFiles), sourceFiles)
+	domain, err := parseDomainFilesWithImports(findDomainFileForTest(t, sourceFiles), sourceFiles, nil)
 	if err != nil {
 		t.Fatalf("parse domain: %v", err)
 	}

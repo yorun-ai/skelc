@@ -29,7 +29,7 @@ func parseMethods(owner *grammar.Identifier, methods []*grammar.Method) []*model
 	for _, grammarMethod := range methods {
 		method := parseMethod(grammarMethod)
 		duplicatedPosition, duplicated := methodPos[method.Name]
-		checkutil.CheckFunc(!duplicated, func() string {
+		checkutil.CheckFuncAt(method.Pos, !duplicated, func() string {
 			return fmt.Sprintf("%s duplicated method %s found, also present at %s", method.Pos, method.Name, duplicatedPosition)
 		})
 		if method.ArgumentsData != nil {
@@ -69,7 +69,7 @@ func parseMethod(gm *grammar.Method) *model.Method {
 		for _, grammarArgument := range input.Arguments {
 			arg := parseArgument(grammarArgument)
 			duplicatedPosition, duplicated := argPos[arg.Name]
-			checkutil.CheckFunc(!duplicated, func() string {
+			checkutil.CheckFuncAt(arg.Pos, !duplicated, func() string {
 				return fmt.Sprintf("%s duplicated Argument %s found, also present at %s", arg.Pos, arg.Name, duplicatedPosition)
 			})
 			argPos[arg.Name] = lexer.Position{Filename: arg.Pos.File, Line: arg.Pos.Line, Column: arg.Pos.Column}

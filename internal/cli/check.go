@@ -49,10 +49,7 @@ func parseCheckSource(option parser.Option) (result parser.Result) {
 		if recovered == nil {
 			return
 		}
-		err, ok := recovered.(error)
-		if !ok {
-			panic(recovered)
-		}
+		err := checkutil.Recover(recovered)
 		if !parser.IsMissingImportError(err) {
 			panic(err)
 		}

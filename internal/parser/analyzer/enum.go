@@ -33,7 +33,7 @@ func parseEnum(ge *grammar.Enum) *model.Enum {
 	for _, grammarItem := range ge.Items {
 		item := parseEnumItem(grammarItem)
 		duplicatedPosition, duplicated := itemPositionByName[item.Name]
-		checkutil.CheckFunc(!duplicated, func() string {
+		checkutil.CheckFuncAt(item.Pos, !duplicated, func() string {
 			return fmt.Sprintf("%s duplicated EnumItem %s found, also present at %s",
 				item.Pos, item.Name, duplicatedPosition)
 		})

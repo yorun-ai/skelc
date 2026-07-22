@@ -16,7 +16,7 @@ func resolveMethodArgumentJsonPath(method *model.Method, path string) *model.Typ
 		}
 		return resolveJsonPathPartType(arg.Type, parts[0], parts[1:], path)
 	}
-	checkutil.Panicf(`require check argument path %s references undefined input argument "%s"`, path, parts[0].Name)
+	checkutil.Failf(`require check argument path %s references undefined input argument "%s"`, path, parts[0].Name)
 	panic("unreachable")
 }
 
@@ -59,7 +59,7 @@ func resolveJsonPathType(type_ *model.Type, parts []_PermissionCheckPathPart, fu
 			return resolveJsonPathPartType(member.Type, parts[0], parts[1:], fullPath)
 		}
 	}
-	checkutil.Panicf(`require check argument path %s references undefined data member "%s"`, fullPath, parts[0].Name)
+	checkutil.Failf(`require check argument path %s references undefined data member "%s"`, fullPath, parts[0].Name)
 	panic("unreachable")
 }
 

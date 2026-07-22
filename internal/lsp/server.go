@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/alecthomas/participle/v2"
 	"go.lsp.dev/jsonrpc2"
@@ -19,11 +20,15 @@ import (
 type _Server struct {
 	protocol.UnimplementedServer
 
-	mu        sync.RWMutex
-	documents map[uri.URI]*_Document
-	open      map[uri.URI]bool
-	exit      chan struct{}
-	exitOnce  sync.Once
+	mu            sync.RWMutex
+	documents     map[uri.URI]*_Document
+	open          map[uri.URI]bool
+	semantic      map[uri.URI][]protocol.Diagnostic
+	client        protocol.Client
+	generation    uint64
+	semanticTimer *time.Timer
+	exit          chan struct{}
+	exitOnce      sync.Once
 }
 
 type _ReadWriteCloser struct {
@@ -56,7 +61,10 @@ func Serve(ctx context.Context, input io.Reader, output io.Writer) error {
 }
 
 func newServer() *_Server {
-	return &_Server{documents: map[uri.URI]*_Document{}, open: map[uri.URI]bool{}, exit: make(chan struct{})}
+	return &_Server{
+		documents: map[uri.URI]*_Document{}, open: map[uri.URI]bool{},
+		semantic: map[uri.URI][]protocol.Diagnostic{}, exit: make(chan struct{}),
+	}
 }
 
 func (s *_Server) Initialize(_ context.Context, params *protocol.InitializeParams) (*protocol.InitializeResult, error) {
@@ -89,11 +97,19 @@ func (s *_Server) Initialize(_ context.Context, params *protocol.InitializeParam
 	}, nil
 }
 
-func (s *_Server) Initialized(context.Context, *protocol.InitializedParams) error { return nil }
+func (s *_Server) Initialized(ctx context.Context, _ *protocol.InitializedParams) error {
+	s.rememberClient(ctx)
+	s.scheduleSemanticAnalysis()
+	return nil
+}
 
-func (s *_Server) Shutdown(context.Context) error { return nil }
+func (s *_Server) Shutdown(context.Context) error {
+	s.stopSemanticAnalysis()
+	return nil
+}
 
 func (s *_Server) Exit(context.Context) error {
+	s.stopSemanticAnalysis()
 	s.exitOnce.Do(func() { close(s.exit) })
 	return nil
 }
@@ -101,6 +117,7 @@ func (s *_Server) Exit(context.Context) error {
 func (s *_Server) DidOpen(ctx context.Context, params *protocol.DidOpenTextDocumentParams) error {
 	document := params.TextDocument
 	s.putDocument(document.URI, document.Text, document.Version, true)
+	s.invalidateSemanticDiagnostics(ctx)
 	return s.publishDiagnostics(ctx, document.URI)
 }
 
@@ -113,6 +130,7 @@ func (s *_Server) DidChange(ctx context.Context, params *protocol.DidChangeTextD
 		return errors.New("skelc lsp requires full document synchronization")
 	}
 	s.putDocument(params.TextDocument.URI, change.Text, params.TextDocument.Version, true)
+	s.invalidateSemanticDiagnostics(ctx)
 	return s.publishDiagnostics(ctx, params.TextDocument.URI)
 }
 
@@ -120,12 +138,18 @@ func (s *_Server) DidClose(ctx context.Context, params *protocol.DidCloseTextDoc
 	documentURI := params.TextDocument.URI
 	s.mu.Lock()
 	delete(s.open, documentURI)
+	exists := false
 	if content, err := os.ReadFile(documentURI.FsPath()); err == nil {
 		s.documents[documentURI] = indexDocument(documentURI, documentURI.FsPath(), string(content), 0)
+		exists = true
 	} else {
 		delete(s.documents, documentURI)
 	}
 	s.mu.Unlock()
+	s.invalidateSemanticDiagnostics(ctx)
+	if exists {
+		return s.publishDiagnostics(ctx, documentURI)
+	}
 	client, ok := protocol.ClientFromContext(ctx)
 	if !ok {
 		return nil
@@ -133,7 +157,8 @@ func (s *_Server) DidClose(ctx context.Context, params *protocol.DidCloseTextDoc
 	return client.PublishDiagnostics(ctx, &protocol.PublishDiagnosticsParams{URI: documentURI, Diagnostics: []protocol.Diagnostic{}})
 }
 
-func (s *_Server) DidChangeWatchedFiles(_ context.Context, params *protocol.DidChangeWatchedFilesParams) error {
+func (s *_Server) DidChangeWatchedFiles(ctx context.Context, params *protocol.DidChangeWatchedFilesParams) error {
+	changed := make([]uri.URI, 0, len(params.Changes))
 	for _, change := range params.Changes {
 		documentURI := change.URI
 		s.mu.Lock()
@@ -141,6 +166,7 @@ func (s *_Server) DidChangeWatchedFiles(_ context.Context, params *protocol.DidC
 			s.mu.Unlock()
 			continue
 		}
+		changed = append(changed, documentURI)
 		if change.Type == protocol.FileChangeTypeDeleted {
 			delete(s.documents, documentURI)
 			s.mu.Unlock()
@@ -151,6 +177,12 @@ func (s *_Server) DidChangeWatchedFiles(_ context.Context, params *protocol.DidC
 			s.documents[documentURI] = indexDocument(documentURI, documentURI.FsPath(), string(content), 0)
 		}
 		s.mu.Unlock()
+	}
+	s.invalidateSemanticDiagnostics(ctx)
+	for _, documentURI := range changed {
+		if err := s.publishDiagnostics(ctx, documentURI); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -257,10 +289,16 @@ func (s *_Server) publishDiagnostics(ctx context.Context, documentURI uri.URI) e
 	if !ok {
 		return nil
 	}
+	s.rememberClient(ctx)
+	return s.publishDiagnosticsWithClient(ctx, client, documentURI)
+}
+
+func (s *_Server) publishDiagnosticsWithClient(ctx context.Context, client protocol.Client, documentURI uri.URI) error {
 	s.mu.RLock()
 	document := s.documents[documentURI]
+	semantic := append([]protocol.Diagnostic{}, s.semantic[documentURI]...)
 	s.mu.RUnlock()
-	diagnostics := []protocol.Diagnostic{}
+	diagnostics := semantic
 	if document != nil && document.ParseError != nil {
 		position := protocol.Position{}
 		message := document.ParseError.Error()

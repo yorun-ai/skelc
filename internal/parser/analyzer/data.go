@@ -58,12 +58,12 @@ func parseDataLike(gs *grammar.Data, kind model.DataKind) *model.Data {
 			"%s Event %s does not support type parameters",
 			gs.Name.Pos, gs.Name.Value,
 		)
-		checkutil.CheckFunc(gs.Qualifier == nil, func() string {
+		checkutil.CheckFuncAt(gs.Name.Pos, gs.Qualifier == nil, func() string {
 			return fmt.Sprintf("%s Event %s does not support qualifier %s", gs.Qualifier.Pos, gs.Name.Value, gs.Qualifier.Value)
 		})
 	} else {
 		checkNotReservedKindSuffix("Data", gs.Name)
-		checkutil.CheckFunc(gs.Qualifier == nil, func() string {
+		checkutil.CheckFuncAt(gs.Name.Pos, gs.Qualifier == nil, func() string {
 			return fmt.Sprintf("%s Data %s does not support qualifier %s", gs.Qualifier.Pos, gs.Name.Value, gs.Qualifier.Value)
 		})
 	}
@@ -87,7 +87,7 @@ func parseDataLike(gs *grammar.Data, kind model.DataKind) *model.Data {
 	for _, grammarTypeParameter := range gs.TypeParameters {
 		typeParameter := parseTypeParameter(grammarTypeParameter)
 		duplicatedPosition, duplicated := typeParamPos[typeParameter.Name]
-		checkutil.CheckFunc(!duplicated, func() string {
+		checkutil.CheckFuncAt(typeParameter.Pos, !duplicated, func() string {
 			return fmt.Sprintf("%s duplicated TypeParameter %s found, also present at %s",
 				typeParameter.Pos, typeParameter.Name, duplicatedPosition)
 		})
@@ -98,7 +98,7 @@ func parseDataLike(gs *grammar.Data, kind model.DataKind) *model.Data {
 	for _, grammarMember := range gs.Members {
 		member := parseDataMember(grammarMember)
 		duplicatedPosition, duplicated := memberPos[member.Name]
-		checkutil.CheckFunc(!duplicated, func() string {
+		checkutil.CheckFuncAt(member.Pos, !duplicated, func() string {
 			return fmt.Sprintf("%s duplicated DataMember %s found, also present at %s",
 				member.Pos, member.Name, duplicatedPosition)
 		})

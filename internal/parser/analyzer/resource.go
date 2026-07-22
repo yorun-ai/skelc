@@ -55,7 +55,7 @@ func parseResource(ge *grammar.Resource, pub bool) *model.Resource {
 	for _, grammarCheck := range ge.Checks {
 		check := parseResourceCheck("", grammarCheck)
 		duplicatedPosition, duplicated := checkPos[check.Name]
-		checkutil.CheckFunc(!duplicated, func() string {
+		checkutil.CheckFuncAt(grammarCheck.Name.Pos, !duplicated, func() string {
 			return fmt.Sprintf("%s duplicated resource check %s found, also present at %s", grammarCheck.Name.Pos, check.Name, duplicatedPosition)
 		})
 		checkPos[check.Name] = grammarCheck.Name.Pos
@@ -67,7 +67,7 @@ func parseResource(ge *grammar.Resource, pub bool) *model.Resource {
 	for _, grammarAction := range ge.Actions {
 		action := parseResourceAction(grammarAction, checkPos)
 		duplicatedPosition, duplicated := actionPos[action.Name]
-		checkutil.CheckFunc(!duplicated, func() string {
+		checkutil.CheckFuncAt(action.Pos, !duplicated, func() string {
 			return fmt.Sprintf("%s duplicated resource action %s found, also present at %s", action.Pos, action.Name, duplicatedPosition)
 		})
 		actionPos[action.Name] = lexer.Position{Filename: action.Pos.File, Line: action.Pos.Line, Column: action.Pos.Column}
@@ -97,10 +97,10 @@ func parseResourceAction(ga *grammar.ResourceAction, resourceCheckPos map[string
 	for _, grammarCheck := range ga.Checks {
 		check := parseResourceCheck(ga.Name.Value, grammarCheck)
 		if duplicatedPosition, duplicated := resourceCheckPos[check.Name]; duplicated {
-			checkutil.Panicf("%s duplicated resource action check %s found, also present at %s", grammarCheck.Name.Pos, check.Name, duplicatedPosition)
+			checkutil.Failf("%s duplicated resource action check %s found, also present at %s", grammarCheck.Name.Pos, check.Name, duplicatedPosition)
 		}
 		duplicatedPosition, duplicated := checkPos[check.Name]
-		checkutil.CheckFunc(!duplicated, func() string {
+		checkutil.CheckFuncAt(grammarCheck.Name.Pos, !duplicated, func() string {
 			return fmt.Sprintf("%s duplicated resource action check %s found, also present at %s", grammarCheck.Name.Pos, check.Name, duplicatedPosition)
 		})
 		checkPos[check.Name] = grammarCheck.Name.Pos

@@ -16,6 +16,7 @@ import (
 
 type _Document struct {
 	URI         uri.URI
+	Path        string
 	Source      string
 	Version     int32
 	Domain      string
@@ -56,7 +57,10 @@ type _Token struct {
 }
 
 func indexDocument(documentURI uri.URI, path, source string, version int32) *_Document {
-	document := &_Document{URI: documentURI, Source: source, Version: version, Imports: map[string]string{}}
+	if path == "" {
+		path = documentURI.FsPath()
+	}
+	document := &_Document{URI: documentURI, Path: path, Source: source, Version: version, Imports: map[string]string{}}
 	tokens := scanIdentifiers(source)
 	content, err := parser.ParseSource(path, []byte(source))
 	if err != nil {

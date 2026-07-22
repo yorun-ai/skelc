@@ -19,7 +19,7 @@ func (p *Analysis) checkConfigMemberTypes(dataList []*model.Data) {
 }
 
 func checkConfigMemberType(dataType *model.Data, member *model.DataMember) {
-	checkutil.CheckFunc(member.Type.Kind != model.TypeKindData, func() string {
+	checkutil.CheckFuncAt(member.Pos, member.Type.Kind != model.TypeKindData, func() string {
 		return fmt.Sprintf("%s config %s member %s cannot reference data %s",
 			member.Pos, dataType.Name, member.Name, member.Type.Data.Name)
 	})
@@ -48,7 +48,7 @@ func checkConfigMemberType(dataType *model.Data, member *model.DataMember) {
 			"%s config %s member %s map value cannot use binary type", member.Pos, dataType.Name, member.Name)
 		return
 	default:
-		checkutil.Panicf("%s config %s member %s has unsupported type kind %v",
+		checkutil.Failf("%s config %s member %s has unsupported type kind %v",
 			member.Pos, dataType.Name, member.Name, member.Type.Kind)
 	}
 }

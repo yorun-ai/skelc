@@ -83,6 +83,6 @@ func castScalarType(p *model.Type) *Type {
 			DefaultValue: codegen.ChooseString(p.Nullable, "nil", `""`),
 		}
 	}
-	checkutil.Panicf("unexpected scalar type %+v", p)
+	checkutil.Failf("unexpected scalar type %+v", p)
 	return nil
 }

@@ -206,7 +206,7 @@ func appendServiceTypeImports(imports []string, seen map[string]struct{}, typeTo
 		return imports
 	}
 
-	checkutil.Panicf("unexpected type %+v", typeToken)
+	checkutil.Failf("unexpected type %+v", typeToken)
 	return nil
 }
 

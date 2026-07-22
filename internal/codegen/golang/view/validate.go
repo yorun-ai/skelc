@@ -55,7 +55,7 @@ func validatePubRequireExpr(domainName string, context string, expr *model.Permi
 		resourceSkelName := permissionCodeResourceSkelName(expr.Code)
 		_, pubResource := pubResourceBySkelName[resourceSkelName]
 		if isLocalResourceSkelName(domainName, resourceSkelName) && !pubResource {
-			checkutil.Panicf("%s references non-pub resource %s", context, resourceSkelName)
+			checkutil.Failf("%s references non-pub resource %s", context, resourceSkelName)
 		}
 	}
 	for _, child := range expr.Children {

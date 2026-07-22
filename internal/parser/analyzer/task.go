@@ -32,7 +32,7 @@ func parseTaskTriggers(owner *grammar.Identifier, triggers []*grammar.TaskTrigge
 	for _, grammarTrigger := range triggers {
 		trigger := parseTaskTrigger(grammarTrigger)
 		duplicatedPosition, duplicated := triggerPos[trigger.Name]
-		checkutil.CheckFunc(!duplicated, func() string {
+		checkutil.CheckFuncAt(trigger.Pos, !duplicated, func() string {
 			return fmt.Sprintf("%s duplicated task trigger %s found, also present at %s",
 				trigger.Pos, trigger.Name, duplicatedPosition)
 		})
@@ -73,7 +73,7 @@ func parseTaskTrigger(gt *grammar.TaskTrigger) *model.TaskTrigger {
 	for _, grammarArgument := range gt.Input.Arguments {
 		arg := parseArgument(grammarArgument)
 		duplicatedPosition, duplicated := argPos[arg.Name]
-		checkutil.CheckFunc(!duplicated, func() string {
+		checkutil.CheckFuncAt(arg.Pos, !duplicated, func() string {
 			return fmt.Sprintf("%s duplicated Argument %s found, also present at %s",
 				arg.Pos, arg.Name, duplicatedPosition)
 		})

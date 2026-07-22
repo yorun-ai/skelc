@@ -7,7 +7,7 @@ import (
 )
 
 func TestParseTask(t *testing.T) {
-	task := parseTask(&grammar.Task{
+	task := parseTaskTest(t, &grammar.Task{
 		Decorators: []*grammar.Decorator{
 			{Name: ident("desc"), Value: decoratorValue(`"Rebuild the user index"`)},
 		},
@@ -53,7 +53,7 @@ func TestParseTask(t *testing.T) {
 }
 
 func TestParseTaskTriggerWithoutInput(t *testing.T) {
-	task := parseTask(&grammar.Task{
+	task := parseTaskTest(t, &grammar.Task{
 		Name: ident("RebuildUserIndexTask"),
 		Triggers: []*grammar.TaskTrigger{
 			{Name: ident("atTime")},
@@ -71,43 +71,39 @@ func TestParseTaskTriggerWithoutInput(t *testing.T) {
 }
 
 func TestParseTaskRejectsTriggerExampleDecorator(t *testing.T) {
-	expectPanicContains(t, "unexpected decorator @example", func() {
-		parseTask(&grammar.Task{
-			Name: ident("RebuildUserIndexTask"),
-			Triggers: []*grammar.TaskTrigger{
-				{
-					Decorators: []*grammar.Decorator{
-						{Name: ident("example"), Value: decoratorValue(`"demo"`)},
-					},
-					Name: ident("atTime"),
-					Input: &grammar.MethodInput{
-						Arguments: []*grammar.Argument{
-							{Name: ident("startAt"), Type: plainType(grammar.LocalDateTime)},
-						},
+	expectTaskDiagnostic(t, "unexpected decorator @example", &grammar.Task{
+		Name: ident("RebuildUserIndexTask"),
+		Triggers: []*grammar.TaskTrigger{
+			{
+				Decorators: []*grammar.Decorator{
+					{Name: ident("example"), Value: decoratorValue(`"demo"`)},
+				},
+				Name: ident("atTime"),
+				Input: &grammar.MethodInput{
+					Arguments: []*grammar.Argument{
+						{Name: ident("startAt"), Type: plainType(grammar.LocalDateTime)},
 					},
 				},
 			},
-		})
+		},
 	})
 }
 
 func TestParseTaskRejectsInputExampleDecorator(t *testing.T) {
-	expectPanicContains(t, "unexpected decorator @example", func() {
-		parseTask(&grammar.Task{
-			Name: ident("RebuildUserIndexTask"),
-			Triggers: []*grammar.TaskTrigger{
-				{
-					Name: ident("atTime"),
-					Input: &grammar.MethodInput{
-						Decorators: []*grammar.Decorator{
-							{Name: ident("example"), Value: decoratorValue(`{"startAt":"2026-05-01T10:00:00"}`)},
-						},
-						Arguments: []*grammar.Argument{
-							{Name: ident("startAt"), Type: plainType(grammar.LocalDateTime)},
-						},
+	expectTaskDiagnostic(t, "unexpected decorator @example", &grammar.Task{
+		Name: ident("RebuildUserIndexTask"),
+		Triggers: []*grammar.TaskTrigger{
+			{
+				Name: ident("atTime"),
+				Input: &grammar.MethodInput{
+					Decorators: []*grammar.Decorator{
+						{Name: ident("example"), Value: decoratorValue(`{"startAt":"2026-05-01T10:00:00"}`)},
+					},
+					Arguments: []*grammar.Argument{
+						{Name: ident("startAt"), Type: plainType(grammar.LocalDateTime)},
 					},
 				},
 			},
-		})
+		},
 	})
 }

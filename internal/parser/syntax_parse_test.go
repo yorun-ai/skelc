@@ -196,7 +196,11 @@ func TestParseFilesPopulatesDomainAndSkelContents(t *testing.T) {
 	sourceFiles := loader.Load(dir).Files
 
 	parser := newParser()
-	domain := parser.parseDomainFiles(findDomainFileForTest(t, sourceFiles), sourceFiles).Model()
+	analysis, err := parser.parseDomainFiles(findDomainFileForTest(t, sourceFiles), sourceFiles)
+	if err != nil {
+		t.Fatalf("parse domain files: %v", err)
+	}
+	domain := analysis.Model()
 
 	entryKinds := map[string]bool{}
 	for _, service := range domain.Services() {

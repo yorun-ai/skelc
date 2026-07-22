@@ -7,7 +7,7 @@ import (
 )
 
 func TestParseWeb(t *testing.T) {
-	web := parseWeb(&grammar.Web{
+	web := parseWebTest(t, &grammar.Web{
 		Decorators: []*grammar.Decorator{
 			{Name: ident("desc"), Value: decoratorValue(`"User portal entry point"`)},
 		},
@@ -30,18 +30,14 @@ func TestParseWeb(t *testing.T) {
 }
 
 func TestParseWebRejectsPub(t *testing.T) {
-	expectPanicContains(t, "does not support pub", func() {
-		parseWeb(&grammar.Web{
-			Name:      ident("UserPortalWeb"),
-			Audiences: []*grammar.WebAudience{webAllow("ClientActor")},
-		}, true)
-	})
+	expectWebDiagnostic(t, "does not support pub", &grammar.Web{
+		Name:      ident("UserPortalWeb"),
+		Audiences: []*grammar.WebAudience{webAllow("ClientActor")},
+	}, true)
 }
 
 func TestParseWebRejectsMissingActors(t *testing.T) {
-	expectPanicContains(t, "must declare at least one actor", func() {
-		parseWeb(&grammar.Web{
-			Name: ident("UserPortalWeb"),
-		}, false)
-	})
+	expectWebDiagnostic(t, "must declare at least one actor", &grammar.Web{
+		Name: ident("UserPortalWeb"),
+	}, false)
 }

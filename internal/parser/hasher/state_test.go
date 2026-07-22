@@ -3,8 +3,8 @@ package hasher
 import "testing"
 
 func TestFillHashesIncludesActorCredential(t *testing.T) {
-	oldDomain := newHashActorCredentialTestDomain("subject")
-	newDomain := newHashActorCredentialTestDomain("tenant")
+	oldDomain := newHashActorCredentialTestDomain(t, "subject")
+	newDomain := newHashActorCredentialTestDomain(t, "tenant")
 
 	FillHashes(oldDomain)
 	FillHashes(newDomain)

@@ -38,7 +38,11 @@ data User { id: string }
 	}
 
 	parser := newParser()
-	domain := parser.parseFile(singleSource).Model()
+	analysis, err := parser.parseFile(singleSource)
+	if err != nil {
+		t.Fatalf("parse file: %v", err)
+	}
+	domain := analysis.Model()
 	if domain.Name() != "demo.user" {
 		t.Fatalf("unexpected domain name: %s", domain.Name())
 	}

@@ -7,7 +7,7 @@ import (
 )
 
 func TestAnalyzeReturnsErrorWhenEventDoesNotEndWithEvent(t *testing.T) {
-	expectAnalyzePanicContains(t, "Event name must end with Event", &grammar.SkelContent{
+	expectAnalyzeDiagnosticsContains(t, "Event name must end with Event", &grammar.SkelContent{
 		Domain: domainContent("demo.user"),
 		Entries: []*grammar.SkelEntry{
 			{
@@ -25,7 +25,7 @@ func TestAnalyzeReturnsErrorWhenEventDoesNotEndWithEvent(t *testing.T) {
 }
 
 func TestAnalyzeReturnsErrorWhenEventHasTypeParameters(t *testing.T) {
-	expectAnalyzePanicContains(t, "does not support type parameters", &grammar.SkelContent{
+	expectAnalyzeDiagnosticsContains(t, "does not support type parameters", &grammar.SkelContent{
 		Domain: domainContent("demo.user"),
 		Entries: []*grammar.SkelEntry{
 			{
@@ -44,7 +44,7 @@ func TestAnalyzeReturnsErrorWhenEventHasTypeParameters(t *testing.T) {
 }
 
 func TestAnalyzeReturnsErrorWhenEventHasQualifier(t *testing.T) {
-	expectAnalyzePanicContains(t, "does not support qualifier", &grammar.SkelContent{
+	expectAnalyzeDiagnosticsContains(t, "does not support qualifier", &grammar.SkelContent{
 		Domain: domainContent("demo.user"),
 		Entries: []*grammar.SkelEntry{
 			{
@@ -63,7 +63,7 @@ func TestAnalyzeReturnsErrorWhenEventHasQualifier(t *testing.T) {
 }
 
 func TestAnalyzeRejectsPubTask(t *testing.T) {
-	expectAnalyzePanicContains(t, "task RebuildUserIndexTask does not support pub", &grammar.SkelContent{
+	expectAnalyzeDiagnosticsContains(t, "task RebuildUserIndexTask does not support pub", &grammar.SkelContent{
 		Domain: domainContent("demo.user"),
 		Entries: []*grammar.SkelEntry{
 			{
@@ -87,7 +87,7 @@ func TestAnalyzeRejectsPubTask(t *testing.T) {
 }
 
 func TestAnalyzeReturnsErrorWhenAllowViaDoesNotExist(t *testing.T) {
-	expectAnalyzePanicContains(t, `references undefined actor via "openapi"`, &grammar.SkelContent{
+	expectAnalyzeDiagnosticsContains(t, `references undefined actor via "openapi"`, &grammar.SkelContent{
 		Domain: domainContent("demo.user"),
 		Entries: []*grammar.SkelEntry{
 			{
@@ -112,7 +112,7 @@ func TestAnalyzeReturnsErrorWhenAllowViaDoesNotExist(t *testing.T) {
 }
 
 func TestAnalyzeReturnsErrorWhenActorAuthServiceNameConflicts(t *testing.T) {
-	expectAnalyzePanicContains(t, `duplicated identifier "ClientActorAuthService"`, &grammar.SkelContent{
+	expectAnalyzeDiagnosticsContains(t, `duplicated identifier "ClientActorAuthService"`, &grammar.SkelContent{
 		Domain: domainContent("demo.user"),
 		Entries: []*grammar.SkelEntry{
 			{
@@ -142,7 +142,7 @@ func TestAnalyzeReturnsErrorWhenActorAuthServiceNameConflicts(t *testing.T) {
 }
 
 func TestAnalyzeReturnsErrorWhenActorCredentialNameConflicts(t *testing.T) {
-	expectAnalyzePanicContains(t, `duplicated identifier "ClientActorCredential"`, &grammar.SkelContent{
+	expectAnalyzeDiagnosticsContains(t, `duplicated identifier "ClientActorCredential"`, &grammar.SkelContent{
 		Domain: domainContent("demo.user"),
 		Entries: []*grammar.SkelEntry{
 			{
@@ -161,7 +161,7 @@ func TestAnalyzeReturnsErrorWhenActorCredentialNameConflicts(t *testing.T) {
 }
 
 func TestAnalyzeReturnsErrorWhenActorInfoNameConflicts(t *testing.T) {
-	expectAnalyzePanicContains(t, `duplicated identifier "ClientActorInfo"`, &grammar.SkelContent{
+	expectAnalyzeDiagnosticsContains(t, `duplicated identifier "ClientActorInfo"`, &grammar.SkelContent{
 		Domain: domainContent("demo.user"),
 		Entries: []*grammar.SkelEntry{
 			{
@@ -180,7 +180,7 @@ func TestAnalyzeReturnsErrorWhenActorInfoNameConflicts(t *testing.T) {
 }
 
 func TestAnalyzeReturnsErrorForDuplicatedIdentifier(t *testing.T) {
-	expectAnalyzePanicContains(t, `duplicated identifier "User"`, &grammar.SkelContent{
+	expectAnalyzeDiagnosticsContains(t, `duplicated identifier "User"`, &grammar.SkelContent{
 		Domain: domainContent("demo.user"),
 		Entries: []*grammar.SkelEntry{
 			{

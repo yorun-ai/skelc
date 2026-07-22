@@ -7,8 +7,8 @@ import (
 )
 
 func TestFillHashesPropagatesDataChangesToService(t *testing.T) {
-	oldDomain := newHashTestDomain("User service")
-	newDomain := newHashTestDomain("User service")
+	oldDomain := newHashTestDomain(t, "User service")
+	newDomain := newHashTestDomain(t, "User service")
 	newDomain.Data()[0].Members = append(newDomain.Data()[0].Members, &model.DataMember{
 		Name: "nickname",
 		Type: &model.Type{
@@ -35,8 +35,8 @@ func TestFillHashesPropagatesDataChangesToService(t *testing.T) {
 }
 
 func TestFillHashesIncludesAllowVia(t *testing.T) {
-	clientDomain := newHashAllowViaTestDomain("client")
-	openapiDomain := newHashAllowViaTestDomain("openapi")
+	clientDomain := newHashAllowViaTestDomain(t, "client")
+	openapiDomain := newHashAllowViaTestDomain(t, "openapi")
 
 	FillHashes(clientDomain)
 	FillHashes(openapiDomain)

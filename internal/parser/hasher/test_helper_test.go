@@ -2,14 +2,15 @@ package hasher
 
 import (
 	"strings"
+	"testing"
 
 	"go.yorun.ai/skelc/internal/parser/analyzer"
 	"go.yorun.ai/skelc/internal/parser/grammar"
 	"go.yorun.ai/skelc/model"
 )
 
-func newHashTestDomain(serviceDescription string) *model.Domain {
-	return analyzer.Analyze(&grammar.SkelContent{
+func newHashTestDomain(t *testing.T, serviceDescription string) *model.Domain {
+	return analyzeHashTestDomain(t, &grammar.SkelContent{
 		Domain: domainContent("demo.user"),
 		Entries: []*grammar.SkelEntry{
 			{
@@ -49,8 +50,8 @@ func newHashTestDomain(serviceDescription string) *model.Domain {
 	}).Model()
 }
 
-func newHashActorCredentialTestDomain(credentialFieldName string) *model.Domain {
-	return analyzer.Analyze(&grammar.SkelContent{
+func newHashActorCredentialTestDomain(t *testing.T, credentialFieldName string) *model.Domain {
+	return analyzeHashTestDomain(t, &grammar.SkelContent{
 		Domain: domainContent("demo.user"),
 		Entries: []*grammar.SkelEntry{
 			{
@@ -71,8 +72,8 @@ func newHashActorCredentialTestDomain(credentialFieldName string) *model.Domain 
 	}).Model()
 }
 
-func newHashAllowViaTestDomain(via string) *model.Domain {
-	return analyzer.Analyze(&grammar.SkelContent{
+func newHashAllowViaTestDomain(t *testing.T, via string) *model.Domain {
+	return analyzeHashTestDomain(t, &grammar.SkelContent{
 		Domain: domainContent("demo.user"),
 		Entries: []*grammar.SkelEntry{
 			{
@@ -101,6 +102,15 @@ func newHashAllowViaTestDomain(via string) *model.Domain {
 			},
 		},
 	}).Model()
+}
+
+func analyzeHashTestDomain(t *testing.T, content *grammar.SkelContent) *analyzer.Analysis {
+	t.Helper()
+	analysis, diagnostics := analyzer.Analyze(content, nil)
+	if len(diagnostics) > 0 {
+		t.Fatalf("unexpected diagnostics: %v", diagnostics)
+	}
+	return analysis
 }
 
 func domainContent(name string) *grammar.DomainContent {

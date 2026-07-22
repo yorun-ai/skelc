@@ -7,7 +7,7 @@ import (
 )
 
 func TestParseEnum(t *testing.T) {
-	enum := parseEnum(&grammar.Enum{
+	enum := parseEnumTest(t, &grammar.Enum{
 		Decorators: []*grammar.Decorator{
 			{Name: ident("desc"), Value: decoratorValue(`"User status"`)},
 		},
@@ -48,37 +48,31 @@ func TestParseEnum(t *testing.T) {
 }
 
 func TestParseEnumReturnsErrorForDuplicatedItem(t *testing.T) {
-	expectPanicContains(t, "duplicated EnumItem ACTIVE", func() {
-		parseEnum(&grammar.Enum{
-			Name: ident("UserStatus"),
-			Items: []*grammar.EnumItem{
-				{Name: ident("ACTIVE")},
-				{Name: ident("ACTIVE")},
-			},
-		})
+	expectEnumDiagnostic(t, "duplicated EnumItem ACTIVE", &grammar.Enum{
+		Name: ident("UserStatus"),
+		Items: []*grammar.EnumItem{
+			{Name: ident("ACTIVE")},
+			{Name: ident("ACTIVE")},
+		},
 	})
 }
 
 func TestParseEnumReturnsErrorForReservedKindSuffix(t *testing.T) {
 	for _, name := range []string{"UserConfig", "UserEvent", "UserActor", "UserService", "UserWeb"} {
 		t.Run(name, func(t *testing.T) {
-			expectPanicContains(t, "Enum name must not end with", func() {
-				parseEnum(&grammar.Enum{
-					Name:  ident(name),
-					Items: []*grammar.EnumItem{{Name: ident("ACTIVE")}},
-				})
+			expectEnumDiagnostic(t, "Enum name must not end with", &grammar.Enum{
+				Name:  ident(name),
+				Items: []*grammar.EnumItem{{Name: ident("ACTIVE")}},
 			})
 		})
 	}
 }
 
 func TestParseEnumReturnsErrorForReservedUnspecifiedItem(t *testing.T) {
-	expectPanicContains(t, "reversed EnumItem value UNSPECIFIED", func() {
-		parseEnum(&grammar.Enum{
-			Name: ident("UserStatus"),
-			Items: []*grammar.EnumItem{
-				{Name: ident("UNSPECIFIED")},
-			},
-		})
+	expectEnumDiagnostic(t, "reversed EnumItem value UNSPECIFIED", &grammar.Enum{
+		Name: ident("UserStatus"),
+		Items: []*grammar.EnumItem{
+			{Name: ident("UNSPECIFIED")},
+		},
 	})
 }

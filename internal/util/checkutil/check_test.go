@@ -47,6 +47,14 @@ func TestFailfCarriesStructuredPosition(t *testing.T) {
 	assert.Equal(t, "/workspace/user.skel:4:9 field has an invalid type", failure.Message)
 }
 
+func TestNewFailurefDoesNotPanic(t *testing.T) {
+	failure := NewFailuref("%s invalid field", lexer.Position{Filename: "user.skel", Line: 2, Column: 3})
+
+	assert.Equal(t, CodeValidation, failure.Code)
+	assert.Equal(t, "user.skel", failure.Position.File)
+	assert.Equal(t, 2, failure.Position.Line)
+}
+
 func TestCapturePreservesWrappedCause(t *testing.T) {
 	cause := errors.New("cause")
 	err := Capture(func() { CheckNilError(cause, "operation failed") })

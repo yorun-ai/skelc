@@ -27,9 +27,10 @@ const (
 // best-effort hint used to suppress cascading diagnostics when syntax is
 // temporarily incomplete and the full domain declaration cannot be parsed.
 type Source struct {
-	Path    string
-	Domain  string
-	Content []byte
+	Path           string
+	Domain         string
+	ExpectedDomain string
+	Content        []byte
 }
 
 // Diagnostic is a structured compiler diagnostic for an in-memory source.
@@ -37,6 +38,31 @@ type Diagnostic struct {
 	Code     string
 	Position model.Position
 	Message  string
+}
+
+func (d Diagnostic) Error() string {
+	if d.Position.Line <= 0 {
+		return d.Message
+	}
+	return d.Position.String() + " " + d.Message
+}
+
+// Diagnostics is an ordered set of independent compiler diagnostics.
+type Diagnostics []Diagnostic
+
+func (d Diagnostics) Error() string {
+	if len(d) == 0 {
+		return ""
+	}
+	return d[0].Error()
+}
+
+func (d Diagnostics) Errors() []error {
+	errors := make([]error, len(d))
+	for index := range d {
+		errors[index] = d[index]
+	}
+	return errors
 }
 
 type _WorkspaceDomain struct {
@@ -58,11 +84,14 @@ const (
 )
 
 // AnalyzeWorkspace performs syntax and semantic analysis over an in-memory
-// workspace. It returns at most one semantic diagnostic per domain because the
-// compiler aborts a domain analysis at its first failed invariant. Domains that
-// depend on a syntactically or semantically invalid domain are skipped to avoid
-// cascading errors.
+// workspace. Independent failures in the same domain are collected up to the
+// analyzer's diagnostic limit. Domains that depend on a syntactically or
+// semantically invalid domain are skipped to avoid cascading errors.
 func AnalyzeWorkspace(sources []Source) []Diagnostic {
+	return analyzeWorkspace(sources, false)
+}
+
+func analyzeWorkspace(sources []Source, allowMissingImports bool) []Diagnostic {
 	ordered := append([]Source{}, sources...)
 	slices.SortFunc(ordered, func(left, right Source) int {
 		return strings.Compare(left.Path, right.Path)
@@ -88,6 +117,14 @@ func AnalyzeWorkspace(sources []Source) []Diagnostic {
 			continue
 		}
 		name := content.Domain.Name.String()
+		if source.ExpectedDomain != "" && name != source.ExpectedDomain {
+			diagnostics = append(diagnostics, Diagnostic{
+				Code: DiagnosticCodeSemantic, Position: workspacePosition(content.Domain.Name.Pos),
+				Message: fmt.Sprintf("domain mismatch: found=%s, expected=%s", name, source.ExpectedDomain),
+			})
+			workspaceDomain(domains, source.ExpectedDomain).invalid = true
+			continue
+		}
 		domain := workspaceDomain(domains, name)
 		domain.contents = append(domain.contents, content)
 	}
@@ -101,7 +138,7 @@ func AnalyzeWorkspace(sources []Source) []Diagnostic {
 	}
 	slices.Sort(names)
 	for _, name := range names {
-		analyzeWorkspaceDomain(domains[name], domains, &diagnostics)
+		analyzeWorkspaceDomain(domains[name], domains, &diagnostics, allowMissingImports)
 	}
 	slices.SortFunc(diagnostics, compareDiagnostics)
 	return diagnostics
@@ -147,7 +184,12 @@ func mergeWorkspaceContents(contents []*grammar.SkelContent) *grammar.SkelConten
 	return merged
 }
 
-func analyzeWorkspaceDomain(domain *_WorkspaceDomain, domains map[string]*_WorkspaceDomain, diagnostics *[]Diagnostic) bool {
+func analyzeWorkspaceDomain(
+	domain *_WorkspaceDomain,
+	domains map[string]*_WorkspaceDomain,
+	diagnostics *[]Diagnostic,
+	allowMissingImports bool,
+) bool {
 	if domain == nil || domain.invalid || domain.merged == nil {
 		return false
 	}
@@ -169,6 +211,8 @@ func analyzeWorkspaceDomain(domain *_WorkspaceDomain, domains map[string]*_Works
 	domain.state = workspaceDomainVisiting
 	imports := make([]*analyzer.Analysis, 0, len(domain.merged.Imports))
 	seenImports := map[string]bool{}
+	importsValid := true
+	hasMissingImports := false
 	for _, importDecl := range domain.merged.Imports {
 		name := importDecl.Domain.String()
 		if seenImports[name] {
@@ -177,30 +221,50 @@ func analyzeWorkspaceDomain(domain *_WorkspaceDomain, domains map[string]*_Works
 		seenImports[name] = true
 		imported := domains[name]
 		if imported != nil && imported.invalid {
-			domain.state = workspaceDomainFailed
-			return false
+			importsValid = false
+			continue
 		}
 		if imported == nil || imported.merged == nil {
+			if allowMissingImports {
+				hasMissingImports = true
+				continue
+			}
 			*diagnostics = append(*diagnostics, Diagnostic{
 				Code: DiagnosticCodeImport, Position: workspacePosition(importDecl.Pos),
 				Message: fmt.Sprintf("skel import %s not found in the workspace", name),
 			})
-			domain.state = workspaceDomainFailed
-			return false
+			importsValid = false
+			continue
 		}
-		if !analyzeWorkspaceDomain(imported, domains, diagnostics) {
-			domain.state = workspaceDomainFailed
-			return false
+		if !analyzeWorkspaceDomain(imported, domains, diagnostics, allowMissingImports) {
+			importsValid = false
+			continue
 		}
 		imports = append(imports, imported.analysis)
 	}
+	if !importsValid {
+		domain.state = workspaceDomainFailed
+		return false
+	}
 
 	var analysis *analyzer.Analysis
+	var analysisErrors []error
 	err := checkutil.Capture(func() {
-		analysis = analyzer.AnalyzeWithImports(domain.merged, imports)
+		if hasMissingImports {
+			analysis, analysisErrors = analyzer.AnalyzeImport(domain.merged)
+		} else {
+			analysis, analysisErrors = analyzer.Analyze(domain.merged, imports)
+		}
 	})
 	if err != nil {
 		*diagnostics = append(*diagnostics, diagnosticFromError(domain.merged.Pos.Filename, DiagnosticCodeSemantic, err))
+		domain.state = workspaceDomainFailed
+		return false
+	}
+	if len(analysisErrors) > 0 {
+		for _, analysisError := range analysisErrors {
+			*diagnostics = append(*diagnostics, diagnosticFromError(domain.merged.Pos.Filename, DiagnosticCodeSemantic, analysisError))
+		}
 		domain.state = workspaceDomainFailed
 		return false
 	}

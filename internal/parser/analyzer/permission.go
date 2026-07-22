@@ -1,37 +1,40 @@
 package analyzer
 
 import (
-	"go.yorun.ai/skelc/internal/parser/grammar"
-	"go.yorun.ai/skelc/internal/util/checkutil"
-	"go.yorun.ai/skelc/model"
 	"strings"
+
+	"go.yorun.ai/skelc/internal/parser/grammar"
+	"go.yorun.ai/skelc/model"
 )
 
-func parseRequire(gr *grammar.Require) *model.PermissionRequire {
+func parseRequire(reporter *diagnosticReporter, gr *grammar.Require) (*model.PermissionRequire, bool) {
 	if gr == nil {
-		return nil
+		return nil, true
 	}
+	expr, valid := parseRequireExpr(reporter, gr.Expr)
 	return &model.PermissionRequire{
-		Expr: parseRequireExpr(gr.Expr),
-	}
+		Expr: expr,
+	}, valid
 }
 
-func parseRequireExpr(expr *grammar.RequireExpr) *model.PermissionExpr {
+func parseRequireExpr(reporter *diagnosticReporter, expr *grammar.RequireExpr) (*model.PermissionExpr, bool) {
 	if expr.Term != nil {
-		return &model.PermissionExpr{Check: parseRequireTerm(expr.Term)}
+		return &model.PermissionExpr{Check: parseRequireTerm(expr.Term)}, true
 	}
 
 	mode := model.PermissionRequireMode(expr.Mode)
-	checkutil.Check(mode == model.PermissionRequireModeAll || mode == model.PermissionRequireModeAny,
+	valid := reporter.check(mode == model.PermissionRequireModeAll || mode == model.PermissionRequireModeAny,
 		"unsupported require mode %s", expr.Mode)
 	children := make([]*model.PermissionExpr, 0, len(expr.Children))
 	for _, child := range expr.Children {
-		children = append(children, parseRequireExpr(child))
+		parsed, childValid := parseRequireExpr(reporter, child)
+		valid = childValid && valid
+		children = append(children, parsed)
 	}
 	return &model.PermissionExpr{
 		Mode:     mode,
 		Children: children,
-	}
+	}, valid
 }
 
 func parseRequireTerm(term *grammar.RequireTerm) *model.PermissionCheckInvocation {
@@ -54,89 +57,131 @@ func parseRequireTerm(term *grammar.RequireTerm) *model.PermissionCheckInvocatio
 	return item
 }
 
-func (p *Analysis) normalizeServiceTypes(service *model.Service, refs *refContext) {
+func (p *Analysis) normalizeServiceTypes(service *model.Service, refs *refContext) bool {
+	valid := true
 	for _, method := range service.Methods {
-		fixTypeRef(method.ResultType, refs)
+		valid = fixTypeRef(p.reporter, method.ResultType, refs) && valid
 		for _, arg := range method.Arguments {
-			fixTypeRef(arg.Type, refs)
+			valid = fixTypeRef(p.reporter, arg.Type, refs) && valid
 		}
 	}
+	return valid
 }
 
-func (p *Analysis) normalizePermissionCodes(codes []string) {
+func (p *Analysis) normalizePermissionCodes(codes []string) bool {
+	valid := true
 	for index, code := range codes {
-		resourceRef, actionName := splitPermissionCode(code)
+		resourceRef, actionName, codeValid := splitPermissionCode(p.reporter, code)
+		if !codeValid {
+			valid = false
+			continue
+		}
 		resource, action := p.findResourceAction(resourceRef, actionName)
-		checkutil.CheckNotNil(resource, `permission %s references undefined resource %s`, code, resourceRef)
-		checkutil.CheckNotNil(action, `permission %s references undefined action %s`, code, actionName)
+		if !p.reporter.check(resource != nil, `permission %s references undefined resource %s`, code, resourceRef) {
+			valid = false
+			continue
+		}
+		if !p.reporter.check(action != nil, `permission %s references undefined action %s`, code, actionName) {
+			valid = false
+			continue
+		}
 		codes[index] = action.PermissionCode
 	}
+	return valid
 }
 
-func splitPermissionCode(code string) (string, string) {
+func splitPermissionCode(reporter *diagnosticReporter, code string) (string, string, bool) {
 	index := strings.LastIndex(code, ":")
-	checkutil.Check(index > 0 && index < len(code)-1, `permission %s must be resource:action`, code)
-	return code[:index], code[index+1:]
+	if !reporter.check(index > 0 && index < len(code)-1, `permission %s must be resource:action`, code) {
+		return "", "", false
+	}
+	return code[:index], code[index+1:], true
 }
 
-func (p *Analysis) normalizeServiceRequire(service *model.Service) {
-	p.normalizeRequire(service.Require, false, nil, service.Pos)
+func (p *Analysis) normalizeServiceRequire(service *model.Service) bool {
+	valid := p.normalizeRequire(service.Require, false, nil, service.Pos)
 	for _, method := range service.Methods {
-		p.normalizeRequire(method.Require, true, method, method.Pos)
+		valid = p.normalizeRequire(method.Require, true, method, method.Pos) && valid
 	}
+	return valid
 }
 
-func (p *Analysis) normalizeRequire(require *model.PermissionRequire, allowChecks bool, method *model.Method, ownerPos model.Position) {
+func (p *Analysis) normalizeRequire(require *model.PermissionRequire, allowChecks bool, method *model.Method, ownerPos model.Position) bool {
 	if require == nil {
-		return
+		return true
 	}
-	require.Expr = p.normalizeRequireExpr(require.Expr, allowChecks, method, ownerPos)
+	expr, valid := p.normalizeRequireExpr(require.Expr, allowChecks, method, ownerPos)
+	if valid {
+		require.Expr = expr
+	}
+	return valid
 }
 
-func (p *Analysis) normalizeRequireExpr(expr *model.PermissionExpr, allowChecks bool, method *model.Method, ownerPos model.Position) *model.PermissionExpr {
+func (p *Analysis) normalizeRequireExpr(expr *model.PermissionExpr, allowChecks bool, method *model.Method, ownerPos model.Position) (*model.PermissionExpr, bool) {
 	if expr.Mode == "" && expr.Check != nil {
 		return p.normalizeRequireItem(expr.Check, allowChecks, method, ownerPos)
 	}
 
-	checkutil.Check(len(expr.Children) > 0, "%s require %s must have at least one item", ownerPos, expr.Mode)
+	valid := p.reporter.check(len(expr.Children) > 0, "%s require %s must have at least one item", ownerPos, expr.Mode)
 	children := make([]*model.PermissionExpr, 0, len(expr.Children))
 	for _, child := range expr.Children {
-		children = append(children, p.normalizeRequireExpr(child, allowChecks, method, ownerPos))
+		normalized, childValid := p.normalizeRequireExpr(child, allowChecks, method, ownerPos)
+		valid = childValid && valid
+		if normalized != nil {
+			children = append(children, normalized)
+		}
 	}
 	expr.Children = children
-	return expr
+	return expr, valid
 }
 
-func (p *Analysis) normalizeRequireItem(item *model.PermissionCheckInvocation, allowChecks bool, method *model.Method, ownerPos model.Position) *model.PermissionExpr {
+func (p *Analysis) normalizeRequireItem(item *model.PermissionCheckInvocation, allowChecks bool, method *model.Method, ownerPos model.Position) (*model.PermissionExpr, bool) {
 	resourceRef := item.ResourceSkelName
 	resource, action := p.findResourceAction(resourceRef, item.ActionName)
-	checkutil.CheckNotNil(resource, `%s require references undefined resource "%s"`, ownerPos, resourceRef)
-	checkutil.CheckNotNil(action, `%s require references undefined action "%s"`, ownerPos, item.ActionName)
-	checkutil.Check(!p.isImportedResourceRef(resourceRef) || resource.Pub,
-		`%s require references non-pub resource "%s"`, ownerPos, resourceRef)
+	if !p.reporter.check(resource != nil, `%s require references undefined resource "%s"`, ownerPos, resourceRef) {
+		return nil, false
+	}
+	if !p.reporter.check(action != nil, `%s require references undefined action "%s"`, ownerPos, item.ActionName) {
+		return nil, false
+	}
+	if !p.reporter.check(!p.isImportedResourceRef(resourceRef) || resource.Pub,
+		`%s require references non-pub resource "%s"`, ownerPos, resourceRef) {
+		return nil, false
+	}
 	codeExpr := &model.PermissionExpr{
 		Mode: model.PermissionRequireModeCode,
 		Code: action.PermissionCode,
 	}
 	if item.CheckName == "" {
-		return codeExpr
+		return codeExpr, true
 	}
 
-	checkutil.Check(allowChecks, "%s service require does not support check method", ownerPos)
+	if !p.reporter.check(allowChecks, "%s service require does not support check method", ownerPos) {
+		return nil, false
+	}
 	check := findResourceCheck(resource, action, item.CheckName)
-	checkutil.CheckNotNil(check, `%s require references undefined check "%s"`, ownerPos, item.CheckName)
+	if !p.reporter.check(check != nil, `%s require references undefined check "%s"`, ownerPos, item.CheckName) {
+		return nil, false
+	}
 	checkArguments := resourceCheckArguments(check)
-	checkutil.Check(len(item.Arguments) == len(checkArguments),
+	if !p.reporter.check(len(item.Arguments) == len(checkArguments),
 		"%s require check %s expects %d argument(s), got %d",
-		ownerPos, item.CheckName, len(checkArguments), len(item.Arguments))
+		ownerPos, item.CheckName, len(checkArguments), len(item.Arguments)) {
+		return nil, false
+	}
+	valid := true
 	for index, argument := range item.Arguments {
 		checkArgument := checkArguments[index]
 		argument.Name = checkArgument.Name
 		argument.Type = checkArgument.Type
-		valueType := resolveMethodArgumentJsonPath(method, argument.JsonPath)
-		checkutil.Check(typeEqual(valueType, checkArgument.Type),
+		valueType, pathValid := resolveMethodArgumentJsonPath(p.reporter, method, argument.JsonPath)
+		if !pathValid {
+			valid = false
+			continue
+		}
+		valid = p.reporter.check(typeEqual(valueType, checkArgument.Type),
 			"%s require check argument %s expects %s, got %s from %s",
-			ownerPos, checkArgument.Name, checkArgument.Type.Name(), valueType.Name(), argument.JsonPath)
+			ownerPos, checkArgument.Name, checkArgument.Type.Name(), valueType.Name(), argument.JsonPath) && valid
 	}
 	return &model.PermissionExpr{
 		Mode: model.PermissionRequireModeAll,
@@ -154,7 +199,7 @@ func (p *Analysis) normalizeRequireItem(item *model.PermissionCheckInvocation, a
 				},
 			},
 		},
-	}
+	}, valid
 }
 
 func resourceCheckArguments(check *model.ResourceCheck) []*model.Argument {

@@ -2,79 +2,136 @@ package analyzer
 
 import (
 	"fmt"
+	"maps"
+	"slices"
+	"strings"
 
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/internal/util/sliceutil"
 	"go.yorun.ai/skelc/model"
-	"strings"
 )
 
 func (p *Analysis) normalize() {
 	refs := &refContext{
-		enums:    p.enumsMap,
-		dataList: p.dataMap,
-		imports:  p.importsMap,
+		enums:       p.enumsMap,
+		dataList:    p.dataMap,
+		imports:     p.importsMap,
+		invalidData: p.invalidData,
+		unavailable: p.unavailable,
 	}
-	for _, actor := range p.actorsMap {
-		if actor.PermService != nil {
-			p.normalizeServiceTypes(actor.PermService, refs)
-		}
-	}
-	for _, resource := range p.resourcesMap {
-		if resource.CheckService != nil {
-			p.normalizeServiceTypes(resource.CheckService, refs)
-		}
-	}
-	for _, service := range p.servicesMap {
-		p.checkActorAudiences(service.Audiences, service.Pos, "service", service.Name)
-		p.normalizeServiceTypes(service, refs)
-		p.normalizeServiceRequire(service)
-	}
-	for _, web := range p.websMap {
-		p.checkActorAudiences(web.Audiences, web.Pos, "web", web.Name)
-	}
-	for _, task := range p.tasksMap {
-		for _, trigger := range task.Triggers {
-			for _, arg := range trigger.Arguments {
-				fixTypeRef(arg.Type, refs)
-			}
-		}
-	}
-	for _, dataType := range p.dataMap {
+	for _, name := range slices.Sorted(maps.Keys(p.dataMap)) {
+		dataType := p.dataMap[name]
 		refs.typeParameters = sliceutil.MapToMap(dataType.TypeParameters, func(typeParam *model.TypeParameter) (string, *model.TypeParameter) {
 			return typeParam.Name, typeParam
 		})
 		for _, member := range dataType.Members {
-			fixTypeRef(member.Type, refs)
+			if !fixTypeRef(p.reporter, member.Type, refs) {
+				p.invalidData[dataType] = true
+				p.unavailable[dataType.Name] = true
+			}
 		}
 	}
+	p.propagateInvalidData()
 
-	p.checkHardCycleReferences()
-	allData := sortData(p.dataMap)
+	for _, name := range slices.Sorted(maps.Keys(p.actorsMap)) {
+		actor := p.actorsMap[name]
+		if actor.PermService != nil {
+			p.normalizeServiceTypes(actor.PermService, refs)
+		}
+	}
+	for _, name := range slices.Sorted(maps.Keys(p.resourcesMap)) {
+		resource := p.resourcesMap[name]
+		if resource.CheckService != nil {
+			p.normalizeServiceTypes(resource.CheckService, refs)
+		}
+	}
+	for _, name := range slices.Sorted(maps.Keys(p.servicesMap)) {
+		service := p.servicesMap[name]
+		valid := p.checkActorAudiences(service.Audiences, service.Pos, "service", service.Name)
+		valid = p.normalizeServiceTypes(service, refs) && valid
+		if valid {
+			p.normalizeServiceRequire(service)
+		}
+	}
+	for _, name := range slices.Sorted(maps.Keys(p.websMap)) {
+		web := p.websMap[name]
+		p.checkActorAudiences(web.Audiences, web.Pos, "web", web.Name)
+	}
+	for _, name := range slices.Sorted(maps.Keys(p.tasksMap)) {
+		task := p.tasksMap[name]
+		for _, trigger := range task.Triggers {
+			for _, arg := range trigger.Arguments {
+				fixTypeRef(p.reporter, arg.Type, refs)
+			}
+		}
+	}
+	allData := sliceutil.Filter(sortData(p.dataMap), func(dataType *model.Data) bool {
+		return !p.invalidData[dataType]
+	})
+	p.checkHardCycleReferences(allData)
 	p.checkDataDoesNotReferenceConfigs(allData)
 	p.checkConfigMemberTypes(allData)
-	p.finalize()
 }
 
-func (p *Analysis) checkActorAudiences(audiences []*model.ActorAudience, ownerPos fmt.Stringer, ownerKind string, ownerName string) {
+func (p *Analysis) propagateInvalidData() {
+	for changed := true; changed; {
+		changed = false
+		for _, dataType := range p.dataMap {
+			if p.invalidData[dataType] {
+				continue
+			}
+			for _, member := range dataType.Members {
+				if referencesInvalidData(member.Type, p.invalidData) {
+					p.invalidData[dataType] = true
+					p.unavailable[dataType.Name] = true
+					changed = true
+					break
+				}
+			}
+		}
+	}
+}
+
+func referencesInvalidData(type_ *model.Type, invalid map[*model.Data]bool) bool {
+	if type_ == nil {
+		return false
+	}
+	switch type_.Kind {
+	case model.TypeKindData:
+		if invalid[type_.Data] {
+			return true
+		}
+		for _, argument := range type_.TypeArguments {
+			if referencesInvalidData(argument, invalid) {
+				return true
+			}
+		}
+	case model.TypeKindList:
+		return referencesInvalidData(type_.List.Value, invalid)
+	case model.TypeKindMap:
+		return referencesInvalidData(type_.Map.Key, invalid) || referencesInvalidData(type_.Map.Value, invalid)
+	}
+	return false
+}
+
+func (p *Analysis) checkActorAudiences(audiences []*model.ActorAudience, ownerPos fmt.Stringer, ownerKind string, ownerName string) bool {
+	valid := true
 	for _, audience := range audiences {
 		actor := p.actorByRef(audience.Actor)
-		checkutil.CheckNotNil(
-			actor,
-			`%s %s %s references undefined actor "%s"`,
-			ownerPos, ownerKind, ownerName, audience.Actor,
-		)
+		if !p.reporter.check(actor != nil, `%s %s %s references undefined actor "%s"`, ownerPos, ownerKind, ownerName, audience.Actor) {
+			valid = false
+			continue
+		}
 		if audience.Via == "" {
 			continue
 		}
 		_, ok := sliceutil.Find(actor.Vias, func(via *model.ActorVia) bool {
 			return via.Name == audience.Via
 		})
-		checkutil.Check(ok,
-			`%s %s %s for %s references undefined actor via "%s"`,
-			ownerPos, ownerKind, ownerName, audience.Actor, audience.Via,
-		)
+		if !p.reporter.check(ok, `%s %s %s for %s references undefined actor via "%s"`, ownerPos, ownerKind, ownerName, audience.Actor, audience.Via) {
+			valid = false
+		}
 	}
+	return valid
 }
 
 func (p *Analysis) actorByRef(actorName string) *model.Actor {

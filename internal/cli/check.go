@@ -21,8 +21,11 @@ func newCheckCommand() *ucli.Command {
 		Flags: newCheckFlags(),
 		Action: func(_ context.Context, cmd *ucli.Command) error {
 			option := parseCheckCommand(cmd)
-			result := parseCheckSource(option)
+			result := parser.Check(option)
 			printWarnings(cmd, result.Warnings)
+			if len(result.Diagnostics) > 0 {
+				return result.Diagnostics
+			}
 			return nil
 		},
 	}
@@ -41,19 +44,4 @@ func parseCheckCommand(cmd *ucli.Command) parser.Option {
 	}
 	normalizeCheckOption(&parserOption)
 	return parserOption
-}
-
-func parseCheckSource(option parser.Option) (result parser.Result) {
-	defer func() {
-		recovered := recover()
-		if recovered == nil {
-			return
-		}
-		err := checkutil.Recover(recovered)
-		if !parser.IsMissingImportError(err) {
-			panic(err)
-		}
-		result = parser.ParseImport(option.SkelIn)
-	}()
-	return parser.Parse(option)
 }

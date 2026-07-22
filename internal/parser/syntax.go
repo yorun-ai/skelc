@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bytes"
+	"errors"
 	"path/filepath"
 
 	"github.com/alecthomas/participle/v2"
@@ -48,38 +49,42 @@ func newParser() *_Parser {
 	}
 }
 
-func (p *_Parser) parseFile(sourceFile *loader.SourceFile) *analyzer.Analysis {
+func (p *_Parser) parseFile(sourceFile *loader.SourceFile) (*analyzer.Analysis, error) {
 	return p.parseFileWithImports(sourceFile, nil)
 }
 
-func (p *_Parser) parseImportFile(sourceFile *loader.SourceFile) *analyzer.Analysis {
+func (p *_Parser) parseImportFile(sourceFile *loader.SourceFile) (*analyzer.Analysis, error) {
 	content := p.parseContent(sourceFile, true)
-	return analyzer.AnalyzeImport(content)
+	analysis, diagnostics := analyzer.AnalyzeImport(content)
+	return analysis, errors.Join(diagnostics...)
 }
 
-func (p *_Parser) parseFileWithImports(sourceFile *loader.SourceFile, importedDomains []*analyzer.Analysis) *analyzer.Analysis {
+func (p *_Parser) parseFileWithImports(sourceFile *loader.SourceFile, importedDomains []*analyzer.Analysis) (*analyzer.Analysis, error) {
 	content := p.parseContent(sourceFile, true)
-	return analyzer.AnalyzeWithImports(content, importedDomains)
+	analysis, diagnostics := analyzer.Analyze(content, importedDomains)
+	return analysis, errors.Join(diagnostics...)
 }
 
-func (p *_Parser) parseDomainFiles(domainFile *loader.SourceFile, inputFiles []*loader.SourceFile) *analyzer.Analysis {
+func (p *_Parser) parseDomainFiles(domainFile *loader.SourceFile, inputFiles []*loader.SourceFile) (*analyzer.Analysis, error) {
 	return p.parseDomainFilesWithImports(domainFile, inputFiles, nil)
 }
 
-func (p *_Parser) parseImportFiles(domainFile *loader.SourceFile, inputFiles []*loader.SourceFile) *analyzer.Analysis {
+func (p *_Parser) parseImportFiles(domainFile *loader.SourceFile, inputFiles []*loader.SourceFile) (*analyzer.Analysis, error) {
 	domainFileContent := p.parseDomainFile(domainFile)
 	parsedContents := p.parseContents(inputFiles)
 	domainName := domainFileContent.Domain.Name.String()
 	p.validateDirectoryDomains(domainName, parsedContents)
-	return analyzer.AnalyzeImport(buildMergedContent(domainFileContent, parsedContents))
+	analysis, diagnostics := analyzer.AnalyzeImport(buildMergedContent(domainFileContent, parsedContents))
+	return analysis, errors.Join(diagnostics...)
 }
 
-func (p *_Parser) parseDomainFilesWithImports(domainFile *loader.SourceFile, inputFiles []*loader.SourceFile, importedDomains []*analyzer.Analysis) *analyzer.Analysis {
+func (p *_Parser) parseDomainFilesWithImports(domainFile *loader.SourceFile, inputFiles []*loader.SourceFile, importedDomains []*analyzer.Analysis) (*analyzer.Analysis, error) {
 	domainFileContent := p.parseDomainFile(domainFile)
 	parsedContents := p.parseContents(inputFiles)
 	domainName := domainFileContent.Domain.Name.String()
 	p.validateDirectoryDomains(domainName, parsedContents)
-	return analyzer.AnalyzeWithImports(buildMergedContent(domainFileContent, parsedContents), importedDomains)
+	analysis, diagnostics := analyzer.Analyze(buildMergedContent(domainFileContent, parsedContents), importedDomains)
+	return analysis, errors.Join(diagnostics...)
 }
 
 func (p *_Parser) parseDomainFile(domainFile *loader.SourceFile) *grammar.SkelContent {

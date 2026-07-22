@@ -16,8 +16,8 @@ func TestParseTypeAndFixRef(t *testing.T) {
 	}
 	user := &model.Data{Name: "User"}
 
-	tp := parseType(refGrammarType("Page", refGrammarType("User")))
-	fixTypeRef(tp, &refContext{
+	tp := parseTypeTest(t, refGrammarType("Page", refGrammarType("User")))
+	fixTypeRefTest(t, tp, &refContext{
 		dataList: map[string]*model.Data{
 			"Page": page,
 			"User": user,
@@ -61,7 +61,7 @@ func TestTypeRefData(t *testing.T) {
 }
 
 func TestParseTypeMapAndNullable(t *testing.T) {
-	typ := parseType(nullableType(mapType(plainType(grammar.String), refGrammarType("User"))))
+	typ := parseTypeTest(t, nullableType(mapType(plainType(grammar.String), refGrammarType("User"))))
 	if typ.Kind != model.TypeKindMap {
 		t.Fatalf("unexpected type kind: %v", typ.Kind)
 	}
@@ -77,11 +77,9 @@ func TestParseTypeMapAndNullable(t *testing.T) {
 }
 
 func TestFixRefReturnsErrorWhenDefinitionMissing(t *testing.T) {
-	typ := parseType(refGrammarType("User"))
+	typ := parseTypeTest(t, refGrammarType("User"))
 
-	expectPanicContains(t, "definition of User not found", func() {
-		fixTypeRef(typ, &refContext{})
-	})
+	expectFixTypeRefDiagnostic(t, "definition of User not found", typ, &refContext{})
 }
 
 func TestFixRefReturnsErrorWhenGenericTypeArgsMismatch(t *testing.T) {
@@ -92,16 +90,14 @@ func TestFixRefReturnsErrorWhenGenericTypeArgsMismatch(t *testing.T) {
 		},
 	}
 
-	typ := parseType(refGrammarType("Page", refGrammarType("User"), refGrammarType("Profile")))
+	typ := parseTypeTest(t, refGrammarType("Page", refGrammarType("User"), refGrammarType("Profile")))
 
-	expectPanicContains(t, "mismatched type arguments", func() {
-		fixTypeRef(typ, &refContext{
-			dataList: map[string]*model.Data{
-				"Page":    page,
-				"User":    {Name: "User"},
-				"Profile": {Name: "Profile"},
-			},
-		})
+	expectFixTypeRefDiagnostic(t, "mismatched type arguments", typ, &refContext{
+		dataList: map[string]*model.Data{
+			"Page":    page,
+			"User":    {Name: "User"},
+			"Profile": {Name: "Profile"},
+		},
 	})
 }
 
@@ -113,29 +109,23 @@ func TestFixRefReturnsErrorWhenGenericTypeArgsMissing(t *testing.T) {
 		},
 	}
 
-	typ := parseType(refGrammarType("Page"))
+	typ := parseTypeTest(t, refGrammarType("Page"))
 
-	expectPanicContains(t, "need type argument", func() {
-		fixTypeRef(typ, &refContext{
-			dataList: map[string]*model.Data{
-				"Page": page,
-			},
-		})
+	expectFixTypeRefDiagnostic(t, "need type argument", typ, &refContext{
+		dataList: map[string]*model.Data{
+			"Page": page,
+		},
 	})
 }
 
 func TestFixRefReturnsErrorWhenMapKeyIsNullable(t *testing.T) {
-	typ := parseType(mapType(nullableType(plainType(grammar.String)), plainType(grammar.Int)))
+	typ := parseTypeTest(t, mapType(nullableType(plainType(grammar.String)), plainType(grammar.Int)))
 
-	expectPanicContains(t, "incorrect key type, must not be nullable", func() {
-		fixTypeRef(typ, &refContext{})
-	})
+	expectFixTypeRefDiagnostic(t, "incorrect key type, must not be nullable", typ, &refContext{})
 }
 
 func TestFixRefReturnsErrorWhenMapKeyTypeIsUnsupported(t *testing.T) {
-	typ := parseType(mapType(plainType(grammar.Float), plainType(grammar.Int)))
+	typ := parseTypeTest(t, mapType(plainType(grammar.Float), plainType(grammar.Int)))
 
-	expectPanicContains(t, "int/string or Enum expected", func() {
-		fixTypeRef(typ, &refContext{})
-	})
+	expectFixTypeRefDiagnostic(t, "int/string or Enum expected", typ, &refContext{})
 }

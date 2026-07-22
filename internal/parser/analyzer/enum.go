@@ -1,19 +1,16 @@
 package analyzer
 
 import (
-	"fmt"
-
 	"github.com/alecthomas/participle/v2/lexer"
 	"go.yorun.ai/skelc/internal/parser/grammar"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/model"
 )
 
 const unspecifiedEnumName = "UNSPECIFIED"
 
-func parseEnum(ge *grammar.Enum) *model.Enum {
-	checkCase("Enum", caseTypeCamel, ge.Name)
-	checkNotReservedKindSuffix("Enum", ge.Name)
+func parseEnum(reporter *diagnosticReporter, ge *grammar.Enum) (*model.Enum, bool) {
+	valid := checkCase(reporter, "Enum", caseTypeCamel, ge.Name)
+	valid = checkNotReservedKindSuffix(reporter, "Enum", ge.Name) && valid
 
 	enum := &model.Enum{
 		Pos:  position(ge.Name.Pos),
@@ -24,37 +21,41 @@ func parseEnum(ge *grammar.Enum) *model.Enum {
 		},
 		Items: []*model.EnumItem{},
 	}
-	meta := parseDecoratorMeta(ge.Decorators, decoratorContext{
+	meta, metaValid := parseDecoratorMeta(reporter, ge.Decorators, decoratorContext{
 		allowDesc: true,
 	})
+	valid = metaValid && valid
 	enum.Description = meta.Description
 	itemPositionByName := map[string]lexer.Position{}
 
 	for _, grammarItem := range ge.Items {
-		item := parseEnumItem(grammarItem)
+		item, itemValid := parseEnumItem(reporter, grammarItem)
+		valid = itemValid && valid
 		duplicatedPosition, duplicated := itemPositionByName[item.Name]
-		checkutil.CheckFuncAt(item.Pos, !duplicated, func() string {
-			return fmt.Sprintf("%s duplicated EnumItem %s found, also present at %s",
-				item.Pos, item.Name, duplicatedPosition)
-		})
+		if duplicated {
+			reporter.reportf("%s duplicated EnumItem %s found, also present at %s", item.Pos, item.Name, duplicatedPosition)
+			valid = false
+			continue
+		}
 		itemPositionByName[item.Name] = lexer.Position{Filename: item.Pos.File, Line: item.Pos.Line, Column: item.Pos.Column}
 		enum.Items = append(enum.Items, item)
 	}
 
-	checkutil.Check(len(enum.Items) > 0, "%s missing EnumItem for %s", enum.Pos, enum.Name)
-	return enum
+	valid = reporter.check(len(enum.Items) > 0, "%s missing EnumItem for %s", enum.Pos, enum.Name) && valid
+	return enum, valid
 }
 
-func parseEnumItem(gei *grammar.EnumItem) *model.EnumItem {
-	checkCase("EnumItem", caseTypeScreamingSnake, gei.Name)
-	checkutil.Check(gei.Name.Value != unspecifiedEnumName, "%s reversed EnumItem value %s", gei.Name.Pos, gei.Name.Value)
-	meta := parseDecoratorMeta(gei.Decorators, decoratorContext{
+func parseEnumItem(reporter *diagnosticReporter, gei *grammar.EnumItem) (*model.EnumItem, bool) {
+	valid := checkCase(reporter, "EnumItem", caseTypeScreamingSnake, gei.Name)
+	valid = reporter.check(gei.Name.Value != unspecifiedEnumName, "%s reversed EnumItem value %s", gei.Name.Pos, gei.Name.Value) && valid
+	meta, metaValid := parseDecoratorMeta(reporter, gei.Decorators, decoratorContext{
 		allowDesc: true,
 	})
+	valid = metaValid && valid
 
 	return &model.EnumItem{
 		Pos:         position(gei.Name.Pos),
 		Name:        gei.Name.Value,
 		Description: meta.Description,
-	}
+	}, valid
 }

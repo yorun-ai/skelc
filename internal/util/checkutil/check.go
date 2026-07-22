@@ -55,10 +55,7 @@ func CheckNilError(err error, message string, args ...any) {
 		return
 	}
 	prefix := fmt.Sprintf(message, args...)
-	panic(&Failure{
-		Code: CodeValidation, Position: positionFromArgs(args),
-		Message: prefix + ": " + err.Error(), Cause: err,
-	})
+	panic(NewFailureWithCause(err, prefix+": "+err.Error(), args...))
 }
 
 // CheckFuncAt aborts with a lazily constructed structured failure at position.
@@ -73,9 +70,22 @@ func CheckFuncAt(position any, condition bool, message func() string) {
 // Failf formats a message, infers a source position from its arguments when
 // possible, and aborts with a structured failure.
 func Failf(message string, args ...any) {
-	panic(&Failure{
+	panic(NewFailuref(message, args...))
+}
+
+// NewFailuref constructs a structured validation failure without aborting the
+// current operation.
+func NewFailuref(message string, args ...any) *Failure {
+	return &Failure{
 		Code: CodeValidation, Position: positionFromArgs(args), Message: fmt.Sprintf(message, args...),
-	})
+	}
+}
+
+// NewFailureWithCause constructs a structured validation failure that wraps a cause.
+func NewFailureWithCause(cause error, message string, args ...any) *Failure {
+	return &Failure{
+		Code: CodeValidation, Position: positionFromArgs(args), Message: message, Cause: cause,
+	}
 }
 
 // Recover converts a recovered compiler abort into an error.

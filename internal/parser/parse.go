@@ -21,43 +21,55 @@ type Result struct {
 	Warnings []string
 }
 
-func Parse(option Option) Result {
+func Parse(option Option) (Result, error) {
 	warnings := make([]string, 0)
-	importedDomains := parseImportedDomains(option.SkelImports, &warnings)
-	domain := parseSource(option.SkelIn, importedDomains, false, &warnings)
+	importedDomains, err := parseImportedDomains(option.SkelImports, &warnings)
+	if err != nil {
+		return Result{}, err
+	}
+	domain, err := parseSource(option.SkelIn, importedDomains, false, &warnings)
+	if err != nil {
+		return Result{}, err
+	}
 	warnings = append(warnings, domain.Warnings()...)
 	sort.Strings(warnings)
 	parsed := domain.Model()
 	hasher.FillHashes(parsed)
-	return Result{Domain: parsed, Warnings: warnings}
+	return Result{Domain: parsed, Warnings: warnings}, nil
 }
 
-func ParseImport(skelIn string) Result {
+func ParseImport(skelIn string) (Result, error) {
 	warnings := make([]string, 0)
-	domain := parseSource(skelIn, nil, true, &warnings)
+	domain, err := parseSource(skelIn, nil, true, &warnings)
+	if err != nil {
+		return Result{}, err
+	}
 	warnings = append(warnings, domain.Warnings()...)
 	sort.Strings(warnings)
 	parsed := domain.Model()
 	hasher.FillHashes(parsed)
-	return Result{Domain: parsed, Warnings: warnings}
+	return Result{Domain: parsed, Warnings: warnings}, nil
 }
 
-func parseImportedDomains(imports map[string]string, warnings *[]string) []*analyzer.Analysis {
+func parseImportedDomains(imports map[string]string, warnings *[]string) ([]*analyzer.Analysis, error) {
 	if len(imports) == 0 {
-		return nil
+		return nil, nil
 	}
 	domains := make([]*analyzer.Analysis, 0, len(imports))
 	for expectedName, importPath := range imports {
-		importedDomain := parseSource(importPath, nil, true, warnings)
+		importedDomain, err := parseSource(importPath, nil, true, warnings)
+		if err != nil {
+			return nil, err
+		}
 		checkutil.Check(importedDomain.Model().Name() == expectedName,
 			"skel import %s has domain %s", expectedName, importedDomain.Model().Name(),
 		)
 		domains = append(domains, importedDomain)
 	}
-	return domains
+	return domains, nil
 }
 
-func parseSource(skelIn string, importedDomains []*analyzer.Analysis, importOnly bool, warnings *[]string) *analyzer.Analysis {
+func parseSource(skelIn string, importedDomains []*analyzer.Analysis, importOnly bool, warnings *[]string) (*analyzer.Analysis, error) {
 	loadResult := loader.Load(skelIn)
 	for _, warning := range loadResult.Warnings {
 		*warnings = append(*warnings, "[W] "+warning)

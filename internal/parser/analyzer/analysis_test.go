@@ -8,7 +8,7 @@ import (
 )
 
 func TestAnalyze(t *testing.T) {
-	domain := Analyze(&grammar.SkelContent{
+	domain := mustAnalyze(t, &grammar.SkelContent{
 		Domain: domainContent("demo.user"),
 		Entries: []*grammar.SkelEntry{
 			{
@@ -184,7 +184,7 @@ func TestAnalyze(t *testing.T) {
 }
 
 func TestAnalyzeKeepsDomainDescription(t *testing.T) {
-	domain := Analyze(&grammar.SkelContent{
+	domain := mustAnalyze(t, &grammar.SkelContent{
 		Domain: domainContentWithDescription("demo.user", "User domain"),
 	}).Model()
 

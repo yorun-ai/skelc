@@ -16,6 +16,7 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 ### Changed
 
 - Compiler validation aborts now carry structured error codes, source positions, and wrapped causes through centralized API and CLI recovery boundaries
+- Analyzer validation now reports errors explicitly instead of using panic/recover control flow; `check` and LSP collect up to 50 independent diagnostics per domain while suppressing errors that only depend on invalid declarations
 
 ## [0.9.0] - 2026-07-21
 

@@ -5,7 +5,6 @@ import (
 
 	"github.com/alecthomas/participle/v2/lexer"
 	"go.yorun.ai/skelc/internal/parser/grammar"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/model"
 )
@@ -43,21 +42,25 @@ func prepareResourceCheckMethod(domainName string, serviceName string, check *mo
 	return method
 }
 
-func parseResource(ge *grammar.Resource, pub bool) *model.Resource {
-	checkCase("Resource", caseTypeCamel, ge.Name)
-	meta := parseDecoratorMeta(ge.Decorators, decoratorContext{
+func parseResource(reporter *diagnosticReporter, ge *grammar.Resource, pub bool) (*model.Resource, bool) {
+	valid := checkCase(reporter, "Resource", caseTypeCamel, ge.Name)
+	meta, metaValid := parseDecoratorMeta(reporter, ge.Decorators, decoratorContext{
 		allowDesc: true,
 	})
-	checkutil.CheckNot(meta.HasExample, "%s resource does not support decorator @example", ge.Name.Pos)
+	valid = metaValid && valid
+	valid = reporter.checkNot(meta.HasExample, "%s resource does not support decorator @example", ge.Name.Pos) && valid
 
 	checks := make([]*model.ResourceCheck, 0, len(ge.Checks))
 	checkPos := map[string]lexer.Position{}
 	for _, grammarCheck := range ge.Checks {
-		check := parseResourceCheck("", grammarCheck)
+		check, checkValid := parseResourceCheck(reporter, "", grammarCheck)
+		valid = checkValid && valid
 		duplicatedPosition, duplicated := checkPos[check.Name]
-		checkutil.CheckFuncAt(grammarCheck.Name.Pos, !duplicated, func() string {
-			return fmt.Sprintf("%s duplicated resource check %s found, also present at %s", grammarCheck.Name.Pos, check.Name, duplicatedPosition)
-		})
+		if duplicated {
+			reporter.reportf("%s duplicated resource check %s found, also present at %s", grammarCheck.Name.Pos, check.Name, duplicatedPosition)
+			valid = false
+			continue
+		}
 		checkPos[check.Name] = grammarCheck.Name.Pos
 		checks = append(checks, check)
 	}
@@ -65,15 +68,18 @@ func parseResource(ge *grammar.Resource, pub bool) *model.Resource {
 	actions := make([]*model.ResourceAction, 0, len(ge.Actions))
 	actionPos := map[string]lexer.Position{}
 	for _, grammarAction := range ge.Actions {
-		action := parseResourceAction(grammarAction, checkPos)
+		action, actionValid := parseResourceAction(reporter, grammarAction, checkPos)
+		valid = actionValid && valid
 		duplicatedPosition, duplicated := actionPos[action.Name]
-		checkutil.CheckFuncAt(action.Pos, !duplicated, func() string {
-			return fmt.Sprintf("%s duplicated resource action %s found, also present at %s", action.Pos, action.Name, duplicatedPosition)
-		})
+		if duplicated {
+			reporter.reportf("%s duplicated resource action %s found, also present at %s", action.Pos, action.Name, duplicatedPosition)
+			valid = false
+			continue
+		}
 		actionPos[action.Name] = lexer.Position{Filename: action.Pos.File, Line: action.Pos.Line, Column: action.Pos.Column}
 		actions = append(actions, action)
 	}
-	checkutil.Check(len(actions) > 0, "%s resource %s must have at least one action", ge.Name.Pos, ge.Name.Value)
+	valid = reporter.check(len(actions) > 0, "%s resource %s must have at least one action", ge.Name.Pos, ge.Name.Value) && valid
 
 	return &model.Resource{
 		Pos:         position(ge.Name.Pos),
@@ -82,27 +88,33 @@ func parseResource(ge *grammar.Resource, pub bool) *model.Resource {
 		Pub:         pub,
 		Checks:      checks,
 		Actions:     actions,
-	}
+	}, valid
 }
 
-func parseResourceAction(ga *grammar.ResourceAction, resourceCheckPos map[string]lexer.Position) *model.ResourceAction {
-	checkCase("ResourceAction", caseTypeLowerCamel, ga.Name)
-	meta := parseDecoratorMeta(ga.Decorators, decoratorContext{
+func parseResourceAction(reporter *diagnosticReporter, ga *grammar.ResourceAction, resourceCheckPos map[string]lexer.Position) (*model.ResourceAction, bool) {
+	valid := checkCase(reporter, "ResourceAction", caseTypeLowerCamel, ga.Name)
+	meta, metaValid := parseDecoratorMeta(reporter, ga.Decorators, decoratorContext{
 		allowDesc: true,
 	})
-	checkutil.CheckNot(meta.HasExample, "%s resource action does not support decorator @example", ga.Name.Pos)
+	valid = metaValid && valid
+	valid = reporter.checkNot(meta.HasExample, "%s resource action does not support decorator @example", ga.Name.Pos) && valid
 
 	checks := make([]*model.ResourceCheck, 0, len(ga.Checks))
 	checkPos := map[string]lexer.Position{}
 	for _, grammarCheck := range ga.Checks {
-		check := parseResourceCheck(ga.Name.Value, grammarCheck)
+		check, checkValid := parseResourceCheck(reporter, ga.Name.Value, grammarCheck)
+		valid = checkValid && valid
 		if duplicatedPosition, duplicated := resourceCheckPos[check.Name]; duplicated {
-			checkutil.Failf("%s duplicated resource action check %s found, also present at %s", grammarCheck.Name.Pos, check.Name, duplicatedPosition)
+			reporter.reportf("%s duplicated resource action check %s found, also present at %s", grammarCheck.Name.Pos, check.Name, duplicatedPosition)
+			valid = false
+			continue
 		}
 		duplicatedPosition, duplicated := checkPos[check.Name]
-		checkutil.CheckFuncAt(grammarCheck.Name.Pos, !duplicated, func() string {
-			return fmt.Sprintf("%s duplicated resource action check %s found, also present at %s", grammarCheck.Name.Pos, check.Name, duplicatedPosition)
-		})
+		if duplicated {
+			reporter.reportf("%s duplicated resource action check %s found, also present at %s", grammarCheck.Name.Pos, check.Name, duplicatedPosition)
+			valid = false
+			continue
+		}
 		checkPos[check.Name] = grammarCheck.Name.Pos
 		checks = append(checks, check)
 	}
@@ -112,21 +124,22 @@ func parseResourceAction(ga *grammar.ResourceAction, resourceCheckPos map[string
 		Name:        ga.Name.Value,
 		Description: meta.Description,
 		Checks:      checks,
-	}
+	}, valid
 }
 
-func parseResourceCheck(actionName string, gc *grammar.ResourceCheck) *model.ResourceCheck {
-	checkCase("ResourceCheck", caseTypeLowerCamel, gc.Name)
+func parseResourceCheck(reporter *diagnosticReporter, actionName string, gc *grammar.ResourceCheck) (*model.ResourceCheck, bool) {
+	valid := checkCase(reporter, "ResourceCheck", caseTypeLowerCamel, gc.Name)
 	args := make([]*model.Argument, 0, len(gc.Arguments)+1)
 	hasPermissionCodeArgument := false
 	for index, grammarArgument := range gc.Arguments {
-		arg := parseArgument(grammarArgument)
+		arg, argumentValid := parseArgument(reporter, grammarArgument)
+		valid = argumentValid && valid
 		if isPermissionCodeType(arg.Type) {
-			checkutil.Check(index == 0 && arg.Name == "code",
-				`%s resource check PermissionCode argument must be the first argument named "code"`, grammarArgument.Name.Pos)
+			valid = reporter.check(index == 0 && arg.Name == "code",
+				`%s resource check PermissionCode argument must be the first argument named "code"`, grammarArgument.Name.Pos) && valid
 			hasPermissionCodeArgument = true
 		} else {
-			checkutil.Check(arg.Name != "code", `%s resource check argument name "code" is reserved`, grammarArgument.Name.Pos)
+			valid = reporter.check(arg.Name != "code", `%s resource check argument name "code" is reserved`, grammarArgument.Name.Pos) && valid
 		}
 		args = append(args, arg)
 	}
@@ -153,7 +166,7 @@ func parseResourceCheck(actionName string, gc *grammar.ResourceCheck) *model.Res
 	return &model.ResourceCheck{
 		Name:   gc.Name.Value,
 		Method: method,
-	}
+	}, valid
 }
 
 func newPermissionCodeArgument() *model.Argument {

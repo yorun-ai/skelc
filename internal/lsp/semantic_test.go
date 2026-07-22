@@ -36,3 +36,18 @@ func TestSemanticDiagnosticsDoNotDuplicateSyntaxErrors(t *testing.T) {
 
 	assert.Empty(t, semanticDiagnostics(sources, paths))
 }
+
+func TestSemanticDiagnosticsPublishMultipleErrorsForOneDocument(t *testing.T) {
+	documentURI := uri.File("/workspace/data.skel")
+	document := indexDocument(documentURI, "/workspace/data.skel", `domain demo
+data User { missing: MissingUser }
+data Order { missing: MissingOrder }
+`, 3)
+	sources, paths := semanticSources(map[uri.URI]*_Document{documentURI: document})
+
+	diagnostics := semanticDiagnostics(sources, paths)
+
+	require.Len(t, diagnostics[documentURI], 2)
+	assert.Contains(t, diagnostics[documentURI][0].Message, "MissingUser")
+	assert.Contains(t, diagnostics[documentURI][1].Message, "MissingOrder")
+}

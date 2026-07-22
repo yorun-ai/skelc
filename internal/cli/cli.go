@@ -107,6 +107,12 @@ func runCLICommand(command *ucli.Command, args []string) (result Result) {
 
 	err := command.Run(context.Background(), args)
 	if err != nil {
+		if diagnostics, ok := err.(interface{ Errors() []error }); ok {
+			return Result{
+				ExitCode: ExitCodeError, Stdout: stdout.String(),
+				Stderr: formatErrors(diagnostics.Errors(), rawLogFormat),
+			}
+		}
 		if stderr.Len() > 0 {
 			return Result{
 				ExitCode: ExitCodeError,
@@ -120,6 +126,18 @@ func runCLICommand(command *ucli.Command, args []string) (result Result) {
 		return Result{ExitCode: ExitCodeError, Stdout: stdout.String(), Stderr: logutil.Format(logutil.Error("%s", stderr.String()), rawLogFormat)}
 	}
 	return Result{ExitCode: ExitCodeSuccess, Stdout: stdout.String(), Stderr: stderr.String()}
+}
+
+func formatErrors(errors []error, format string) string {
+	var output strings.Builder
+	for _, err := range errors {
+		formatted := logutil.Format(logutil.Entry{Level: logutil.LevelError, Message: err.Error()}, format)
+		output.WriteString(formatted)
+		if !strings.HasSuffix(formatted, "\n") {
+			output.WriteByte('\n')
+		}
+	}
+	return output.String()
 }
 
 func recoverAsErrorResult(result *Result, rawLogFormat string) {

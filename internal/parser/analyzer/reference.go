@@ -11,14 +11,14 @@ import (
 type _RefKind int
 
 const (
-	_rkNone _RefKind = iota
-	_rkDirect
-	_rkNullable
-	_rkList
-	_rkMap
+	refKindNone _RefKind = iota
+	refKindDirect
+	refKindNullable
+	refKindList
+	refKindMap
 )
 
-var hardRefKinds = []_RefKind{_rkDirect}
+var hardRefKinds = []_RefKind{refKindDirect}
 
 func (rk _RefKind) isHard() bool {
 	return slices.Contains(hardRefKinds, rk)
@@ -54,10 +54,10 @@ func (rm _RefsMatrix) has(src *model.Data) bool {
 
 func (rm _RefsMatrix) refKind(src *model.Data, dst *model.Data) _RefKind {
 	if _, exists := rm[src]; !exists {
-		return _rkNone
+		return refKindNone
 	}
 	if _, exists := rm[src][dst]; !exists {
-		return _rkNone
+		return refKindNone
 	}
 	return rm[src][dst]
 }
@@ -66,18 +66,18 @@ func referencedData(t *model.Type) _Refs {
 	refs := _Refs{}
 	switch t.Kind {
 	case model.TypeKindData:
-		rk := _rkDirect
+		rk := refKindDirect
 		if t.Nullable {
-			rk = _rkNullable
+			rk = refKindNullable
 		}
 		refs.put(rk, t.Data)
 		for _, arg := range t.TypeArguments {
 			refs.override(rk, referencedData(arg))
 		}
 	case model.TypeKindList:
-		refs.override(_rkList, referencedData(t.List.Value))
+		refs.override(refKindList, referencedData(t.List.Value))
 	case model.TypeKindMap:
-		refs.override(_rkMap, referencedData(t.Map.Value))
+		refs.override(refKindMap, referencedData(t.Map.Value))
 	}
 	return refs
 }

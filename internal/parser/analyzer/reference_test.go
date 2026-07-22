@@ -52,10 +52,10 @@ func TestTypeRefData(t *testing.T) {
 	}
 	refs := referencedData(page)
 
-	if refs[page.Data] != _rkDirect {
+	if refs[page.Data] != refKindDirect {
 		t.Fatalf("unexpected direct ref kind: %v", refs[page.Data])
 	}
-	if refs[user] != _rkDirect {
+	if refs[user] != refKindDirect {
 		t.Fatalf("unexpected nested ref kind: %v", refs[user])
 	}
 }

@@ -2,6 +2,7 @@ package schema
 
 import (
 	"embed"
+	"fmt"
 	"go/format"
 	"io/fs"
 	"strings"
@@ -9,7 +10,6 @@ import (
 
 	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/codegen/golang/view"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -18,7 +18,7 @@ var templateFS embed.FS
 
 const schemaGoFilename = "schema.go"
 
-var schemaGoTemplate = loadTemplates()
+var schemaGoTemplate, schemaGoTemplateError = loadTemplates()
 
 type _Gen struct {
 	Domain *model.Domain
@@ -40,8 +40,16 @@ type Option struct {
 }
 
 func Generate(option Option) error {
+	if err := common.ValidateDomain(option.Domain); err != nil {
+		return fmt.Errorf("validate Go schema model: %w", err)
+	}
+	if schemaGoTemplateError != nil {
+		return schemaGoTemplateError
+	}
 	gen := newGen(option)
-	gen.gen()
+	if err := gen.gen(); err != nil {
+		return err
+	}
 	return gen.Renderer.Err()
 }
 
@@ -56,12 +64,18 @@ func newGen(option Option) *_Gen {
 	}
 }
 
-func (g *_Gen) gen() {
+func (g *_Gen) gen() error {
 	payload := g.buildSchemaGoPayload()
-	content := common.RenderTemplateWithFuncs(schemaGoTemplate, payload, g.schemaGoTemplateFuncs())
+	content, err := common.RenderTemplateWithFuncs(schemaGoTemplate, payload, g.schemaGoTemplateFuncs())
+	if err != nil {
+		return fmt.Errorf("render generated %s: %w", schemaGoFilename, err)
+	}
 	formatted, err := format.Source([]byte(content))
-	checkutil.CheckNilError(err, "format generated %s failed", schemaGoFilename)
+	if err != nil {
+		return fmt.Errorf("format generated %s: %w", schemaGoFilename, err)
+	}
 	g.Renderer.Write(schemaGoFilename, string(formatted))
+	return g.Renderer.Err()
 }
 
 func (g *_Gen) isSplitPub() bool {
@@ -72,17 +86,21 @@ func (g *_Gen) isSplitRegular() bool {
 	return g.mode == view.ModeRegular
 }
 
-func loadTemplates() string {
+func loadTemplates() (string, error) {
 	names, err := fs.Glob(templateFS, "tpl/*.go.tpl")
-	checkutil.CheckNilError(err, "list go schema templates failed")
+	if err != nil {
+		return "", fmt.Errorf("list Go schema templates: %w", err)
+	}
 	var templates strings.Builder
 	for _, name := range names {
 		content, readErr := templateFS.ReadFile(name)
-		checkutil.CheckNilError(readErr, "read go schema template %s failed", name)
+		if readErr != nil {
+			return "", fmt.Errorf("read Go schema template %s: %w", name, readErr)
+		}
 		templates.Write(content)
 		templates.WriteByte('\n')
 	}
-	return templates.String()
+	return templates.String(), nil
 }
 
 type SchemaGoPayload struct {

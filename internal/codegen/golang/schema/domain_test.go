@@ -36,7 +36,7 @@ func TestBuildDomainSchemaCopiesHashes(t *testing.T) {
 	gen := newGen(Option{
 		CompilerVersion: "v1.2.3",
 		Domain:          pkg,
-		View:            view.New(view.ModeFull, pkg),
+		View:            mustView(t, view.ModeFull, pkg),
 		Mode:            view.ModeFull,
 		PackageName:     "skeled",
 		Out:             filepath.Join(t.TempDir(), "skeled"),
@@ -114,7 +114,7 @@ func TestBuildDomainSchemaSplitFullFlagAndContent(t *testing.T) {
 
 	pubGen := newGen(Option{
 		Domain:      pkg,
-		View:        view.New(view.ModePub, pkg),
+		View:        mustView(t, view.ModePub, pkg),
 		Mode:        view.ModePub,
 		PackageName: "userpub",
 		Out:         filepath.Join(t.TempDir(), "pub"),
@@ -132,7 +132,7 @@ func TestBuildDomainSchemaSplitFullFlagAndContent(t *testing.T) {
 
 	regularGen := newGen(Option{
 		Domain:      pkg,
-		View:        view.New(view.ModeRegular, pkg),
+		View:        mustView(t, view.ModeRegular, pkg),
 		Mode:        view.ModeRegular,
 		PackageName: "user",
 		Out:         filepath.Join(t.TempDir(), "regular"),
@@ -164,7 +164,7 @@ func TestBuildDomainSchemaConfigLifecycleUsesConfValue(t *testing.T) {
 
 	gen := newGen(Option{
 		Domain:      pkg,
-		View:        view.New(view.ModeFull, pkg),
+		View:        mustView(t, view.ModeFull, pkg),
 		Mode:        view.ModeFull,
 		PackageName: "skeled",
 		Out:         filepath.Join(t.TempDir(), "skeled"),
@@ -208,7 +208,7 @@ func TestBuildDomainSchemaIncludesActorAuthMethod(t *testing.T) {
 
 	gen := newGen(Option{
 		Domain:      pkg,
-		View:        view.New(view.ModeFull, pkg),
+		View:        mustView(t, view.ModeFull, pkg),
 		Mode:        view.ModeFull,
 		PackageName: "skeled",
 		Out:         filepath.Join(t.TempDir(), "skeled"),

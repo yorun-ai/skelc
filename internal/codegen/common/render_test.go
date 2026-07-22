@@ -23,3 +23,12 @@ func TestNormalizeTrailingNewline(t *testing.T) {
 		})
 	}
 }
+
+func TestRenderTemplateReturnsParseAndExecutionErrors(t *testing.T) {
+	if _, err := RenderTemplate("{{", nil); err == nil {
+		t.Fatal("expected template parse error")
+	}
+	if _, err := RenderTemplate("{{call .}}", 1); err == nil {
+		t.Fatal("expected template execution error")
+	}
+}

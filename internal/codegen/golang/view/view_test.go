@@ -15,12 +15,18 @@ func TestViewSeparatesPubResources(t *testing.T) {
 		},
 	})
 
-	pubView := New(ModePub, domain)
+	pubView, err := New(ModePub, domain)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(pubView.Resources) != 1 || pubView.Resources[0].Name != "PublicUser" {
 		t.Fatalf("unexpected pub resources: %+v", pubView.Resources)
 	}
 
-	regularView := New(ModeRegular, domain)
+	regularView, err := New(ModeRegular, domain)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(regularView.Resources) != 1 || regularView.Resources[0].Name != "LocalUser" {
 		t.Fatalf("unexpected regular resources: %+v", regularView.Resources)
 	}
@@ -47,10 +53,7 @@ func TestPubViewRejectsServiceRequiringNonPubResource(t *testing.T) {
 		},
 	})
 
-	defer func() {
-		if recover() == nil {
-			t.Fatalf("New() did not panic")
-		}
-	}()
-	New(ModePub, domain)
+	if _, err := New(ModePub, domain); err == nil {
+		t.Fatal("expected invalid public view error")
+	}
 }

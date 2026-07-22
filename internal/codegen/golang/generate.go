@@ -1,8 +1,10 @@
 package golang
 
 import (
+	"fmt"
 	"strings"
 
+	"go.yorun.ai/skelc/internal/codegen/common"
 	gomodule "go.yorun.ai/skelc/internal/codegen/golang/module"
 	"go.yorun.ai/skelc/internal/codegen/golang/schema"
 	"go.yorun.ai/skelc/internal/codegen/golang/source"
@@ -28,6 +30,9 @@ type _Gen struct {
 }
 
 func Generate(domain *model.Domain, option Option) error {
+	if err := common.ValidateDomain(domain); err != nil {
+		return fmt.Errorf("validate Go generation model: %w", err)
+	}
 	if option.PubOut == "" {
 		gen, err := newGen(_GenOption{
 			CompilerVersion: option.CompilerVersion,

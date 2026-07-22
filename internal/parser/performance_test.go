@@ -62,6 +62,24 @@ func BenchmarkParseSource(b *testing.B) {
 	}
 }
 
+func BenchmarkParseSourceRecoveringManyDeclarations(b *testing.B) {
+	var source strings.Builder
+	source.WriteString("domain benchmark.recovery\n")
+	for index := range 50 {
+		fmt.Fprintf(&source, "data Value%d {\n    id string\n}\n", index)
+	}
+	input := []byte(source.String())
+	b.ReportAllocs()
+	b.SetBytes(int64(len(input)))
+	b.ResetTimer()
+	for range b.N {
+		content, diagnostics := parser.ParseSourceRecovering("benchmark.skel", input)
+		if content == nil || len(content.Entries) != 50 || len(diagnostics) != 50 {
+			b.Fatalf("unexpected recovery result: entries=%d diagnostics=%d", len(content.Entries), len(diagnostics))
+		}
+	}
+}
+
 func BenchmarkCheck(b *testing.B) {
 	directory := writeBenchmarkDirectory(b, 40)
 	b.ResetTimer()

@@ -19,19 +19,29 @@ func Generate(domain *model.Domain, option Option) error {
 	if !option.PubOnly {
 		return fmt.Errorf("Skel generation requires public-only output")
 	}
-	gen := newGen(domain, option.Out)
+	if err := common.ValidateDomain(domain); err != nil {
+		return fmt.Errorf("validate Skel generation model: %w", err)
+	}
+	gen, err := newGen(domain, option.Out)
+	if err != nil {
+		return err
+	}
 	if err := gen.generate(); err != nil {
 		return err
 	}
 	return gen.renderer.Err()
 }
 
-func newGen(domain *model.Domain, outputDir string) *_Gen {
+func newGen(domain *model.Domain, outputDir string) (*_Gen, error) {
+	tpl, err := newSkelTemplate()
+	if err != nil {
+		return nil, err
+	}
 	return &_Gen{
 		domain:   domain,
 		renderer: common.NewRenderer(outputDir),
-		template: newSkelTemplate(),
-	}
+		template: tpl,
+	}, nil
 }
 
 func (g *_Gen) generate() error {
@@ -39,18 +49,37 @@ func (g *_Gen) generate() error {
 	if err != nil {
 		return err
 	}
-	g.renderer.Write("domain.skel", g.renderSkel("domain.skel.tpl", g.buildDomainPayload(nil)))
+	if err := g.render("domain.skel", "domain.skel.tpl", g.buildDomainPayload(nil)); err != nil {
+		return err
+	}
 	if len(view.Actors) > 0 {
-		g.renderer.Write("actor.skel", g.renderSkel("actor.skel.tpl", g.buildActorPayload(view.Actors)))
+		if err := g.render("actor.skel", "actor.skel.tpl", g.buildActorPayload(view.Actors)); err != nil {
+			return err
+		}
 	}
 	if len(view.Enums) > 0 || len(view.Data) > 0 || len(view.Configs) > 0 || len(view.Resources) > 0 {
-		g.renderer.Write("types.skel", g.renderSkel("types.skel.tpl", g.buildTypesPayload(view)))
+		if err := g.render("types.skel", "types.skel.tpl", g.buildTypesPayload(view)); err != nil {
+			return err
+		}
 	}
 	if len(view.Events) > 0 {
-		g.renderer.Write("event.skel", g.renderSkel("event.skel.tpl", g.buildEventPayload(view.Events)))
+		if err := g.render("event.skel", "event.skel.tpl", g.buildEventPayload(view.Events)); err != nil {
+			return err
+		}
 	}
 	if len(view.Services) > 0 {
-		g.renderer.Write("service.skel", g.renderSkel("service.skel.tpl", g.buildServicePayload(view.Services)))
+		if err := g.render("service.skel", "service.skel.tpl", g.buildServicePayload(view.Services)); err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+func (g *_Gen) render(file, templateName string, payload *_SkelPayload) error {
+	content, err := g.renderSkel(templateName, payload)
+	if err != nil {
+		return err
+	}
+	g.renderer.Write(file, content)
+	return g.renderer.Err()
 }

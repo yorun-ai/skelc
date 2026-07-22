@@ -81,23 +81,12 @@ func collectImportsFromData(used map[string]struct{}, data *model.Data) {
 }
 
 func collectImportsFromType(used map[string]struct{}, type_ *model.Type) {
-	if type_ == nil {
-		return
-	}
-	if type_.ExternalDomain != "" {
-		used[type_.ExternalDomain] = struct{}{}
-	}
-	switch type_.Kind {
-	case model.TypeKindData:
-		for _, typeArgument := range type_.TypeArguments {
-			collectImportsFromType(used, typeArgument)
+	_ = common.WalkType(type_, func(current *model.Type) error {
+		if current.ExternalDomain != "" {
+			used[current.ExternalDomain] = struct{}{}
 		}
-	case model.TypeKindList:
-		collectImportsFromType(used, type_.List.Value)
-	case model.TypeKindMap:
-		collectImportsFromType(used, type_.Map.Key)
-		collectImportsFromType(used, type_.Map.Value)
-	}
+		return nil
+	})
 }
 
 func selectUsedImports(imports []*model.Import, used map[string]struct{}) []*model.Import {

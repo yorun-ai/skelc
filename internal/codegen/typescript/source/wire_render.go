@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/model"
 )
@@ -75,7 +74,10 @@ func (b *_WireSchemaBuilder) renderObjectSchema(members []*model.DataMember, dep
 }
 
 func (b *_WireSchemaBuilder) renderType(type_ *model.Type, depth int) string {
-	checkutil.CheckNotNil(type_, "cannot render nil TypeScript wire schema")
+	if type_ == nil {
+		b.fail("cannot render nil TypeScript wire schema")
+		return ""
+	}
 
 	var rendered string
 	switch type_.Kind {
@@ -116,13 +118,16 @@ func (b *_WireSchemaBuilder) renderType(type_ *model.Type, depth int) string {
 			arguments = append(arguments, b.renderType(argument, depth))
 		}
 		name := b.factoryNames[type_.Data]
-		checkutil.Check(name != "", "missing TypeScript wire schema factory for %s", type_.Data.Name)
+		if name == "" {
+			b.fail("missing TypeScript wire schema factory for %s", type_.Data.Name)
+			return ""
+		}
 		rendered = fmt.Sprintf("%s(%s)", name, strings.Join(arguments, ", "))
 		if type_.Nullable {
 			rendered = "{ ..." + rendered + ", nullable: true }"
 		}
 	default:
-		checkutil.Failf("unsupported TypeScript wire schema type %+v", type_)
+		b.fail("unsupported TypeScript wire schema type %+v", type_)
 	}
 	return rendered
 }

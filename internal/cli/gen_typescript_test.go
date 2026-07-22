@@ -45,6 +45,35 @@ func TestRunSkelcGenTSWithModule(t *testing.T) {
 	}
 }
 
+func TestRunSkelcGenTSUsesFlagNamesForSharedValidationErrors(t *testing.T) {
+	dir := t.TempDir()
+	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
+	tests := []struct {
+		name     string
+		args     []string
+		expected string
+	}{
+		{
+			name:     "missing module identity",
+			args:     []string{"gen", "ts", "--skel-in", dir, "--ts-out", t.TempDir(), "--ts-as-module"},
+			expected: "Error: missing flag ts-module or ts-module-scope",
+		},
+		{
+			name:     "module requires module output",
+			args:     []string{"gen", "ts", "--skel-in", dir, "--ts-out", t.TempDir(), "--ts-module", "@acme/user"},
+			expected: "Error: flag ts-module requires ts-as-module",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := Run(test.args)
+			if result.ExitCode != ExitCodeError || result.Stderr != test.expected {
+				t.Fatalf("unexpected result: exit=%d stderr=%q", result.ExitCode, result.Stderr)
+			}
+		})
+	}
+}
+
 func TestRunSkelcGenTSPub(t *testing.T) {
 	dir := t.TempDir()
 	tsOut := t.TempDir()

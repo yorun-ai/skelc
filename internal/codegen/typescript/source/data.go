@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/internal/util/sliceutil"
 	"go.yorun.ai/skelc/model"
@@ -71,36 +72,22 @@ func buildDataExternalImports(dataList []*model.Data) []*TypeImport {
 }
 
 func appendExternalTypeImports(imports []*TypeImport, seen map[string]struct{}, type_ *model.Type) []*TypeImport {
-	if type_ == nil {
-		return imports
-	}
-	if type_.ExternalImportPath != "" {
-		key := type_.ExternalAlias + "\x00" + type_.ExternalImportPath
-		if _, ok := seen[key]; !ok {
-			seen[key] = struct{}{}
-			imports = append(imports, &TypeImport{
-				Alias: type_.ExternalAlias,
-				Path:  type_.ExternalImportPath,
-			})
-			sort.Slice(imports, func(i, j int) bool {
-				if imports[i].Path == imports[j].Path {
-					return imports[i].Alias < imports[j].Alias
-				}
-				return imports[i].Path < imports[j].Path
-			})
+	_ = common.WalkType(type_, func(current *model.Type) error {
+		if current.ExternalImportPath != "" {
+			key := current.ExternalAlias + "\x00" + current.ExternalImportPath
+			if _, ok := seen[key]; !ok {
+				seen[key] = struct{}{}
+				imports = append(imports, &TypeImport{Alias: current.ExternalAlias, Path: current.ExternalImportPath})
+			}
 		}
-	}
-	switch type_.Kind {
-	case model.TypeKindList:
-		return appendExternalTypeImports(imports, seen, type_.List.Value)
-	case model.TypeKindMap:
-		imports = appendExternalTypeImports(imports, seen, type_.Map.Key)
-		return appendExternalTypeImports(imports, seen, type_.Map.Value)
-	case model.TypeKindData:
-		for _, typeArg := range type_.TypeArguments {
-			imports = appendExternalTypeImports(imports, seen, typeArg)
+		return nil
+	})
+	sort.Slice(imports, func(i, j int) bool {
+		if imports[i].Path == imports[j].Path {
+			return imports[i].Alias < imports[j].Alias
 		}
-	}
+		return imports[i].Path < imports[j].Path
+	})
 	return imports
 }
 

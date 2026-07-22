@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -18,7 +17,7 @@ func TestSpecTemplateRendersServiceSpecs(t *testing.T) {
 		},
 	}}}
 
-	output := common.RenderTemplate(specTsTemplate, payload)
+	output := renderTemplate(t, specTsTemplate, payload)
 	for _, check := range []string{
 		"export const DemoServiceSpec = {",
 		"serviceName: 'demo.template.DemoService'",
@@ -38,7 +37,7 @@ func TestSpecTemplateRendersServiceSpecs(t *testing.T) {
 }
 
 func TestSpecTemplateKeepsModuleSemanticsWhenEmpty(t *testing.T) {
-	output := common.RenderTemplate(specTsTemplate, &SpecTsPayload{})
+	output := renderTemplate(t, specTsTemplate, &SpecTsPayload{})
 	if !strings.Contains(output, "export {};") {
 		t.Fatalf("expected rendered spec to keep module semantics, got:\n%s", output)
 	}
@@ -118,7 +117,7 @@ func TestBuildSpecTsPayloadRendersSparseWireForBinaryMethods(t *testing.T) {
 	})
 
 	payload := newGen(pkg, ".").buildSpecTsPayload()
-	output := common.RenderTemplate(specTsTemplate, payload)
+	output := renderTemplate(t, specTsTemplate, payload)
 	for _, check := range []string{
 		"import type { VrpcWireSchema } from '@yorun-ai/vrpc';",
 		"createChunkWireSchema(): VrpcWireSchema",

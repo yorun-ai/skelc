@@ -49,6 +49,6 @@ func authMode(mode model.AuthMode) _AuthMode {
 	case model.AuthModeNoAuth:
 		return authModeNoAuth
 	default:
-		panic("unexpected auth mode " + mode)
+		return ""
 	}
 }

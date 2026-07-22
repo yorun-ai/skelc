@@ -4,22 +4,26 @@ import (
 	"fmt"
 	"strings"
 
+	"go.yorun.ai/skelc/internal/codegen/common"
 	gomodule "go.yorun.ai/skelc/internal/codegen/golang/module"
 	"go.yorun.ai/skelc/model"
 )
 
 func (g *_Gen) resolveExternalTypeImports() error {
-	var resolveErr error
-	g.visitDomainTypes(func(type_ *model.Type) {
-		if resolveErr != nil || type_ == nil || type_.ExternalDomain == "" {
-			return
+	return g.visitDomainTypes(func(type_ *model.Type) error {
+		if type_.ExternalDomain == "" {
+			return nil
 		}
-		type_.ExternalImportPath, resolveErr = g.goImportPath(type_.ExternalDomain)
+		path, err := g.goImportPath(type_.ExternalDomain)
+		if err != nil {
+			return err
+		}
+		type_.ExternalImportPath = path
 		if !type_.ExternalAliasExplicit {
 			type_.ExternalAlias = importPackageName(type_.ExternalDomain, true)
 		}
+		return nil
 	})
-	return resolveErr
 }
 
 func (g *_Gen) goImportPath(domainName string) (string, error) {
@@ -32,67 +36,74 @@ func (g *_Gen) goImportPath(domainName string) (string, error) {
 	return buildModuleName(g.modulePrefix, strings.Split(domainName, "."), true), nil
 }
 
-func (g *_Gen) visitDomainTypes(visit func(*model.Type)) {
+func (g *_Gen) visitDomainTypes(visit common.TypeVisitor) error {
 	for _, dataType := range g.domain.Data() {
-		visitDataTypes(dataType, visit)
+		if err := visitDataTypes(dataType, visit); err != nil {
+			return err
+		}
 	}
 	for _, config := range g.domain.Configs() {
-		visitDataTypes(config, visit)
+		if err := visitDataTypes(config, visit); err != nil {
+			return err
+		}
 	}
 	for _, event := range g.domain.Events() {
-		visitDataTypes(event, visit)
+		if err := visitDataTypes(event, visit); err != nil {
+			return err
+		}
 	}
 	for _, service := range g.domain.Services() {
-		visitServiceTypes(service, visit)
+		if err := visitServiceTypes(service, visit); err != nil {
+			return err
+		}
 	}
 	for _, actor := range g.domain.Actors() {
-		visitServiceTypes(actor.AuthService, visit)
-		visitServiceTypes(actor.PermService, visit)
+		if err := visitServiceTypes(actor.AuthService, visit); err != nil {
+			return err
+		}
+		if err := visitServiceTypes(actor.PermService, visit); err != nil {
+			return err
+		}
 	}
 	for _, resource := range g.domain.Resources() {
-		visitServiceTypes(resource.CheckService, visit)
+		if err := visitServiceTypes(resource.CheckService, visit); err != nil {
+			return err
+		}
 	}
 	for _, task := range g.domain.Tasks() {
 		for _, trigger := range task.Triggers {
 			for _, argument := range trigger.Arguments {
-				visitType(argument.Type, visit)
+				if err := common.WalkType(argument.Type, visit); err != nil {
+					return err
+				}
 			}
 		}
 	}
+	return nil
 }
 
-func visitServiceTypes(service *model.Service, visit func(*model.Type)) {
+func visitServiceTypes(service *model.Service, visit common.TypeVisitor) error {
 	if service == nil {
-		return
+		return nil
 	}
 	for _, method := range service.Methods {
-		visitType(method.ResultType, visit)
+		if err := common.WalkType(method.ResultType, visit); err != nil {
+			return err
+		}
 		for _, argument := range method.Arguments {
-			visitType(argument.Type, visit)
+			if err := common.WalkType(argument.Type, visit); err != nil {
+				return err
+			}
 		}
 	}
+	return nil
 }
 
-func visitDataTypes(dataType *model.Data, visit func(*model.Type)) {
+func visitDataTypes(dataType *model.Data, visit common.TypeVisitor) error {
 	for _, member := range dataType.Members {
-		visitType(member.Type, visit)
-	}
-}
-
-func visitType(type_ *model.Type, visit func(*model.Type)) {
-	if type_ == nil {
-		return
-	}
-	visit(type_)
-	switch type_.Kind {
-	case model.TypeKindList:
-		visitType(type_.List.Value, visit)
-	case model.TypeKindMap:
-		visitType(type_.Map.Key, visit)
-		visitType(type_.Map.Value, visit)
-	case model.TypeKindData:
-		for _, typeArgument := range type_.TypeArguments {
-			visitType(typeArgument, visit)
+		if err := common.WalkType(member.Type, visit); err != nil {
+			return err
 		}
 	}
+	return nil
 }

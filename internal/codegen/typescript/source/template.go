@@ -1,13 +1,21 @@
 package source
 
 import (
+	"fmt"
 	"strings"
 
 	"go.yorun.ai/skelc/internal/codegen/common"
 )
 
 func (g *_Gen) renderTs(file string, tpl string, data any) {
-	content := common.RenderTemplate(tpl, data)
+	if g.renderer.Err() != nil {
+		return
+	}
+	content, err := common.RenderTemplate(tpl, data)
+	if err != nil {
+		g.renderer.Fail(fmt.Errorf("render generated %s: %w", file, err))
+		return
+	}
 	g.renderer.Write(file, trimTrailingWhitespace(content))
 }
 

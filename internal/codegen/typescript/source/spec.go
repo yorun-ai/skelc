@@ -42,6 +42,9 @@ func (g *_Gen) buildSpecTsPayload() *SpecTsPayload {
 			)
 		}
 	}
+	if builder.err != nil && g.err == nil {
+		g.err = builder.err
+	}
 
 	return &SpecTsPayload{
 		HasWire:       hasWire,

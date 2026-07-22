@@ -1,0 +1,258 @@
+package common
+
+import (
+	"fmt"
+
+	"go.yorun.ai/skelc/model"
+)
+
+// ValidateDomain rejects malformed programmatically constructed models before
+// target renderers dereference tagged union fields or convert enum values.
+func ValidateDomain(domain *model.Domain) error {
+	if domain == nil {
+		return fmt.Errorf("cannot generate code for a nil domain")
+	}
+	for _, values := range [][]*model.Data{domain.Data(), domain.Configs(), domain.Events()} {
+		for _, data := range values {
+			if err := validateData(data); err != nil {
+				return err
+			}
+		}
+	}
+	for _, enum := range domain.Enums() {
+		if enum == nil {
+			return fmt.Errorf("generated model contains nil enum")
+		}
+		if enum.UnspecifiedItem == nil {
+			return fmt.Errorf("enum %s has no unspecified item", enum.Name)
+		}
+		for _, item := range enum.Items {
+			if item == nil {
+				return fmt.Errorf("enum %s contains a nil item", enum.Name)
+			}
+		}
+	}
+	for _, config := range domain.Configs() {
+		if config.Lifecycle != model.ConfigLifecycleEternal && config.Lifecycle != model.ConfigLifecycleInstant {
+			return fmt.Errorf("config %s has unsupported lifecycle %q", config.Name, config.Lifecycle)
+		}
+	}
+	for _, actor := range domain.Actors() {
+		if actor == nil {
+			return fmt.Errorf("generated model contains nil actor")
+		}
+		for _, via := range actor.Vias {
+			if via == nil {
+				return fmt.Errorf("actor %s contains a nil via", actor.Name)
+			}
+			switch model.ActorViaKind(via.Name) {
+			case model.ActorViaClient, model.ActorViaAgent, model.ActorViaOpenAPI:
+			default:
+				return fmt.Errorf("actor %s has unsupported via %q", actor.Name, via.Name)
+			}
+		}
+		for _, data := range []*model.Data{actor.AuthCredential, actor.AuthInfo} {
+			if data != nil {
+				if err := validateData(data); err != nil {
+					return err
+				}
+			}
+		}
+		for _, service := range []*model.Service{actor.AuthService, actor.PermService} {
+			if service != nil {
+				if err := validateService(service); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	for _, service := range domain.Services() {
+		if err := validateService(service); err != nil {
+			return err
+		}
+	}
+	for _, resource := range domain.Resources() {
+		if resource == nil {
+			return fmt.Errorf("generated model contains nil resource")
+		}
+		if resource.CheckService != nil {
+			if err := validateService(resource.CheckService); err != nil {
+				return err
+			}
+		}
+	}
+	for _, task := range domain.Tasks() {
+		if task == nil {
+			return fmt.Errorf("generated model contains nil task")
+		}
+		for _, trigger := range task.Triggers {
+			if trigger == nil {
+				return fmt.Errorf("task %s contains a nil trigger", task.Name)
+			}
+			if err := validateArguments("task trigger "+trigger.Name, trigger.Arguments, trigger.ArgumentsData); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func validateData(data *model.Data) error {
+	if data == nil {
+		return fmt.Errorf("generated model contains nil data")
+	}
+	for _, member := range data.Members {
+		if member == nil {
+			return fmt.Errorf("data %s contains a nil member", data.Name)
+		}
+		if err := validateModelType(member.Type); err != nil {
+			return fmt.Errorf("data %s member %s: %w", data.Name, member.Name, err)
+		}
+	}
+	return nil
+}
+
+func validateService(service *model.Service) error {
+	if service == nil {
+		return fmt.Errorf("generated model contains nil service")
+	}
+	if err := validateAuthMode(service.Auth); err != nil {
+		return fmt.Errorf("service %s: %w", service.Name, err)
+	}
+	if err := validatePermissionExpr(service.Require); err != nil {
+		return fmt.Errorf("service %s: %w", service.Name, err)
+	}
+	for _, method := range service.Methods {
+		if method == nil {
+			return fmt.Errorf("service %s contains a nil method", service.Name)
+		}
+		if err := validateAuthMode(method.Auth); err != nil {
+			return fmt.Errorf("service %s method %s: %w", service.Name, method.Name, err)
+		}
+		if err := validatePermissionExpr(method.Require); err != nil {
+			return fmt.Errorf("service %s method %s: %w", service.Name, method.Name, err)
+		}
+		if err := validateArguments("service method "+method.Name, method.Arguments, method.ArgumentsData); err != nil {
+			return err
+		}
+		if method.ResultType != nil {
+			if err := validateModelType(method.ResultType); err != nil {
+				return fmt.Errorf("service %s method %s result: %w", service.Name, method.Name, err)
+			}
+		}
+	}
+	return nil
+}
+
+func validateArguments(owner string, arguments []*model.Argument, data *model.Data) error {
+	members := map[string]bool{}
+	if data != nil {
+		if err := validateData(data); err != nil {
+			return fmt.Errorf("%s arguments: %w", owner, err)
+		}
+		for _, member := range data.Members {
+			members[member.Name] = true
+		}
+	}
+	for _, argument := range arguments {
+		if argument == nil {
+			return fmt.Errorf("%s contains a nil argument", owner)
+		}
+		if err := validateModelType(argument.Type); err != nil {
+			return fmt.Errorf("%s argument %s: %w", owner, argument.Name, err)
+		}
+		if data != nil && !members[argument.Name] {
+			return fmt.Errorf("%s argument member %s not found", owner, argument.Name)
+		}
+	}
+	return nil
+}
+
+func validateModelType(type_ *model.Type) error {
+	if type_ == nil {
+		return fmt.Errorf("type is nil")
+	}
+	return WalkType(type_, func(current *model.Type) error {
+		switch current.Kind {
+		case model.TypeKindScalar:
+			if current.Scalar < model.ScalarInt || current.Scalar > model.ScalarJSON {
+				return fmt.Errorf("unsupported scalar %s", current.Scalar.Name())
+			}
+		case model.TypeKindSkelPermissionCode:
+		case model.TypeKindList:
+			if current.List == nil || current.List.Value == nil {
+				return fmt.Errorf("list metadata is nil")
+			}
+		case model.TypeKindMap:
+			if current.Map == nil || current.Map.Key == nil || current.Map.Value == nil {
+				return fmt.Errorf("map metadata is nil")
+			}
+		case model.TypeKindEnum:
+			if current.Enum == nil {
+				return fmt.Errorf("enum metadata is nil")
+			}
+		case model.TypeKindData:
+			if current.Data == nil {
+				return fmt.Errorf("data metadata is nil")
+			}
+			switch current.Data.Kind {
+			case model.DataKindData, model.DataKindConfig, model.DataKindEvent:
+			default:
+				return fmt.Errorf("referenced data %s has unsupported kind %q", current.Data.Name, current.Data.Kind)
+			}
+		case model.TypeKindTypeParameter:
+			if current.TypeParameter == nil {
+				return fmt.Errorf("type parameter metadata is nil")
+			}
+		default:
+			return fmt.Errorf("unsupported type kind %d", current.Kind)
+		}
+		return nil
+	})
+}
+
+func validateAuthMode(mode model.AuthMode) error {
+	switch mode {
+	case "", model.AuthModeUnset, model.AuthModeAuth, model.AuthModeNoAuth:
+		return nil
+	default:
+		return fmt.Errorf("unsupported auth mode %q", mode)
+	}
+}
+
+func validatePermissionExpr(require *model.PermissionRequire) error {
+	if require == nil || require.Expr == nil {
+		return nil
+	}
+	var validate func(*model.PermissionExpr) error
+	validate = func(expr *model.PermissionExpr) error {
+		if expr == nil {
+			return fmt.Errorf("permission expression is nil")
+		}
+		switch expr.Mode {
+		case model.PermissionRequireModeCode:
+		case model.PermissionRequireModeCheck:
+			if expr.Check == nil {
+				return fmt.Errorf("permission check invocation is nil")
+			}
+			for _, argument := range expr.Check.Arguments {
+				if argument == nil {
+					return fmt.Errorf("permission check contains a nil argument")
+				}
+				if err := validateModelType(argument.Type); err != nil {
+					return fmt.Errorf("permission check argument %s: %w", argument.Name, err)
+				}
+			}
+		case model.PermissionRequireModeAll, model.PermissionRequireModeAny:
+			for _, child := range expr.Children {
+				if err := validate(child); err != nil {
+					return err
+				}
+			}
+		default:
+			return fmt.Errorf("unsupported permission require mode %q", expr.Mode)
+		}
+		return nil
+	}
+	return validate(require.Expr)
+}

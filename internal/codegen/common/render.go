@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
-
-	"go.yorun.ai/skelc/internal/util/checkutil"
 )
 
 type Renderer struct {
@@ -36,23 +34,31 @@ func (r *Renderer) Write(file string, content string) {
 
 func (r *Renderer) Err() error { return r.err }
 
-func RenderTemplate(tplString string, payloadData any) string {
+func (r *Renderer) Fail(err error) {
+	if r.err == nil {
+		r.err = err
+	}
+}
+
+func RenderTemplate(tplString string, payloadData any) (string, error) {
 	return RenderTemplateWithFuncs(tplString, payloadData, nil)
 }
 
-func RenderTemplateWithFuncs(tplString string, payloadData any, funcs template.FuncMap) string {
+func RenderTemplateWithFuncs(tplString string, payloadData any, funcs template.FuncMap) (string, error) {
 	tpl := template.New("template")
 	if funcs != nil {
 		tpl = tpl.Funcs(funcs)
 	}
 	tpl, err := tpl.Parse(tplString)
-	checkutil.CheckNilError(err, "parse template failed")
+	if err != nil {
+		return "", fmt.Errorf("parse template: %w", err)
+	}
 
 	var rendered strings.Builder
-	err = tpl.Execute(&rendered, payloadData)
-	checkutil.CheckNilError(err, "execute template failed")
-
-	return rendered.String()
+	if err := tpl.Execute(&rendered, payloadData); err != nil {
+		return "", fmt.Errorf("execute template: %w", err)
+	}
+	return rendered.String(), nil
 }
 
 func normalizeTrailingNewline(content string) string {

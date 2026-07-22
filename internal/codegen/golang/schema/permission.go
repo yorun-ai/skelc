@@ -54,6 +54,6 @@ func permissionRequireMode(mode model.PermissionRequireMode) _PermRequireMode {
 	case model.PermissionRequireModeAny:
 		return permRequireModeAny
 	default:
-		panic("unexpected permission require mode " + mode)
+		return ""
 	}
 }

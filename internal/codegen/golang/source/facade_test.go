@@ -39,7 +39,7 @@ func TestFacadeGoRendersActorAuthService(t *testing.T) {
 	outputDir := filepath.Join(t.TempDir(), "auth")
 	gen := newGen(Option{
 		Domain:        pkg,
-		View:          view.New(view.ModeRegular, pkg),
+		View:          mustView(t, view.ModeRegular, pkg),
 		Mode:          view.ModeRegular,
 		PackageName:   "auth",
 		Out:           outputDir,
@@ -86,7 +86,7 @@ func TestFacadeGoRendersResourcePermissions(t *testing.T) {
 	outputDir := filepath.Join(t.TempDir(), "app")
 	gen := newGen(Option{
 		Domain:        pkg,
-		View:          view.New(view.ModeRegular, pkg),
+		View:          mustView(t, view.ModeRegular, pkg),
 		Mode:          view.ModeRegular,
 		PackageName:   "app",
 		Out:           outputDir,

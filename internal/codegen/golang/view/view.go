@@ -78,12 +78,5 @@ func Build(mode Mode, domain *model.Domain) (*Domain, error) {
 	}, nil
 }
 
-// New constructs a view for internal renderer tests that use validated model
-// fixtures. Production generation uses Build and propagates validation errors.
-func New(mode Mode, domain *model.Domain) *Domain {
-	result, err := Build(mode, domain)
-	if err != nil {
-		panic(err)
-	}
-	return result
-}
+// New constructs a generation view and reports invalid modes or public views.
+func New(mode Mode, domain *model.Domain) (*Domain, error) { return Build(mode, domain) }

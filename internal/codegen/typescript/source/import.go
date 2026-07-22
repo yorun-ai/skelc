@@ -3,6 +3,7 @@ package source
 import (
 	"fmt"
 
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/codegen/typescript/module"
 	"go.yorun.ai/skelc/model"
 )
@@ -99,19 +100,8 @@ func visitDataTypes(dataType *model.Data, visit func(*model.Type)) {
 }
 
 func visitType(type_ *model.Type, visit func(*model.Type)) {
-	if type_ == nil {
-		return
-	}
-	visit(type_)
-	switch type_.Kind {
-	case model.TypeKindList:
-		visitType(type_.List.Value, visit)
-	case model.TypeKindMap:
-		visitType(type_.Map.Key, visit)
-		visitType(type_.Map.Value, visit)
-	case model.TypeKindData:
-		for _, typeArg := range type_.TypeArguments {
-			visitType(typeArg, visit)
-		}
-	}
+	_ = common.WalkType(type_, func(current *model.Type) error {
+		visit(current)
+		return nil
+	})
 }

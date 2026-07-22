@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"go.yorun.ai/skelc/internal/codegen/common"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -38,7 +37,6 @@ func castType(p *model.Type) *Type {
 		return castTypeParameter(p)
 	}
 
-	checkutil.Failf("unexpected type %+v", p)
 	return nil
 }
 
@@ -97,7 +95,6 @@ func castScalarType(p *model.Type) *Type {
 			Plain: common.ChooseString(p.Nullable, "string | null", "string"),
 		}
 	}
-	checkutil.Failf("unexpected scalar type %+v", p)
 	return nil
 }
 

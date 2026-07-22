@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"go.yorun.ai/skelc/internal/codegen/common"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/model"
 )
@@ -179,35 +178,20 @@ func buildServiceTypeImports(services []*model.Service) []string {
 }
 
 func appendServiceTypeImports(imports []string, seen map[string]struct{}, typeToken *model.Type) []string {
-	if typeToken == nil {
-		return imports
-	}
-
-	switch typeToken.Kind {
-	case model.TypeKindScalar, model.TypeKindTypeParameter:
-		return imports
-	case model.TypeKindList:
-		return appendServiceTypeImports(imports, seen, typeToken.List.Value)
-	case model.TypeKindMap:
-		imports = appendServiceTypeImports(imports, seen, typeToken.Map.Key)
-		return appendServiceTypeImports(imports, seen, typeToken.Map.Value)
-	case model.TypeKindEnum:
-		if typeToken.ExternalImportPath != "" {
-			return imports
+	_ = common.WalkType(typeToken, func(current *model.Type) error {
+		switch current.Kind {
+		case model.TypeKindEnum:
+			if current.ExternalImportPath == "" {
+				imports = appendUniqueServiceTypeImport(imports, seen, transEnumName(current.Enum))
+			}
+		case model.TypeKindData:
+			if current.ExternalImportPath == "" {
+				imports = appendUniqueServiceTypeImport(imports, seen, transDataName(current.Data))
+			}
 		}
-		return appendUniqueServiceTypeImport(imports, seen, transEnumName(typeToken.Enum))
-	case model.TypeKindData:
-		if typeToken.ExternalImportPath == "" {
-			imports = appendUniqueServiceTypeImport(imports, seen, transDataName(typeToken.Data))
-		}
-		for _, typeArgument := range typeToken.TypeArguments {
-			imports = appendServiceTypeImports(imports, seen, typeArgument)
-		}
-		return imports
-	}
-
-	checkutil.Failf("unexpected type %+v", typeToken)
-	return nil
+		return nil
+	})
+	return imports
 }
 
 func appendUniqueServiceTypeImport(imports []string, seen map[string]struct{}, name string) []string {

@@ -46,6 +46,11 @@ func buildNamedValues[T any](items []*T, skelNameOf func(*T) string, hashOf func
 	return values
 }
 
+// Compatibility hashes are only used to compare the same schema node across
+// skelc builds. They are change detectors, not globally unique identifiers,
+// protocol authentication values, or security boundaries, so the lightweight
+// 32-bit MurmurHash3 is intentional.
+//
 // murmur32 implements MurmurHash3_x86_32 with a zero seed.
 // The original MurmurHash3 algorithm was written by Austin Appleby and
 // released into the public domain:

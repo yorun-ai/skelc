@@ -155,6 +155,8 @@ skelc format --skel-in ./skel
 
 `format` modifies files in place after validating all inputs. Tool integrations can request machine-readable diagnostics with the global `--log-format jsonl` option.
 
+`skelc lsp` provides editor formatting, keyword and type completion, declaration hover details, hierarchical document and workspace symbols, definition and reference navigation, and safe top-level declaration rename. While a document contains a syntax error, the server keeps a best-effort index of its domain, imports, and top-level declarations so unaffected navigation remains available.
+
 ## Programmatic API
 
 Go programs can invoke generation through the root `go.yorun.ai/skelc` package without importing implementation packages:

@@ -4,6 +4,14 @@ All notable changes to skelc are documented in this file.
 
 The project follows [Semantic Versioning](https://semver.org/). The public version history starts at `v0.9.0`; versions from the former private repository are not part of the public release history.
 
+## [Unreleased]
+
+### Added
+
+- LSP document formatting, keyword and type completion, and declaration hover details
+- Hierarchical document symbols, workspace symbol search, and top-level declaration rename
+- Best-effort domain, import, and top-level declaration indexing while a document has syntax errors
+
 ## [0.9.0] - 2026-07-21
 
 Initial public release.

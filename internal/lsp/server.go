@@ -70,14 +70,20 @@ func (s *_Server) Initialize(_ context.Context, params *protocol.InitializeParam
 		s.loadWorkspace(rootPath)
 	}
 	openClose := true
+	prepareRename := true
 	change := protocol.TextDocumentSyncKindFull
 	return &protocol.InitializeResult{
 		Capabilities: protocol.ServerCapabilities{
-			PositionEncoding:       protocol.PositionEncodingKindUTF16,
-			TextDocumentSync:       &protocol.TextDocumentSyncOptions{OpenClose: &openClose, Change: &change},
-			DefinitionProvider:     protocol.Boolean(true),
-			ReferencesProvider:     protocol.Boolean(true),
-			DocumentSymbolProvider: protocol.Boolean(true),
+			PositionEncoding:           protocol.PositionEncodingKindUTF16,
+			TextDocumentSync:           &protocol.TextDocumentSyncOptions{OpenClose: &openClose, Change: &change},
+			CompletionProvider:         &protocol.CompletionOptions{TriggerCharacters: []string{"."}},
+			HoverProvider:              protocol.Boolean(true),
+			DefinitionProvider:         protocol.Boolean(true),
+			ReferencesProvider:         protocol.Boolean(true),
+			DocumentSymbolProvider:     protocol.Boolean(true),
+			WorkspaceSymbolProvider:    protocol.Boolean(true),
+			DocumentFormattingProvider: protocol.Boolean(true),
+			RenameProvider:             &protocol.RenameOptions{PrepareProvider: &prepareRename},
 		},
 		ServerInfo: protocol.ServerInfo{Name: "skelc"},
 	}, nil
@@ -213,13 +219,7 @@ func (s *_Server) DocumentSymbol(_ context.Context, params *protocol.DocumentSym
 	if document == nil {
 		return protocol.DocumentSymbolSlice{}, nil
 	}
-	symbols := make(protocol.DocumentSymbolSlice, 0, len(document.Definitions))
-	for _, definition := range document.Definitions {
-		symbols = append(symbols, protocol.DocumentSymbol{
-			Name: definition.Name, Kind: definition.Kind, Range: definition.Range, SelectionRange: definition.Range,
-		})
-	}
-	return symbols, nil
+	return documentSymbols(document.Symbols), nil
 }
 
 func (s *_Server) putDocument(documentURI uri.URI, source string, version int32, open bool) {

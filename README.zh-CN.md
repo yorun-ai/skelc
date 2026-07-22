@@ -155,6 +155,8 @@ skelc format --skel-in ./skel
 
 `format` 会原地修改文件，执行前会先验证全部输入。工具集成可以使用全局参数 `--log-format jsonl` 获取机器可读诊断。
 
+`skelc lsp` 提供编辑器格式化、关键字与类型补全、声明悬停信息、层级文档与工作区符号、定义与引用跳转，以及安全的顶层声明重命名。文档存在语法错误时，服务端仍会尽力保留 domain、import 和顶层声明索引，使未受影响的导航能力继续可用。
+
 ## 程序调用 API
 
 Go 程序可以通过根 package `go.yorun.ai/skelc` 调用生成能力，无需导入实现 package：

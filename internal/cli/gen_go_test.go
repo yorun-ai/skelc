@@ -25,7 +25,7 @@ func TestRunSkelcGenGo(t *testing.T) {
 	}
 }
 
-func TestRunSkelcGenGoCleansOutputDir(t *testing.T) {
+func TestRunSkelcGenGoPreservesUnmanagedOutput(t *testing.T) {
 	dir := t.TempDir()
 	goOut := filepath.Join(t.TempDir(), "skeled")
 	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
@@ -38,13 +38,14 @@ func TestRunSkelcGenGoCleansOutputDir(t *testing.T) {
 	if result.ExitCode != ExitCodeSuccess {
 		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
 	}
-	assertFileMissing(t, filepath.Join(goOut, ".hidden"))
-	assertFileMissing(t, filepath.Join(goOut, ".hidden-dir"))
-	assertFileMissing(t, filepath.Join(goOut, "old.go"))
+	assertFileContains(t, filepath.Join(goOut, ".hidden"), "hidden")
+	assertFileContains(t, filepath.Join(goOut, ".hidden-dir", "old.go"), "old")
+	assertFileContains(t, filepath.Join(goOut, "old.go"), "old")
 	assertFileContains(t, filepath.Join(goOut, "doc.go"), "package skeled")
+	assertFileContains(t, filepath.Join(goOut, ".skelc-manifest.json"), `"doc.go"`)
 }
 
-func TestRunSkelcGenGoDoesNotCleanOutputWhenCompilationFails(t *testing.T) {
+func TestRunSkelcGenGoDoesNotChangeOutputWhenCompilationFails(t *testing.T) {
 	dir := t.TempDir()
 	goOut := filepath.Join(t.TempDir(), "skeled")
 	writeCLIFile(t, filepath.Join(dir, "user.skel"), `data User { id: string }`)
@@ -56,23 +57,6 @@ func TestRunSkelcGenGoDoesNotCleanOutputWhenCompilationFails(t *testing.T) {
 		t.Fatal("expected generation failure")
 	}
 	assertFileContains(t, filepath.Join(goOut, "old.go"), "old")
-}
-
-func TestRunSkelcGenGoNoCleanPreservesOutputDir(t *testing.T) {
-	dir := t.TempDir()
-	goOut := filepath.Join(t.TempDir(), "skeled")
-	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
-	writeCLIFile(t, filepath.Join(goOut, ".hidden"), "hidden")
-	writeCLIFile(t, filepath.Join(goOut, "old.go"), "old")
-
-	result := Run([]string{"gen", "go", "--skel-in", dir, "--go-out", goOut, "--no-clean"})
-
-	if result.ExitCode != ExitCodeSuccess {
-		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
-	}
-	assertFileContains(t, filepath.Join(goOut, ".hidden"), "hidden")
-	assertFileContains(t, filepath.Join(goOut, "old.go"), "old")
-	assertFileContains(t, filepath.Join(goOut, "doc.go"), "package skeled")
 }
 
 func TestRunSkelcGenGoModule(t *testing.T) {
@@ -165,9 +149,13 @@ pub data User {
 	if result.ExitCode != ExitCodeSuccess {
 		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
 	}
+	version, err := compilerVersion()
+	if err != nil {
+		t.Fatal(err)
+	}
 	assertFileContains(t, filepath.Join(goOut, "schema.go"),
 		`Domain: "demo.user"`,
-		`CompilerVersion: "`+compilerVersion()+`"`)
+		`CompilerVersion: "`+version+`"`)
 }
 
 func TestRunSkelcGenGoRejectsModuleFlags(t *testing.T) {

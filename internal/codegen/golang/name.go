@@ -1,11 +1,11 @@
 package golang
 
 import (
+	"fmt"
 	gotoken "go/token"
 	"path/filepath"
 	"strings"
 
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 )
 
@@ -39,15 +39,16 @@ func importPackageName(domainName string, usePubPackage bool) string {
 	return packageNameFallback(strings.Split(domainName, "."), usePubPackage)
 }
 
-func inferPackageName(outputDir string, fallback string, asModule bool) string {
+func inferPackageName(outputDir string, fallback string, asModule bool) (string, error) {
 	if asModule {
-		return fallback
+		return fallback, nil
 	}
 	dirName := filepath.Base(outputDir)
 	if dirName == "." || dirName == string(filepath.Separator) || dirName == "" {
-		return fallback
+		return fallback, nil
 	}
-	checkutil.Check(nameutil.IsSnakeCase(dirName), "go output directory name %q is not a valid package name", dirName)
-	checkutil.CheckNot(gotoken.Lookup(dirName).IsKeyword(), "go output directory name %q is not a valid package name", dirName)
-	return dirName
+	if !nameutil.IsSnakeCase(dirName) || gotoken.Lookup(dirName).IsKeyword() {
+		return "", fmt.Errorf("go output directory name %q is not a valid package name", dirName)
+	}
+	return dirName, nil
 }

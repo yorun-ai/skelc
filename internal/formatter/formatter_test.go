@@ -28,6 +28,22 @@ func TestSourceGolden(t *testing.T) {
 	}
 }
 
+func TestFormatterIsIdempotentAroundUnmatchedClosingBrace(t *testing.T) {
+	first := Source([]byte("data}0"))
+	second := Source(first)
+	if string(first) != string(second) {
+		t.Fatalf("formatter is not idempotent: first=%q second=%q", first, second)
+	}
+}
+
+func TestFormatterIsIdempotentAroundMismatchedParenAndBrace(t *testing.T) {
+	first := Source([]byte("//00\n00000(}"))
+	second := Source(first)
+	if string(first) != string(second) {
+		t.Fatalf("formatter is not idempotent: first=%q second=%q", first, second)
+	}
+}
+
 func TestSourcePreservesCommentsAndStrings(t *testing.T) {
 	source := []byte("domain demo.user\n\n/* comment { }\n   keep */\n@desc(\"\"\"\n  keep { content }\n\"\"\") // inline\nservice UserService {\nmethod ping {}\n}\n")
 	want := "domain demo.user\n\n/* comment { }\n   keep */\n@desc(\"\"\"\nkeep { content }\n\"\"\") // inline\nservice UserService {\n    method ping {}\n}\n"
@@ -50,7 +66,11 @@ func descriptionValue(t *testing.T, source []byte) string {
 		t.Fatal(err)
 	}
 	raw := content.Entries[0].Service.Decorators[0].Value.Raw
-	return grammar.UnquoteDescriptionString(raw)
+	description, err := grammar.UnquoteDescriptionString(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return description
 }
 
 func TestSourcePreservesSemanticHash(t *testing.T) {

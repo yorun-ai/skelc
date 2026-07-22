@@ -6,11 +6,11 @@ import "fmt"
 // A zero Position is unknown.
 type Position struct {
 	// File is the source path and may be empty when no path is available.
-	File string
+	File string `json:"file,omitempty"`
 	// Line is the one-based source line.
-	Line int
+	Line int `json:"line"`
 	// Column is the one-based source column.
-	Column int
+	Column int `json:"column"`
 }
 
 // String formats p as file:line:column, or line:column when File is empty.

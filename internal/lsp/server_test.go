@@ -93,7 +93,7 @@ func TestServePublishesAndInvalidatesSemanticDiagnostics(t *testing.T) {
 	}}))
 
 	diagnostic := waitForDiagnostics(t, client.diagnostics, func(params *protocol.PublishDiagnosticsParams) bool {
-		return params.URI == orderURI && len(params.Diagnostics) == 1 && params.Diagnostics[0].Code == protocol.String("semantic")
+		return params.URI == orderURI && len(params.Diagnostics) == 1 && params.Diagnostics[0].Code == protocol.String("semantic.reference")
 	})
 	assert.Equal(t, protocol.NewOptional(int32(1)), diagnostic.Version)
 

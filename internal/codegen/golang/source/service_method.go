@@ -3,7 +3,7 @@ package source
 import (
 	"fmt"
 
-	"go.yorun.ai/skelc/internal/codegen"
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/internal/util/sliceutil"
@@ -128,7 +128,7 @@ func castMethodArgument(p *model.Argument) *MethodArgument {
 	return &MethodArgument{
 		Name:        nameutil.ToLowerCamel(p.Name),
 		SkelName:    p.Name,
-		Description: codegen.MergeDescriptionAndExample(p.Description, p.Example),
+		Description: common.MergeDescriptionAndExample(p.Description, p.Example),
 		Type:        argType,
 		ParsedType:  p.Type,
 	}

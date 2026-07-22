@@ -115,7 +115,7 @@ func TestRunSkelcGenGoHelpShowsLimitedOptions(t *testing.T) {
 	if result.ExitCode != ExitCodeSuccess {
 		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
 	}
-	for _, expected := range []string{"--skel-in", "--go-out", "--go-vine-version", "--no-clean"} {
+	for _, expected := range []string{"--skel-in", "--go-out", "--go-vine-version"} {
 		if !strings.Contains(result.Stdout, expected) {
 			t.Fatalf("expected %s in stdout: %q", expected, result.Stdout)
 		}
@@ -143,7 +143,6 @@ func TestRunSkelcGenGoModuleHelpDoesNotShowPub(t *testing.T) {
 		"--go-import",
 		"--go-module-prefix",
 		"--go-vine-version",
-		"--no-clean",
 	})
 	if strings.Contains(result.Stdout, "--pub") {
 		t.Fatalf("did not expect --pub in stdout: %q", result.Stdout)

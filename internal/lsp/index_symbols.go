@@ -141,7 +141,8 @@ func finishSymbol(symbol _Symbol) _Symbol {
 func descriptionFromDecorators(decorators []*grammar.Decorator) string {
 	for _, decorator := range decorators {
 		if decorator.Name.Value == "desc" && decorator.Value != nil {
-			return grammar.UnquoteDescriptionString(decorator.Value.Raw)
+			description, _ := grammar.UnquoteDescriptionString(decorator.Value.Raw)
+			return description
 		}
 	}
 	return ""

@@ -3,18 +3,19 @@ package skeleton
 import (
 	"strings"
 
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/model"
 )
 
-func collectTypeImports(domain *model.Domain, view *_PubView) []*model.Import {
+func collectTypeImports(domain *model.Domain, view *common.PublicView) []*model.Import {
 	used := map[string]struct{}{}
-	for _, data := range view.dataList {
+	for _, data := range view.Data {
 		collectImportsFromData(used, data)
 	}
-	for _, config := range view.configs {
+	for _, config := range view.Configs {
 		collectImportsFromData(used, config)
 	}
-	for _, resource := range view.resources {
+	for _, resource := range view.Resources {
 		for _, check := range resource.Checks {
 			for _, argument := range renderResourceCheckArguments(check) {
 				collectImportsFromType(used, argument.Type)

@@ -11,7 +11,6 @@ import (
 	"github.com/Masterminds/semver/v3"
 	ucli "github.com/urfave/cli/v3"
 	"go.yorun.ai/skelc/internal/codegen/golang"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 )
 
 const (
@@ -30,10 +29,23 @@ func newVersionCommand() *ucli.Command {
 			newOutputFormatFlag("version output format: text/json"),
 		},
 		Action: func(_ context.Context, cmd *ucli.Command) error {
-			checkutil.Check(cmd.Args().Len() == 0, "unexpected args for %s", commandVersion)
-			info := versionInfo()
-			if commandOutputFormat(cmd) == outputFormatJSON {
-				_, _ = fmt.Fprintln(cmd.Root().Writer, info.JSONString())
+			if cmd.Args().Len() != 0 {
+				return fmt.Errorf("unexpected args for %s", commandVersion)
+			}
+			info, err := versionInfo()
+			if err != nil {
+				return err
+			}
+			format, err := commandOutputFormat(cmd)
+			if err != nil {
+				return err
+			}
+			if format == outputFormatJSON {
+				json, err := info.JSONString()
+				if err != nil {
+					return err
+				}
+				_, _ = fmt.Fprintln(cmd.Root().Writer, json)
 				return nil
 			}
 			_, _ = fmt.Fprintln(cmd.Root().Writer, info.TextString())
@@ -60,8 +72,11 @@ type _VersionGolangCodeGen struct {
 	DefaultVineVersion string `json:"defaultVineVersion"`
 }
 
-func versionInfo() _VersionInfo {
-	buildInfo := mustDebugBuildInfo()
+func versionInfo() (_VersionInfo, error) {
+	buildInfo, err := debugBuildInfo()
+	if err != nil {
+		return _VersionInfo{}, err
+	}
 	return _VersionInfo{
 		Name:      cliName,
 		Version:   buildInfo.Version,
@@ -70,22 +85,28 @@ func versionInfo() _VersionInfo {
 		GolangCodeGen: _VersionGolangCodeGen{
 			DefaultVineVersion: golang.DefaultVineVersion,
 		},
-	}
+	}, nil
 }
 
-func mustDebugBuildInfo() _DebugBuildInfo {
+func debugBuildInfo() (_DebugBuildInfo, error) {
 	info, ok := readBuildInfo()
-	checkutil.Check(ok, "read Go build info failed")
+	if !ok {
+		return _DebugBuildInfo{}, fmt.Errorf("read Go build info failed")
+	}
+	version, err := moduleVersion(info.Main.Version)
+	if err != nil {
+		return _DebugBuildInfo{}, err
+	}
 	return _DebugBuildInfo{
-		Version:   moduleVersion(info.Main.Version),
+		Version:   version,
 		Platform:  runtime.GOOS + "/" + runtime.GOARCH,
 		GoVersion: info.GoVersion,
-	}
+	}, nil
 }
 
-func moduleVersion(rawVersion string) string {
+func moduleVersion(rawVersion string) (string, error) {
 	if rawVersion == "" || rawVersion == "(devel)" {
-		return devVersion
+		return devVersion, nil
 	}
 
 	version := strings.TrimSuffix(rawVersion, "+dirty")
@@ -93,8 +114,10 @@ func moduleVersion(rawVersion string) string {
 		version = "v" + version
 	}
 	_, err := semver.NewVersion(version)
-	checkutil.CheckNilError(err, "parse module version %s failed", version)
-	return version
+	if err != nil {
+		return "", fmt.Errorf("parse module version %s failed: %w", version, err)
+	}
+	return version, nil
 }
 
 func (info _VersionInfo) TextString() string {
@@ -106,8 +129,10 @@ func (info _VersionInfo) TextString() string {
 		"  DefaultVineVersion  " + info.GolangCodeGen.DefaultVineVersion
 }
 
-func (info _VersionInfo) JSONString() string {
+func (info _VersionInfo) JSONString() (string, error) {
 	encoded, err := json.Marshal(info)
-	checkutil.CheckNilError(err, "marshal version info")
-	return string(encoded)
+	if err != nil {
+		return "", fmt.Errorf("marshal version info: %w", err)
+	}
+	return string(encoded), nil
 }

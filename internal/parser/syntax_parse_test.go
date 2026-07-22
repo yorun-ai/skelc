@@ -193,7 +193,11 @@ func TestParseFilesPopulatesDomainAndSkelContents(t *testing.T) {
 	writeFile(t, filepath.Join(dir, "service.skel"), "domain demo.user\nactor PortalAdminActor { via client {} }\nservice AgentService { for PortalAdminActor\nmethod ping {} }\n")
 	writeFile(t, filepath.Join(dir, "types.skel"), "domain demo.user\ndata User { id: int }\nenum UserStatus { ACTIVE }\n")
 
-	sourceFiles := loader.Load(dir).Files
+	loadResult, err := loader.Load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceFiles := loadResult.Files
 
 	parser := newParser()
 	analysis, err := parser.parseDomainFiles(findDomainFileForTest(t, sourceFiles), sourceFiles)

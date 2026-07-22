@@ -3,9 +3,9 @@ package cli
 import (
 	"context"
 
+	"fmt"
 	ucli "github.com/urfave/cli/v3"
 	"go.yorun.ai/skelc/internal/parser"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 )
 
 const (
@@ -20,11 +20,17 @@ func newCheckCommand() *ucli.Command {
 		Usage: "validate skel definition files",
 		Flags: newCheckFlags(),
 		Action: func(_ context.Context, cmd *ucli.Command) error {
-			option := parseCheckCommand(cmd)
-			result := parser.Check(option)
-			printWarnings(cmd, result.Warnings)
-			if len(result.Diagnostics) > 0 {
-				return result.Diagnostics
+			option, err := parseCheckCommand(cmd)
+			if err != nil {
+				return err
+			}
+			result, err := parser.Check(option)
+			if err != nil {
+				return err
+			}
+			printDiagnostics(cmd, result.Diagnostics)
+			if result.Diagnostics.HasErrors() {
+				return result.Diagnostics.Failures()
 			}
 			return nil
 		},
@@ -37,11 +43,12 @@ func newCheckFlags() []ucli.Flag {
 	}
 }
 
-func parseCheckCommand(cmd *ucli.Command) parser.Option {
-	checkutil.Check(cmd.Args().Len() == 0, "unexpected args for %s", commandCheck)
+func parseCheckCommand(cmd *ucli.Command) (parser.Option, error) {
+	if cmd.Args().Len() != 0 {
+		return parser.Option{}, fmt.Errorf("unexpected args for %s", commandCheck)
+	}
 	parserOption := parser.Option{
 		SkelIn: cmd.String(flagCheckSkelIn),
 	}
-	normalizeCheckOption(&parserOption)
-	return parserOption
+	return parserOption, normalizeParserOption(&parserOption)
 }

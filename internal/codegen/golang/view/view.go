@@ -1,6 +1,11 @@
 package view
 
-import "go.yorun.ai/skelc/model"
+import (
+	"fmt"
+
+	"go.yorun.ai/skelc/internal/codegen/common"
+	"go.yorun.ai/skelc/model"
+)
 
 type Mode string
 
@@ -36,37 +41,33 @@ func Full(domain *model.Domain) *Domain {
 	}
 }
 
-func newPub(domain *model.Domain) *Domain {
-	services := filterPubServices(domain.Services())
-	events := filterPubEvents(domain.Events())
-	configs := make([]*model.Data, 0)
-	for _, config := range domain.Configs() {
-		if config.Pub {
-			configs = append(configs, config)
-		}
+func newPub(domain *model.Domain) (*Domain, error) {
+	public, err := common.BuildPublicView(domain)
+	if err != nil {
+		return nil, err
 	}
-	resources := filterPubResources(domain.Resources())
-	validatePubView(domain, services, events, configs, resources)
-
 	return &Domain{
-		Enums:     filterPubEnums(domain.Enums()),
-		Data:      filterPubData(domain.Data()),
-		Configs:   configs,
-		Actors:    filterPubActors(domain.Actors()),
-		Resources: resources,
+		Enums:     public.Enums,
+		Data:      public.Data,
+		Configs:   public.Configs,
+		Actors:    public.Actors,
+		Resources: public.Resources,
 		Webs:      []*model.Web{},
-		Events:    events,
-		Services:  services,
+		Events:    public.Events,
+		Services:  public.Services,
 		Tasks:     []*model.Task{},
-	}
+	}, nil
 }
 
-func New(mode Mode, domain *model.Domain) *Domain {
+func Build(mode Mode, domain *model.Domain) (*Domain, error) {
 	if mode == ModePub {
 		return newPub(domain)
 	}
 	if mode == ModeFull {
-		return Full(domain)
+		return Full(domain), nil
+	}
+	if mode != ModeRegular {
+		return nil, fmt.Errorf("invalid Go generation mode %q", mode)
 	}
 	return &Domain{
 		Enums:     filterNonPubEnums(domain.Enums()),
@@ -78,5 +79,15 @@ func New(mode Mode, domain *model.Domain) *Domain {
 		Events:    domain.Events(),
 		Services:  domain.Services(),
 		Tasks:     domain.Tasks(),
+	}, nil
+}
+
+// New constructs a view for internal renderer tests that use validated model
+// fixtures. Production generation uses Build and propagates validation errors.
+func New(mode Mode, domain *model.Domain) *Domain {
+	result, err := Build(mode, domain)
+	if err != nil {
+		panic(err)
 	}
+	return result
 }

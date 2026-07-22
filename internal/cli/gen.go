@@ -2,11 +2,11 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	ucli "github.com/urfave/cli/v3"
 	"go.yorun.ai/skelc"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 )
 
 const (
@@ -32,7 +32,6 @@ const (
 	flagGenTSImport       = "ts-import"
 	flagGenSkelImport     = "skel-import"
 	flagGenGoVineVersion  = "go-vine-version"
-	flagGenNoClean        = "no-clean"
 )
 
 func newGenCommand() *ucli.Command {
@@ -56,13 +55,19 @@ func newGenGoCommand() *ucli.Command {
 		Usage: "generate non-module Go code from skel definitions",
 		Flags: newGenGoFlags(),
 		Action: func(_ context.Context, cmd *ucli.Command) error {
-			input, option := parseGenGoCommand(cmd)
-			option.CompilerVersion = compilerVersion()
+			input, option, err := parseGenGoCommand(cmd)
+			if err != nil {
+				return err
+			}
+			option.CompilerVersion, err = compilerVersion()
+			if err != nil {
+				return err
+			}
 			result, err := skelc.CompileGolang(input, option)
 			if err != nil {
-				panic(err)
+				return err
 			}
-			printWarnings(cmd, result.Warnings)
+			printDiagnostics(cmd, result.Diagnostics)
 			return nil
 		},
 	}
@@ -74,13 +79,19 @@ func newGenGoModuleCommand() *ucli.Command {
 		Usage: "generate Go module code from skel definitions",
 		Flags: newGenGoModuleFlags(),
 		Action: func(_ context.Context, cmd *ucli.Command) error {
-			input, option := parseGenGoModuleCommand(cmd)
-			option.CompilerVersion = compilerVersion()
+			input, option, err := parseGenGoModuleCommand(cmd)
+			if err != nil {
+				return err
+			}
+			option.CompilerVersion, err = compilerVersion()
+			if err != nil {
+				return err
+			}
 			result, err := skelc.CompileGolang(input, option)
 			if err != nil {
-				panic(err)
+				return err
 			}
-			printWarnings(cmd, result.Warnings)
+			printDiagnostics(cmd, result.Diagnostics)
 			return nil
 		},
 	}
@@ -92,12 +103,15 @@ func newGenTSCommand() *ucli.Command {
 		Usage: "generate TypeScript code from skel definitions",
 		Flags: newGenTSFlags(),
 		Action: func(_ context.Context, cmd *ucli.Command) error {
-			input, option := parseGenTSCommand(cmd)
+			input, option, err := parseGenTSCommand(cmd)
+			if err != nil {
+				return err
+			}
 			result, err := skelc.CompileTypeScript(input, option)
 			if err != nil {
-				panic(err)
+				return err
 			}
-			printWarnings(cmd, result.Warnings)
+			printDiagnostics(cmd, result.Diagnostics)
 			return nil
 		},
 	}
@@ -109,19 +123,23 @@ func newGenSkelCommand() *ucli.Command {
 		Usage: "generate pub skel definitions from skel definitions",
 		Flags: newGenSkelFlags(),
 		Action: func(_ context.Context, cmd *ucli.Command) error {
-			input, option := parseGenSkelCommand(cmd)
+			input, option, err := parseGenSkelCommand(cmd)
+			if err != nil {
+				return err
+			}
 			result, err := skelc.CompileSkeleton(input, option)
 			if err != nil {
-				panic(err)
+				return err
 			}
-			printWarnings(cmd, result.Warnings)
+			printDiagnostics(cmd, result.Diagnostics)
 			return nil
 		},
 	}
 }
 
-func compilerVersion() string {
-	return mustDebugBuildInfo().Version
+func compilerVersion() (string, error) {
+	info, err := debugBuildInfo()
+	return info.Version, err
 }
 
 func newGenGoFlags() []ucli.Flag {
@@ -129,12 +147,13 @@ func newGenGoFlags() []ucli.Flag {
 		&ucli.StringFlag{Name: flagGenSkelIn, Usage: "skeleton input file or directory"},
 		&ucli.StringFlag{Name: flagGenGoOut, Usage: "Go output directory"},
 		&ucli.StringFlag{Name: flagGenGoVineVersion, Usage: "Vine module version for generated Go code"},
-		&ucli.BoolFlag{Name: flagGenNoClean, Usage: "do not clean existing output directory files"},
 	}
 }
 
-func parseGenGoCommand(cmd *ucli.Command) (skelc.Input, skelc.GolangOption) {
-	checkutil.Check(cmd.Args().Len() == 0, "unexpected args for %s %s", commandGen, commandGenGo)
+func parseGenGoCommand(cmd *ucli.Command) (skelc.Input, skelc.GolangOption, error) {
+	if cmd.Args().Len() != 0 {
+		return skelc.Input{}, skelc.GolangOption{}, fmt.Errorf("unexpected args for %s %s", commandGen, commandGenGo)
+	}
 
 	input := skelc.Input{
 		SkelIn: cmd.String(flagGenSkelIn),
@@ -143,10 +162,8 @@ func parseGenGoCommand(cmd *ucli.Command) (skelc.Input, skelc.GolangOption) {
 	option := skelc.GolangOption{
 		Out:         cmd.String(flagGenGoOut),
 		VineVersion: strings.TrimSpace(cmd.String(flagGenGoVineVersion)),
-		NoClean:     cmd.Bool(flagGenNoClean),
 	}
-	validateGoGenOption(input, option)
-	return input, option
+	return input, option, validateGoGenOption(input, option)
 }
 
 func newGenGoModuleFlags() []ucli.Flag {
@@ -160,15 +177,22 @@ func newGenGoModuleFlags() []ucli.Flag {
 		&ucli.StringSliceFlag{Name: flagGenGoImport, Usage: "Go import mapping in domain=package form"},
 		&ucli.StringFlag{Name: flagGenGoModulePrefix, Usage: "Go module path prefix"},
 		&ucli.StringFlag{Name: flagGenGoVineVersion, Usage: "Vine module version for generated Go modules"},
-		&ucli.BoolFlag{Name: flagGenNoClean, Usage: "do not clean existing output directory files"},
 	}
 }
 
-func parseGenGoModuleCommand(cmd *ucli.Command) (skelc.Input, skelc.GolangOption) {
-	checkutil.Check(cmd.Args().Len() == 0, "unexpected args for %s %s", commandGen, commandGenGoModule)
+func parseGenGoModuleCommand(cmd *ucli.Command) (skelc.Input, skelc.GolangOption, error) {
+	if cmd.Args().Len() != 0 {
+		return skelc.Input{}, skelc.GolangOption{}, fmt.Errorf("unexpected args for %s %s", commandGen, commandGenGoModule)
+	}
 
-	skelImports := parseMappingFlags(cmd.StringSlice(flagGenSkelImport), flagGenSkelImport)
-	goImports := parseMappingFlags(cmd.StringSlice(flagGenGoImport), flagGenGoImport)
+	skelImports, err := parseMappingFlags(cmd.StringSlice(flagGenSkelImport), flagGenSkelImport)
+	if err != nil {
+		return skelc.Input{}, skelc.GolangOption{}, err
+	}
+	goImports, err := parseMappingFlags(cmd.StringSlice(flagGenGoImport), flagGenGoImport)
+	if err != nil {
+		return skelc.Input{}, skelc.GolangOption{}, err
+	}
 
 	input := skelc.Input{
 		SkelIn:      cmd.String(flagGenSkelIn),
@@ -184,10 +208,8 @@ func parseGenGoModuleCommand(cmd *ucli.Command) (skelc.Input, skelc.GolangOption
 		PubModule:    cmd.String(flagGenGoPubModule),
 		Imports:      goImports,
 		VineVersion:  strings.TrimSpace(cmd.String(flagGenGoVineVersion)),
-		NoClean:      cmd.Bool(flagGenNoClean),
 	}
-	validateGoGenOption(input, option)
-	return input, option
+	return input, option, validateGoGenOption(input, option)
 }
 
 func newGenSkelFlags() []ucli.Flag {
@@ -195,15 +217,19 @@ func newGenSkelFlags() []ucli.Flag {
 		&ucli.BoolFlag{Name: flagGenPub, Usage: "required, generate only pub skel definitions"},
 		&ucli.StringFlag{Name: flagGenSkelIn, Usage: "skeleton input file or directory"},
 		&ucli.StringFlag{Name: flagGenSkelOut, Usage: "skel output directory"},
-		&ucli.BoolFlag{Name: flagGenNoClean, Usage: "do not clean existing output directory files"},
 		&ucli.StringSliceFlag{Name: flagGenSkelImport, Usage: "skel import mapping in domain=path form"},
 	}
 }
 
-func parseGenSkelCommand(cmd *ucli.Command) (skelc.Input, skelc.SkeletonOption) {
-	checkutil.Check(cmd.Args().Len() == 0, "unexpected args for %s %s", commandGen, commandGenSkel)
+func parseGenSkelCommand(cmd *ucli.Command) (skelc.Input, skelc.SkeletonOption, error) {
+	if cmd.Args().Len() != 0 {
+		return skelc.Input{}, skelc.SkeletonOption{}, fmt.Errorf("unexpected args for %s %s", commandGen, commandGenSkel)
+	}
 
-	skelImports := parseMappingFlags(cmd.StringSlice(flagGenSkelImport), flagGenSkelImport)
+	skelImports, err := parseMappingFlags(cmd.StringSlice(flagGenSkelImport), flagGenSkelImport)
+	if err != nil {
+		return skelc.Input{}, skelc.SkeletonOption{}, err
+	}
 	input := skelc.Input{
 		SkelIn:      cmd.String(flagGenSkelIn),
 		SkelImports: skelImports,
@@ -211,10 +237,8 @@ func parseGenSkelCommand(cmd *ucli.Command) (skelc.Input, skelc.SkeletonOption) 
 	option := skelc.SkeletonOption{
 		PubOnly: cmd.Bool(flagGenPub),
 		Out:     cmd.String(flagGenSkelOut),
-		NoClean: cmd.Bool(flagGenNoClean),
 	}
-	validateSkelGenOption(input, option)
-	return input, option
+	return input, option, validateSkelGenOption(input, option)
 }
 
 func newGenTSFlags() []ucli.Flag {
@@ -222,7 +246,6 @@ func newGenTSFlags() []ucli.Flag {
 		&ucli.BoolFlag{Name: flagGenPub, Usage: "generate only pub TypeScript code"},
 		&ucli.StringFlag{Name: flagGenSkelIn, Usage: "skeleton input file or directory"},
 		&ucli.StringFlag{Name: flagGenTSOut, Usage: "TypeScript output directory"},
-		&ucli.BoolFlag{Name: flagGenNoClean, Usage: "do not clean existing output directory files"},
 		&ucli.StringSliceFlag{Name: flagGenSkelImport, Usage: "skel import mapping in domain=path form"},
 		&ucli.BoolFlag{Name: flagGenTSAsModule, Usage: "generate TypeScript module package metadata"},
 		&ucli.StringFlag{Name: flagGenTSModuleScope, Usage: "TypeScript module package scope"},
@@ -231,11 +254,19 @@ func newGenTSFlags() []ucli.Flag {
 	}
 }
 
-func parseGenTSCommand(cmd *ucli.Command) (skelc.Input, skelc.TypeScriptOption) {
-	checkutil.Check(cmd.Args().Len() == 0, "unexpected args for %s %s", commandGen, commandGenTS)
+func parseGenTSCommand(cmd *ucli.Command) (skelc.Input, skelc.TypeScriptOption, error) {
+	if cmd.Args().Len() != 0 {
+		return skelc.Input{}, skelc.TypeScriptOption{}, fmt.Errorf("unexpected args for %s %s", commandGen, commandGenTS)
+	}
 
-	skelImports := parseMappingFlags(cmd.StringSlice(flagGenSkelImport), flagGenSkelImport)
-	tsImports := parseMappingFlags(cmd.StringSlice(flagGenTSImport), flagGenTSImport)
+	skelImports, err := parseMappingFlags(cmd.StringSlice(flagGenSkelImport), flagGenSkelImport)
+	if err != nil {
+		return skelc.Input{}, skelc.TypeScriptOption{}, err
+	}
+	tsImports, err := parseMappingFlags(cmd.StringSlice(flagGenTSImport), flagGenTSImport)
+	if err != nil {
+		return skelc.Input{}, skelc.TypeScriptOption{}, err
+	}
 	input := skelc.Input{
 		SkelIn:      cmd.String(flagGenSkelIn),
 		SkelImports: skelImports,
@@ -247,8 +278,6 @@ func parseGenTSCommand(cmd *ucli.Command) (skelc.Input, skelc.TypeScriptOption) 
 		ModuleScope: cmd.String(flagGenTSModuleScope),
 		Module:      cmd.String(flagGenTSModule),
 		Imports:     tsImports,
-		NoClean:     cmd.Bool(flagGenNoClean),
 	}
-	validateTypeScriptGenOption(input, option)
-	return input, option
+	return input, option, validateTypeScriptGenOption(input, option)
 }

@@ -1,7 +1,7 @@
 package source
 
 import (
-	"go.yorun.ai/skelc/internal/codegen"
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/codegen/golang/view"
 	"go.yorun.ai/skelc/model"
 )
@@ -14,7 +14,7 @@ type _Gen struct {
 	pubImportPath string
 	view          *view.Domain
 
-	Renderer *codegen.Renderer
+	Renderer *common.Renderer
 }
 
 type Option struct {
@@ -26,8 +26,10 @@ type Option struct {
 	Out           string
 }
 
-func Generate(option Option) {
-	newGen(option).gen()
+func Generate(option Option) error {
+	gen := newGen(option)
+	gen.gen()
+	return gen.Renderer.Err()
 }
 
 func newGen(option Option) *_Gen {
@@ -37,7 +39,7 @@ func newGen(option Option) *_Gen {
 		pkgName:       option.PackageName,
 		pubImportPath: option.PubImportPath,
 		view:          option.View,
-		Renderer:      codegen.NewRenderer(option.Out),
+		Renderer:      common.NewRenderer(option.Out),
 	}
 }
 

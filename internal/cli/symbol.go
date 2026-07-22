@@ -9,7 +9,6 @@ import (
 
 	ucli "github.com/urfave/cli/v3"
 	"go.yorun.ai/skelc/internal/parser"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -47,19 +46,29 @@ func newSymbolListCommand() *ucli.Command {
 		Usage: "list skel symbols",
 		Flags: newSymbolFlags("symbol list output format: text/json"),
 		Action: func(_ context.Context, cmd *ucli.Command) error {
-			result, err := parser.ParseImport(parseSymbolListCommand(cmd).SkelIn)
+			option, err := parseSymbolListCommand(cmd)
+			if err != nil {
+				return err
+			}
+			result, err := parser.ParseImport(option.SkelIn)
 			if err != nil {
 				return err
 			}
 			symbols := buildSymbols(result.Domain)
-			if commandOutputFormat(cmd) == outputFormatJSON {
+			format, err := commandOutputFormat(cmd)
+			if err != nil {
+				return err
+			}
+			if format == outputFormatJSON {
 				output, err := json.MarshalIndent(symbols, "", "  ")
-				checkutil.CheckNilError(err, "marshal symbols")
+				if err != nil {
+					return fmt.Errorf("marshal symbols: %w", err)
+				}
 				_, _ = fmt.Fprintf(cmd.Root().Writer, "%s\n", output)
 				return nil
 			}
 			writeSymbols(cmd, symbols)
-			printWarnings(cmd, result.Warnings)
+			printDiagnostics(cmd, result.Diagnostics)
 			return nil
 		},
 	}
@@ -72,13 +81,14 @@ func newSymbolFlags(outputFormatUsage string) []ucli.Flag {
 	}
 }
 
-func parseSymbolListCommand(cmd *ucli.Command) parser.Option {
-	checkutil.Check(cmd.Args().Len() == 0, "unexpected args for %s %s", commandSymbol, commandSymbolList)
+func parseSymbolListCommand(cmd *ucli.Command) (parser.Option, error) {
+	if cmd.Args().Len() != 0 {
+		return parser.Option{}, fmt.Errorf("unexpected args for %s %s", commandSymbol, commandSymbolList)
+	}
 	parserOption := parser.Option{
 		SkelIn: cmd.String(flagSymbolSkelIn),
 	}
-	normalizeSymbolOption(&parserOption)
-	return parserOption
+	return parserOption, normalizeParserOption(&parserOption)
 }
 
 func newSymbolGetCommand() *ucli.Command {
@@ -88,8 +98,15 @@ func newSymbolGetCommand() *ucli.Command {
 		ArgsUsage: "SKEL_NAME",
 		Flags:     newSymbolFlags("symbol output format: text/json"),
 		Action: func(_ context.Context, cmd *ucli.Command) error {
-			skelName := parseSymbolGetCommand(cmd)
-			result, err := parser.ParseImport(parseSymbolGetFlags(cmd).SkelIn)
+			skelName, err := parseSymbolGetCommand(cmd)
+			if err != nil {
+				return err
+			}
+			option, err := parseSymbolGetFlags(cmd)
+			if err != nil {
+				return err
+			}
+			result, err := parser.ParseImport(option.SkelIn)
 			if err != nil {
 				return err
 			}
@@ -97,12 +114,15 @@ func newSymbolGetCommand() *ucli.Command {
 				if symbol.SkelName != skelName {
 					continue
 				}
-				if commandOutputFormat(cmd) == outputFormatJSON {
-					writeSymbolJSON(cmd, symbol)
-					return nil
+				format, err := commandOutputFormat(cmd)
+				if err != nil {
+					return err
+				}
+				if format == outputFormatJSON {
+					return writeSymbolJSON(cmd, symbol)
 				}
 				writeSymbolText(cmd, symbol, len(symbol.Kind))
-				printWarnings(cmd, result.Warnings)
+				printDiagnostics(cmd, result.Diagnostics)
 				return nil
 			}
 			return fmt.Errorf("symbol not found: %s", skelName)
@@ -110,20 +130,25 @@ func newSymbolGetCommand() *ucli.Command {
 	}
 }
 
-func parseSymbolGetCommand(cmd *ucli.Command) string {
-	checkutil.Check(cmd.Args().Len() <= 1, "unexpected args for %s %s", commandSymbol, commandSymbolGet)
-	checkutil.Check(cmd.Args().Len() == 1, "missing skel name")
+func parseSymbolGetCommand(cmd *ucli.Command) (string, error) {
+	if cmd.Args().Len() > 1 {
+		return "", fmt.Errorf("unexpected args for %s %s", commandSymbol, commandSymbolGet)
+	}
+	if cmd.Args().Len() != 1 {
+		return "", fmt.Errorf("missing skel name")
+	}
 	skelName := strings.TrimSpace(cmd.Args().First())
-	checkutil.Check(skelName != "", "missing skel name")
-	return skelName
+	if skelName == "" {
+		return "", fmt.Errorf("missing skel name")
+	}
+	return skelName, nil
 }
 
-func parseSymbolGetFlags(cmd *ucli.Command) parser.Option {
+func parseSymbolGetFlags(cmd *ucli.Command) (parser.Option, error) {
 	parserOption := parser.Option{
 		SkelIn: cmd.String(flagSymbolSkelIn),
 	}
-	normalizeSymbolOption(&parserOption)
-	return parserOption
+	return parserOption, normalizeParserOption(&parserOption)
 }
 
 func writeSymbols(cmd *ucli.Command, symbols []*_Symbol) {
@@ -133,10 +158,13 @@ func writeSymbols(cmd *ucli.Command, symbols []*_Symbol) {
 	}
 }
 
-func writeSymbolJSON(cmd *ucli.Command, symbol *_Symbol) {
+func writeSymbolJSON(cmd *ucli.Command, symbol *_Symbol) error {
 	output, err := json.MarshalIndent(symbol, "", "  ")
-	checkutil.CheckNilError(err, "marshal symbol")
+	if err != nil {
+		return fmt.Errorf("marshal symbol: %w", err)
+	}
 	_, _ = fmt.Fprintf(cmd.Root().Writer, "%s\n", output)
+	return nil
 }
 
 func writeSymbolText(cmd *ucli.Command, symbol *_Symbol, kindWidth int) {

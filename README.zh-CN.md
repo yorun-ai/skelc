@@ -100,7 +100,7 @@ const userService = createUserService(client);
 const user = await userService.getUser({ userId: 1001 });
 ```
 
-生成命令默认会先清理目标输出目录，因此输出目录应由 skelc 独占。只有明确需要保留其中其他文件时才使用 `--no-clean`。
+生成命令支持共享输出目录。skelc 会在 `.skelc-manifest.json` 中记录自身管理的文件，保留未登记的文件，并且只在过期生成文件的内容仍与上一份 manifest 一致时删除该文件。
 
 仓库中的 [`examples/quickstart`](examples/quickstart) 提供了这套流程的可运行版本。检出仓库后，可以用下面的命令校验契约并生成全部支持的目标：
 
@@ -155,9 +155,9 @@ skelc format --skel-in ./skel
 
 `format` 会原地修改文件，执行前会先验证全部输入。它采用唯一的规范样式：四空格缩进、紧凑的类型与权限标点、字段和参数冒号后保留一个空格、空块保持紧凑，以及顶层声明之间保留一个空行；声明顺序、注释内容和字符串值不会改变。工具集成可以使用全局参数 `--log-format jsonl` 获取机器可读诊断。
 
-`check` 单次运行会为每个 domain 报告最多 50 条相互独立的诊断。无效声明会被隔离，避免产生依赖级联错误；文本格式每行输出一条错误，JSONL 则为每条诊断输出一个对象。
+`check` 会在声明、block 成员、右花括号和 decorator 边界恢复解析，单次运行可为每个 domain 报告最多 50 条相互独立的语法与语义诊断。无效声明会被隔离，避免产生依赖级联错误。JSONL 诊断包含稳定 code、severity、精确 range、关联位置和可选修复建议。
 
-`skelc lsp` 提供语法与工作区级语义诊断、编辑器格式化、关键字与类型补全、声明悬停信息、层级文档与工作区符号、定义与引用跳转，以及安全的顶层声明重命名。语义分析直接使用全部文档当前的内存内容，合并同一 domain 的文件，并在无需保存的情况下校验跨 domain 引用。文档存在语法错误时，服务端仍会尽力保留 domain、import 和顶层声明索引，使未受影响的导航能力继续可用，同时抑制依赖方的级联语义错误。
+`skelc lsp` 提供可恢复的语法与工作区级语义诊断、诊断快速修复、编辑器格式化、关键字与类型补全、声明悬停信息、层级文档与工作区符号、定义与引用跳转，以及安全的顶层声明重命名。重复声明会把首次声明作为关联位置返回。语义分析直接使用全部文档当前的内存内容，缓存已解析的语法树，并且只重新计算发生变化的 domain 及其反向依赖方；已经过期的分析任务会立即取消。
 
 ## 程序调用 API
 
@@ -181,12 +181,12 @@ result, err := skelc.CompileGolang(
 if err != nil {
 	return err
 }
-for _, warning := range result.Warnings {
-	log.Print(warning)
+for _, diagnostic := range result.Diagnostics {
+	log.Printf("%s [%s] %s", diagnostic.Severity, diagnostic.Code, diagnostic.Message)
 }
 ```
 
-API 同时提供 `CompileTypeScript` 和 `CompileSkeleton`。编译入口会先完成全部输入的校验和解析，之后才清理输出目录；如需保留已有文件，可在目标选项中设置 `NoClean`。
+API 同时提供 `CompileTypeScript` 和 `CompileSkeleton`。parser 与 loader warning 使用同一套结构化诊断，不再维护独立的字符串列表。所有公开契约生成器共用一次经过校验的 `internal/codegen/common` 投影，避免 Go、Skel 和 TypeScript 的可见性规则漂移。生成过程通过 `.skelc-manifest.json` 记录自身管理的文件，以原子方式逐个替换生成文件，只删除内容未被修改的过期生成文件，并保留共享输出目录中所有未登记的文件。
 
 自定义 generator 可以调用 `skelc.Parse`，并通过与 parser 无关的 `go.yorun.ai/skelc/model` 使用返回的 `*model.Domain`。解析完成的模型已经包含由 skelc 计算好的兼容性 hash。内置的 `GenerateGolang`、`GenerateTypeScript` 和 `GenerateSkeleton` 也接受同一个已解析 domain，因此多个目标可以共享一次解析结果。
 

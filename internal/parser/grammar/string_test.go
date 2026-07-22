@@ -7,7 +7,7 @@ func TestUnquoteDescriptionString(t *testing.T) {
 		name      string
 		raw       string
 		want      string
-		wantPanic bool
+		wantError bool
 	}{
 		{
 			name: "single-line double quoted",
@@ -37,27 +37,27 @@ func TestUnquoteDescriptionString(t *testing.T) {
 		{
 			name:      "triple double quoted same line rejected",
 			raw:       "\"\"\"User domain\nSecond line description\"\"\"",
-			wantPanic: true,
+			wantError: true,
 		},
 		{
 			name:      "single quoted rejected",
 			raw:       `'User domain'`,
-			wantPanic: true,
+			wantError: true,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if test.wantPanic {
-				defer func() {
-					if recover() == nil {
-						t.Fatal("expected panic")
-					}
-				}()
-				_ = UnquoteDescriptionString(test.raw)
+			got, err := UnquoteDescriptionString(test.raw)
+			if test.wantError {
+				if err == nil {
+					t.Fatal("expected error")
+				}
 				return
 			}
-			got := UnquoteDescriptionString(test.raw)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if got != test.want {
 				t.Fatalf("unexpected value: got=%q want=%q", got, test.want)
 			}

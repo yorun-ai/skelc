@@ -1,6 +1,7 @@
-package codegen
+package common
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 type Renderer struct {
 	outputDir string
+	err       error
 }
 
 func NewRenderer(outputDir string) *Renderer {
@@ -23,13 +25,21 @@ func (r *Renderer) Render(file string, tpl string, data any) {
 }
 
 func (r *Renderer) Write(file string, content string) {
+	if r.err != nil {
+		return
+	}
 	content = normalizeTrailingNewline(content)
 	fullPath := filepath.Join(r.outputDir, file)
-	err := os.MkdirAll(filepath.Dir(fullPath), 0o755)
-	checkutil.CheckNilError(err, "create output directory for %s failed", fullPath)
-	err = os.WriteFile(fullPath, []byte(content), 0o644)
-	checkutil.CheckNilError(err, "write %s failed", fullPath)
+	if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
+		r.err = fmt.Errorf("create output directory for %s: %w", fullPath, err)
+		return
+	}
+	if err := os.WriteFile(fullPath, []byte(content), 0o644); err != nil {
+		r.err = fmt.Errorf("write %s: %w", fullPath, err)
+	}
 }
+
+func (r *Renderer) Err() error { return r.err }
 
 func RenderTemplate(tplString string, payloadData any) string {
 	return RenderTemplateWithFuncs(tplString, payloadData, nil)

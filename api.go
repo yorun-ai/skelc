@@ -5,16 +5,17 @@
 // validated [model.Domain]. The Compile functions combine parsing and one
 // generation step for callers that only need a single target.
 //
-// Generation cleans its output directory by default. Set the target option's
-// NoClean field only when the directory contains files that must be preserved.
+// Generation tracks its own files in an output manifest. Existing files that
+// are not owned by skelc are preserved.
 package skelc
 
 import (
+	"fmt"
+
 	"go.yorun.ai/skelc/internal/codegen/golang"
 	"go.yorun.ai/skelc/internal/codegen/skeleton"
 	"go.yorun.ai/skelc/internal/codegen/typescript"
 	"go.yorun.ai/skelc/internal/parser"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -34,14 +35,25 @@ type Input struct {
 type ParseResult struct {
 	// Domain is the validated semantic model, including compatibility hashes.
 	Domain *model.Domain
-	// Warnings contains non-fatal diagnostics produced while parsing.
-	Warnings []string
+	// Diagnostics contains structured non-fatal diagnostics produced while parsing.
+	Diagnostics []Diagnostic
 }
 
-// CompileResult contains non-fatal diagnostics produced while loading and parsing Skel sources.
+type Diagnostic = parser.Diagnostic
+type DiagnosticSeverity = parser.DiagnosticSeverity
+type SourceRange = parser.SourceRange
+type DiagnosticRelatedInformation = parser.DiagnosticRelatedInformation
+type DiagnosticSuggestion = parser.DiagnosticSuggestion
+
+const (
+	DiagnosticSeverityError   = parser.DiagnosticSeverityError
+	DiagnosticSeverityWarning = parser.DiagnosticSeverityWarning
+)
+
+// CompileResult contains structured non-fatal diagnostics produced while loading and parsing Skel sources.
 type CompileResult struct {
-	// Warnings contains non-fatal diagnostics produced while parsing.
-	Warnings []string
+	// Diagnostics contains non-fatal diagnostics produced while parsing.
+	Diagnostics []Diagnostic
 }
 
 // GolangOption configures Go generation.
@@ -67,8 +79,6 @@ type GolangOption struct {
 	// VineVersion selects the go.yorun.ai/vine version written to generated module
 	// metadata. An empty value uses [DefaultGolangVineVersion].
 	VineVersion string
-	// NoClean preserves existing files in output directories before generation.
-	NoClean bool
 }
 
 // TypeScriptOption configures TypeScript generation.
@@ -85,8 +95,6 @@ type TypeScriptOption struct {
 	Imports map[string]string
 	// ModuleScope derives npm package names for the current and imported domains.
 	ModuleScope string
-	// NoClean preserves existing files in the output directory before generation.
-	NoClean bool
 }
 
 // SkeletonOption configures Skel source generation.
@@ -95,40 +103,52 @@ type SkeletonOption struct {
 	PubOnly bool
 	// Out is the output directory for generated Skel files.
 	Out string
-	// NoClean preserves existing files in the output directory before generation.
-	NoClean bool
 }
 
 // Parse loads and validates a Skel contract for use by custom generators and
 // tools. Imported domains must be declared in Input.SkelImports.
-func Parse(input Input) (result ParseResult, err error) {
-	defer recoverAPIError(&err)
-
-	parsed, parseErr := parser.Parse(normalizeInput(input))
+func Parse(input Input) (ParseResult, error) {
+	option, err := normalizeInput(input)
+	if err != nil {
+		return ParseResult{}, err
+	}
+	parsed, parseErr := parser.Parse(option)
 	if parseErr != nil {
 		return ParseResult{}, parseErr
 	}
-	return ParseResult{Domain: parsed.Domain, Warnings: parsed.Warnings}, nil
+	return ParseResult{Domain: parsed.Domain, Diagnostics: parsed.Diagnostics}, nil
 }
 
 // GenerateGolang generates Go source or a standalone Go module from a parsed
-// domain. Unless GolangOption.NoClean is set, it removes existing contents from
-// each configured output directory before writing files.
-func GenerateGolang(domain *model.Domain, option GolangOption) (err error) {
-	defer recoverAPIError(&err)
-
-	codegenOption := normalizeGolangOption(option)
-	checkutil.CheckNotNil(domain, "parsed domain is required")
-	prepareOutputDir(codegenOption.Out, option.NoClean)
-	if codegenOption.PubOut != "" {
-		prepareOutputDir(codegenOption.PubOut, option.NoClean)
+// domain. Only files owned by the previous skelc manifest may be removed.
+func GenerateGolang(domain *model.Domain, option GolangOption) error {
+	if domain == nil {
+		return fmt.Errorf("parsed domain is required")
 	}
-	golang.Generate(domain, codegenOption)
-	return nil
+	codegenOption, err := normalizeGolangOption(option)
+	if err != nil {
+		return err
+	}
+	if err := validateGolangImports(domain, codegenOption); err != nil {
+		return err
+	}
+	outputs, outputErr := stageManagedOutputs(codegenOption.Out, codegenOption.PubOut)
+	if outputErr != nil {
+		return outputErr
+	}
+	defer abortManagedOutputs(outputs)
+	codegenOption.Out = outputs[0].StageDir()
+	if codegenOption.PubOut != "" {
+		codegenOption.PubOut = outputs[1].StageDir()
+	}
+	if err := golang.Generate(domain, codegenOption); err != nil {
+		return err
+	}
+	return commitManagedOutputs(outputs)
 }
 
 // CompileGolang parses input and generates Go source or a standalone Go module.
-// Parsing completes before any output directory is cleaned.
+// Parsing completes before any generated output is committed.
 func CompileGolang(input Input, option GolangOption) (CompileResult, error) {
 	parsed, err := Parse(input)
 	if err != nil {
@@ -137,24 +157,36 @@ func CompileGolang(input Input, option GolangOption) (CompileResult, error) {
 	if err := GenerateGolang(parsed.Domain, option); err != nil {
 		return CompileResult{}, err
 	}
-	return CompileResult{Warnings: parsed.Warnings}, nil
+	return CompileResult{Diagnostics: parsed.Diagnostics}, nil
 }
 
-// GenerateTypeScript generates TypeScript source from a parsed domain. Unless
-// TypeScriptOption.NoClean is set, it removes existing contents from the output
-// directory before writing files.
-func GenerateTypeScript(domain *model.Domain, option TypeScriptOption) (err error) {
-	defer recoverAPIError(&err)
-
-	codegenOption := normalizeTypeScriptOption(option)
-	checkutil.CheckNotNil(domain, "parsed domain is required")
-	prepareOutputDir(codegenOption.Out, option.NoClean)
-	typescript.Generate(domain, codegenOption)
-	return nil
+// GenerateTypeScript generates TypeScript source from a parsed domain. Only
+// files owned by the previous skelc manifest may be removed.
+func GenerateTypeScript(domain *model.Domain, option TypeScriptOption) error {
+	if domain == nil {
+		return fmt.Errorf("parsed domain is required")
+	}
+	codegenOption, err := normalizeTypeScriptOption(option)
+	if err != nil {
+		return err
+	}
+	if err := validateTypeScriptImports(domain, codegenOption); err != nil {
+		return err
+	}
+	outputs, outputErr := stageManagedOutputs(codegenOption.Out)
+	if outputErr != nil {
+		return outputErr
+	}
+	defer abortManagedOutputs(outputs)
+	codegenOption.Out = outputs[0].StageDir()
+	if err := typescript.Generate(domain, codegenOption); err != nil {
+		return err
+	}
+	return commitManagedOutputs(outputs)
 }
 
 // CompileTypeScript parses input and generates TypeScript source. Parsing
-// completes before the output directory is cleaned.
+// completes before generated output is committed.
 func CompileTypeScript(input Input, option TypeScriptOption) (CompileResult, error) {
 	parsed, err := Parse(input)
 	if err != nil {
@@ -163,24 +195,33 @@ func CompileTypeScript(input Input, option TypeScriptOption) (CompileResult, err
 	if err := GenerateTypeScript(parsed.Domain, option); err != nil {
 		return CompileResult{}, err
 	}
-	return CompileResult{Warnings: parsed.Warnings}, nil
+	return CompileResult{Diagnostics: parsed.Diagnostics}, nil
 }
 
-// GenerateSkeleton generates a Skel contract from a parsed domain. Unless
-// SkeletonOption.NoClean is set, it removes existing contents from the output
-// directory before writing files.
-func GenerateSkeleton(domain *model.Domain, option SkeletonOption) (err error) {
-	defer recoverAPIError(&err)
-
-	codegenOption := normalizeSkeletonOption(option)
-	checkutil.CheckNotNil(domain, "parsed domain is required")
-	prepareOutputDir(codegenOption.Out, option.NoClean)
-	skeleton.Generate(domain, codegenOption)
-	return nil
+// GenerateSkeleton generates a Skel contract from a parsed domain. Only files
+// owned by the previous skelc manifest may be removed.
+func GenerateSkeleton(domain *model.Domain, option SkeletonOption) error {
+	if domain == nil {
+		return fmt.Errorf("parsed domain is required")
+	}
+	codegenOption, err := normalizeSkeletonOption(option)
+	if err != nil {
+		return err
+	}
+	outputs, outputErr := stageManagedOutputs(codegenOption.Out)
+	if outputErr != nil {
+		return outputErr
+	}
+	defer abortManagedOutputs(outputs)
+	codegenOption.Out = outputs[0].StageDir()
+	if err := skeleton.Generate(domain, codegenOption); err != nil {
+		return err
+	}
+	return commitManagedOutputs(outputs)
 }
 
 // CompileSkeleton parses input and generates a Skel contract. Parsing completes
-// before the output directory is cleaned.
+// before generated output is committed.
 func CompileSkeleton(input Input, option SkeletonOption) (CompileResult, error) {
 	parsed, err := Parse(input)
 	if err != nil {
@@ -189,5 +230,5 @@ func CompileSkeleton(input Input, option SkeletonOption) (CompileResult, error) 
 	if err := GenerateSkeleton(parsed.Domain, option); err != nil {
 		return CompileResult{}, err
 	}
-	return CompileResult{Warnings: parsed.Warnings}, nil
+	return CompileResult{Diagnostics: parsed.Diagnostics}, nil
 }

@@ -11,7 +11,7 @@ func (s *_Server) Formatting(_ context.Context, params *protocol.DocumentFormatt
 	s.mu.RLock()
 	document := s.documents[params.TextDocument.URI]
 	s.mu.RUnlock()
-	if document == nil || document.ParseError != nil {
+	if document == nil || len(document.ParseDiagnostics) > 0 {
 		return []protocol.TextEdit{}, nil
 	}
 	formatted := string(formatter.Source([]byte(document.Source)))

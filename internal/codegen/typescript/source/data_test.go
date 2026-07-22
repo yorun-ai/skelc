@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.yorun.ai/skelc/internal/codegen"
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -92,7 +92,7 @@ func TestCastDataMapsLocalDateToString(t *testing.T) {
 }
 
 func TestTypesTemplateKeepsModuleSemanticsWhenEmpty(t *testing.T) {
-	output := codegen.RenderTemplate(dataTsTemplate, &DataTsPayload{})
+	output := common.RenderTemplate(dataTsTemplate, &DataTsPayload{})
 	if !strings.Contains(output, "export {};") {
 		t.Fatalf("expected rendered types to keep module semantics, got:\n%s", output)
 	}

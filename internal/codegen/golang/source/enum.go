@@ -3,7 +3,7 @@ package source
 import (
 	"strings"
 
-	"go.yorun.ai/skelc/internal/codegen"
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/internal/util/sliceutil"
 	"go.yorun.ai/skelc/model"
@@ -58,10 +58,10 @@ func castEnum(p *model.Enum) *Enum {
 
 	if len(enum.Items) > 0 {
 		enum.UnspecifiedItem.Name = enum.Name + enum.UnspecifiedItem.Name
-		enum.UnspecifiedItem.CommentLines = goDocLines(enum.UnspecifiedItem.Name, codegen.MergeDescriptionAndExample(p.UnspecifiedItem.Description, ""))
+		enum.UnspecifiedItem.CommentLines = goDocLines(enum.UnspecifiedItem.Name, common.MergeDescriptionAndExample(p.UnspecifiedItem.Description, ""))
 		sliceutil.ForEach(enum.Items, func(i *EnumItem) {
 			i.Name = enum.Name + i.Name
-			i.CommentLines = goDocLines(i.Name, codegen.MergeDescriptionAndExample(i.Description, ""))
+			i.CommentLines = goDocLines(i.Name, common.MergeDescriptionAndExample(i.Description, ""))
 		})
 	}
 
@@ -89,6 +89,6 @@ func castEnumItem(p *model.EnumItem) *EnumItem {
 		Name:         name,
 		Value:        nameutil.ToScreamingSnake(p.Name),
 		Description:  p.Description,
-		CommentLines: goDocLines(name, codegen.MergeDescriptionAndExample(p.Description, "")),
+		CommentLines: goDocLines(name, common.MergeDescriptionAndExample(p.Description, "")),
 	}
 }

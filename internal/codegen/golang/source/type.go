@@ -3,7 +3,7 @@ package source
 import (
 	"fmt"
 
-	"go.yorun.ai/skelc/internal/codegen"
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/model"
 	"strings"
@@ -53,7 +53,7 @@ func castListType(p *model.Type) *Type {
 	return &Type{
 		Plain:        fmt.Sprintf("[]%s", valueType.Plain),
 		Imports:      cloneImports(valueType.Imports),
-		DefaultValue: codegen.ChooseString(p.Nullable, "nil", fmt.Sprintf("[]%s{}", valueType.Plain)),
+		DefaultValue: common.ChooseString(p.Nullable, "nil", fmt.Sprintf("[]%s{}", valueType.Plain)),
 	}
 }
 
@@ -63,7 +63,7 @@ func castMapType(p *model.Type) *Type {
 	return &Type{
 		Plain:        fmt.Sprintf("map[%s]%s", keyType.Plain, valueType.Plain),
 		Imports:      collectTypeImports(keyType, valueType),
-		DefaultValue: codegen.ChooseString(p.Nullable, "nil", fmt.Sprintf("map[%s]%s{}", keyType.Plain, valueType.Plain)),
+		DefaultValue: common.ChooseString(p.Nullable, "nil", fmt.Sprintf("map[%s]%s{}", keyType.Plain, valueType.Plain)),
 	}
 }
 
@@ -77,9 +77,9 @@ func castEnumType(p *model.Type) *Type {
 		imports = []*Import{{Path: p.ExternalImportPath, Alias: goImportAlias(p)}}
 	}
 	return &Type{
-		Plain:        codegen.ChooseString(p.Nullable, fmt.Sprintf("*%s", enumName), enumName),
+		Plain:        common.ChooseString(p.Nullable, fmt.Sprintf("*%s", enumName), enumName),
 		Imports:      imports,
-		DefaultValue: codegen.ChooseString(p.Nullable, "nil", unspecifiedItemName),
+		DefaultValue: common.ChooseString(p.Nullable, "nil", unspecifiedItemName),
 	}
 }
 
@@ -102,9 +102,9 @@ func castDataType(p *model.Type) *Type {
 		structName = fmt.Sprintf("%s[%s]", structName, strings.Join(typeArgNames, ", "))
 	}
 	return &Type{
-		Plain:        codegen.ChooseString(p.Nullable, fmt.Sprintf("*%s", structName), structName),
+		Plain:        common.ChooseString(p.Nullable, fmt.Sprintf("*%s", structName), structName),
 		Imports:      imports,
-		DefaultValue: codegen.ChooseString(p.Nullable, "nil", fmt.Sprintf("%s{}", structName)),
+		DefaultValue: common.ChooseString(p.Nullable, "nil", fmt.Sprintf("%s{}", structName)),
 	}
 }
 

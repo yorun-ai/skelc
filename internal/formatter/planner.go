@@ -56,7 +56,7 @@ func (p *_Planner) addNewline(index int, value string) {
 	if p.previous == "{" || next != nil && next.value == "}" {
 		breaks = 1
 	}
-	if p.depth == 0 && p.parenDepth == 0 && p.canonicalTopLevelBreak(index) {
+	if p.depth == 0 && p.parenDepth == 0 && (next == nil || next.value != "}") && p.canonicalTopLevelBreak(index) {
 		breaks = 2
 	}
 	if p.inRequire && p.parenDepth == 0 {
@@ -147,7 +147,8 @@ func (p *_Planner) addSyntax(index int, token _Token) {
 		p.before(value)
 		p.text(value)
 		p.parenDepth++
-		indented := index+1 < len(p.tokens) && p.tokens[index+1].kind == "Newline"
+		next := p.nextMeaningful(index + 1)
+		indented := index+1 < len(p.tokens) && p.tokens[index+1].kind == "Newline" && (next == nil || next.value != "}")
 		p.parenIndents = append(p.parenIndents, indented)
 		if indented {
 			p.layout = append(p.layout, _Layout{kind: layoutIndent})

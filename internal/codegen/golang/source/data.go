@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.yorun.ai/skelc/internal/codegen"
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/internal/util/sliceutil"
 	"go.yorun.ai/skelc/model"
@@ -105,7 +105,7 @@ func castDataMember(p *model.DataMember) *DataMember {
 	memberType := castType(p.Type)
 	return &DataMember{
 		Name:         nameutil.ToCamel(p.Name),
-		CommentLines: goDocLines(nameutil.ToCamel(p.Name), codegen.MergeDescriptionAndExample(p.Description, p.Example)),
+		CommentLines: goDocLines(nameutil.ToCamel(p.Name), common.MergeDescriptionAndExample(p.Description, p.Example)),
 		Type:         memberType,
 		SkelName:     p.Name,
 	}

@@ -27,7 +27,7 @@ The source-processing pipeline is intentionally separated:
 1. `internal/loader` discovers and loads source files.
 2. `internal/parser` coordinates imports and parses grammar.
 3. `internal/parser/{grammar,analyzer,hasher}` parse syntax, build and validate semantic state, and derive compatibility hashes; the public `model` package contains parser-independent semantic data.
-4. `internal/codegen/{golang,skeleton,typescript}` renders Go, public Skel, and TypeScript output.
+4. `internal/codegen/{golang,skeleton,typescript}` renders Go, public Skel, and TypeScript output; `internal/codegen/common` contains target-independent generation infrastructure.
 5. The root `skelc` API normalizes inputs and target options and manages output-directory lifecycle. `internal/cli` maps flags to that API and exposes stable terminal output and exit codes.
 
 Keep the executable under `cmd/skelc` thin. Implementation packages remain under `internal`; avoid exposing their types through the CLI package.
@@ -65,9 +65,11 @@ Before submitting a repository-wide Go change, run:
 
 ```bash
 GOWORK=off go test ./...
+GOWORK=off go test ./internal/parser ./internal/formatter -run '^$' -bench . -benchtime=1x
 ```
 
 Also run `GOWORK=off go vet ./...` after changes involving exported APIs, reflection, filesystem safety, or CLI/runtime wiring.
+Parser, analyzer, or formatter changes should also smoke-test the fuzz targets with `go test -fuzz` and a bounded `-fuzztime`.
 
 ## Language and Generator Changes
 
@@ -81,7 +83,7 @@ For Skel syntax changes:
 
 For generated output changes, modify the templates and generator implementation under the relevant `internal/codegen/{golang,skeleton,typescript}` package, inspect representative generated output, and test its deterministic shape. Generated Go modules must declare a compatible Vine version.
 
-The generator cleans output directories by default. Use temporary directories in manual tests and verify the target before running a generation command against an existing directory.
+The generator tracks owned files in `.skelc-manifest.json`. Use temporary directories in manual tests and verify the target before running a generation command against an existing directory, because current generated paths are overwritten even when unrelated files are preserved.
 
 ## Documentation
 

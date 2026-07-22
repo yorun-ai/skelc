@@ -1,7 +1,6 @@
 package golang_test
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -280,26 +279,13 @@ func TestGeneratorRejectsImplicitPubDependencies(t *testing.T) {
 		},
 	})
 
-	expectPanicContains(t, "pub service UserService.getUser references non-pub data User", func() {
-		golang.Generate(pkg, golang.Option{
-			Out:          goOutDir,
-			AsModule:     true,
-			PubOut:       goPubOutDir,
-			ModulePrefix: "github.com/acme/skel",
-		})
+	err := golang.Generate(pkg, golang.Option{
+		Out:          goOutDir,
+		AsModule:     true,
+		PubOut:       goPubOutDir,
+		ModulePrefix: "github.com/acme/skel",
 	})
-}
-
-func expectPanicContains(t *testing.T, expected string, fn func()) {
-	t.Helper()
-	defer func() {
-		recovered := recover()
-		if recovered == nil {
-			t.Fatalf("expected panic containing %q", expected)
-		}
-		if !strings.Contains(fmt.Sprint(recovered), expected) {
-			t.Fatalf("unexpected panic: %v", recovered)
-		}
-	}()
-	fn()
+	if err == nil || !strings.Contains(err.Error(), "pub service UserService.getUser references non-pub data User") {
+		t.Fatalf("unexpected error: %v", err)
+	}
 }

@@ -18,6 +18,10 @@ func (s *_Server) stopSemanticAnalysis() {
 		s.semanticTimer.Stop()
 		s.semanticTimer = nil
 	}
+	if s.semanticCancel != nil {
+		s.semanticCancel()
+		s.semanticCancel = nil
+	}
 	s.mu.Unlock()
 }
 
@@ -67,16 +71,23 @@ func (s *_Server) scheduleSemanticAnalysisLocked() {
 	if s.semanticTimer != nil {
 		s.semanticTimer.Stop()
 	}
+	if s.semanticCancel != nil {
+		s.semanticCancel()
+	}
+	analysisContext, cancel := context.WithCancel(context.Background())
+	s.semanticCancel = cancel
 	if s.client == nil {
+		cancel()
+		s.semanticCancel = nil
 		s.semanticTimer = nil
 		return
 	}
 	s.semanticTimer = time.AfterFunc(semanticAnalysisDelay, func() {
-		s.runSemanticAnalysis(generation)
+		s.runSemanticAnalysis(analysisContext, generation)
 	})
 }
 
-func (s *_Server) runSemanticAnalysis(generation uint64) {
+func (s *_Server) runSemanticAnalysis(analysisContext context.Context, generation uint64) {
 	s.mu.RLock()
 	if generation != s.generation {
 		s.mu.RUnlock()
@@ -86,7 +97,10 @@ func (s *_Server) runSemanticAnalysis(generation uint64) {
 	client := s.client
 	s.mu.RUnlock()
 
-	semantic := semanticDiagnostics(sources, paths)
+	semantic, err := semanticDiagnostics(analysisContext, s.analyzer, sources, paths)
+	if err != nil {
+		return
+	}
 
 	s.mu.Lock()
 	if generation != s.generation || client == nil {
@@ -96,6 +110,7 @@ func (s *_Server) runSemanticAnalysis(generation uint64) {
 	previous := s.semantic
 	s.semantic = semantic
 	s.semanticTimer = nil
+	s.semanticCancel = nil
 	changed := make(map[uri.URI]bool, len(previous)+len(semantic))
 	for documentURI := range previous {
 		changed[documentURI] = true

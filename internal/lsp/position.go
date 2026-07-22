@@ -1,6 +1,7 @@
 package lsp
 
 import (
+	"encoding/json"
 	"slices"
 	"strings"
 	"unicode/utf16"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/alecthomas/participle/v2/lexer"
 	"go.lsp.dev/protocol"
+	"go.yorun.ai/skelc/internal/parser"
 )
 
 func occurrenceAt(document *_Document, position protocol.Position) (_Occurrence, bool) {
@@ -17,6 +19,38 @@ func occurrenceAt(document *_Document, position protocol.Position) (_Occurrence,
 		}
 	}
 	return _Occurrence{}, false
+}
+
+func diagnosticSuggestionData(suggestion *parser.DiagnosticSuggestion) protocol.LSPAny {
+	if suggestion == nil {
+		return nil
+	}
+	content, err := json.Marshal(suggestion)
+	if err != nil {
+		return nil
+	}
+	return protocol.LSPAny(content)
+}
+
+func sourceRangeToProtocol(source string, sourceRange parser.SourceRange) protocol.Range {
+	start := identifierRange(source, lexer.Position{
+		Line: sourceRange.Start.Line, Column: sourceRange.Start.Column,
+	}, "").Start
+	end := identifierRange(source, lexer.Position{
+		Line: sourceRange.End.Line, Column: sourceRange.End.Column,
+	}, "").Start
+	if comparePosition(end, start) <= 0 {
+		end = start
+		end.Character++
+	}
+	return protocol.Range{Start: start, End: end}
+}
+
+func diagnosticSeverityToProtocol(severity parser.DiagnosticSeverity) protocol.DiagnosticSeverity {
+	if severity == parser.DiagnosticSeverityWarning {
+		return protocol.DiagnosticSeverityWarning
+	}
+	return protocol.DiagnosticSeverityError
 }
 
 func containsPosition(r protocol.Range, position protocol.Position) bool {

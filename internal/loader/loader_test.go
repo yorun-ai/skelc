@@ -1,7 +1,6 @@
 package loader
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,7 +17,7 @@ func TestLoadDirectory(t *testing.T) {
 		t.Fatalf("mkdir nested: %v", err)
 	}
 
-	result := Load(dir)
+	result := mustLoad(t, dir)
 
 	if !result.IsDir {
 		t.Fatal("expected directory result")
@@ -32,13 +31,16 @@ func TestLoadDirectory(t *testing.T) {
 	if len(result.Warnings) != 3 {
 		t.Fatalf("unexpected warnings: %+v", result.Warnings)
 	}
+	if result.Warnings[0].Code != WarningCodeHiddenFile || result.Warnings[1].Code != WarningCodeUnsupported || result.Warnings[2].Code != WarningCodeDirectory {
+		t.Fatalf("unexpected warning codes: %+v", result.Warnings)
+	}
 }
 
 func TestLoadSingleFile(t *testing.T) {
 	filePath := filepath.Join(t.TempDir(), "user.skel")
 	writeFile(t, filePath, "domain demo.user\ndata User { id: string }\n")
 
-	result := Load(filePath)
+	result := mustLoad(t, filePath)
 
 	if result.IsDir {
 		t.Fatal("did not expect directory result")
@@ -51,18 +53,24 @@ func TestLoadSingleFile(t *testing.T) {
 	}
 }
 
-func TestLoadPanicsWhenDomainFileMissing(t *testing.T) {
+func TestLoadReturnsErrorWhenDomainFileMissing(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, filepath.Join(dir, "service.skel"), "domain demo.user\n")
 
-	expectPanicContains(t, "domain.skel not found", func() { Load(dir) })
+	_, err := Load(dir)
+	if err == nil || !strings.Contains(err.Error(), "domain.skel not found") {
+		t.Fatalf("unexpected error: %v", err)
+	}
 }
 
 func TestLoadRejectsNonSkelFile(t *testing.T) {
 	filePath := filepath.Join(t.TempDir(), "README.md")
 	writeFile(t, filePath, "ignored\n")
 
-	expectPanicContains(t, "is not a .skel file", func() { Load(filePath) })
+	_, err := Load(filePath)
+	if err == nil || !strings.Contains(err.Error(), "is not a .skel file") {
+		t.Fatalf("unexpected error: %v", err)
+	}
 }
 
 func TestClassifyFile(t *testing.T) {
@@ -79,18 +87,13 @@ func TestClassifyFile(t *testing.T) {
 	}
 }
 
-func expectPanicContains(t *testing.T, expected string, fn func()) {
+func mustLoad(t *testing.T, path string) Result {
 	t.Helper()
-	defer func() {
-		recovered := recover()
-		if recovered == nil {
-			t.Fatalf("expected panic containing %q", expected)
-		}
-		if !strings.Contains(fmt.Sprint(recovered), expected) {
-			t.Fatalf("unexpected panic: %v", recovered)
-		}
-	}()
-	fn()
+	result, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return result
 }
 
 func writeFile(t *testing.T, path string, content string) {

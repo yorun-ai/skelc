@@ -1,8 +1,9 @@
 package module
 
 import (
-	"go.yorun.ai/skelc/internal/codegen"
-	"go.yorun.ai/skelc/internal/util/checkutil"
+	"fmt"
+
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"golang.org/x/mod/modfile"
 )
 
@@ -25,18 +26,36 @@ type Option struct {
 	ExtraDependencies []string
 }
 
-func Generate(option Option) {
+func Generate(option Option) error {
 	file := new(modfile.File)
-	checkutil.CheckNilError(file.AddModuleStmt(option.Module), "add go module statement failed")
-	checkutil.CheckNilError(file.AddGoStmt(goVersion), "add go version statement failed")
+	if err := file.AddModuleStmt(option.Module); err != nil {
+		return fmt.Errorf("add Go module statement: %w", err)
+	}
+	if err := file.AddGoStmt(goVersion); err != nil {
+		return fmt.Errorf("add Go version statement: %w", err)
+	}
 
-	checkutil.CheckNilError(file.AddRequire(decimalModule, decimalVersion), "add go require %s failed", decimalModule)
-	checkutil.CheckNilError(file.AddRequire(vineModule, option.VineVersion), "add go require %s failed", vineModule)
-	for _, dependency := range goModDependencies(option.Imports, option.ExtraDependencies) {
-		checkutil.CheckNilError(file.AddRequire(dependency.Module, dependency.Version), "add go require %s failed", dependency.Module)
+	if err := file.AddRequire(decimalModule, decimalVersion); err != nil {
+		return fmt.Errorf("add Go requirement %s: %w", decimalModule, err)
+	}
+	if err := file.AddRequire(vineModule, option.VineVersion); err != nil {
+		return fmt.Errorf("add Go requirement %s: %w", vineModule, err)
+	}
+	dependencies, err := goModDependencies(option.Imports, option.ExtraDependencies)
+	if err != nil {
+		return err
+	}
+	for _, dependency := range dependencies {
+		if err := file.AddRequire(dependency.Module, dependency.Version); err != nil {
+			return fmt.Errorf("add Go requirement %s: %w", dependency.Module, err)
+		}
 	}
 
 	content, err := file.Format()
-	checkutil.CheckNilError(err, "format go.mod failed")
-	codegen.NewRenderer(option.Out).Write(goModFilename, string(content))
+	if err != nil {
+		return fmt.Errorf("format go.mod: %w", err)
+	}
+	renderer := common.NewRenderer(option.Out)
+	renderer.Write(goModFilename, string(content))
+	return renderer.Err()
 }

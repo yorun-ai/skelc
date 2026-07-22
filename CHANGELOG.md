@@ -11,6 +11,11 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 - LSP document formatting, keyword and type completion, and declaration hover details
 - Hierarchical document symbols, workspace symbol search, and top-level declaration rename
 - Best-effort domain, import, and top-level declaration indexing while a document has syntax errors
+- Debounced workspace-wide semantic diagnostics over unsaved documents, including same-domain file merging and cross-domain validation
+
+### Changed
+
+- Compiler validation aborts now carry structured error codes, source positions, and wrapped causes through centralized API and CLI recovery boundaries
 
 ## [0.9.0] - 2026-07-21
 

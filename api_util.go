@@ -1,7 +1,6 @@
 package skelc
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -147,13 +146,7 @@ func trimMapValues(values map[string]string, cutset string) map[string]string {
 }
 
 func recoverAPIError(err *error) {
-	recovered := recover()
-	if recovered == nil {
-		return
+	if recovered := recover(); recovered != nil {
+		*err = checkutil.Recover(recovered)
 	}
-	if recoveredErr, ok := recovered.(error); ok {
-		*err = recoveredErr
-		return
-	}
-	*err = fmt.Errorf("%v", recovered)
 }

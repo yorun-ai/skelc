@@ -155,7 +155,7 @@ skelc format --skel-in ./skel
 
 `format` modifies files in place after validating all inputs. Tool integrations can request machine-readable diagnostics with the global `--log-format jsonl` option.
 
-`skelc lsp` provides editor formatting, keyword and type completion, declaration hover details, hierarchical document and workspace symbols, definition and reference navigation, and safe top-level declaration rename. While a document contains a syntax error, the server keeps a best-effort index of its domain, imports, and top-level declarations so unaffected navigation remains available.
+`skelc lsp` provides syntax and workspace-wide semantic diagnostics, editor formatting, keyword and type completion, declaration hover details, hierarchical document and workspace symbols, definition and reference navigation, and safe top-level declaration rename. Semantic analysis uses the current in-memory contents of every document, merges files in the same domain, and validates cross-domain references without requiring a save. While a document contains a syntax error, the server keeps a best-effort index of its domain, imports, and top-level declarations so unaffected navigation remains available and dependent semantic errors do not cascade.
 
 ## Programmatic API
 

@@ -24,7 +24,7 @@ func (p *Analysis) loadImports(domainByName map[string]*Analysis) {
 		}
 		importedDomain := domainByName[domainName]
 		if importedDomain == nil {
-			panic(&MissingImportError{Position: fmt.Sprint(grammarImport.Pos), Domain: domainName})
+			panic(&MissingImportError{Position: position(grammarImport.Pos), Domain: domainName})
 		}
 		if prev, exists := p.importsMap[alias]; exists {
 			checkutil.Check(prev.Model.Name == domainName,
@@ -54,34 +54,34 @@ func defaultImportAlias(domainName string) string {
 func (p *Analysis) checkDuplicated(name string, namePos model.Position) {
 	errMsg := `%s duplicated identifier "%s" found, also present at %s`
 	previousEnum, exists := p.enumsMap[name]
-	checkutil.CheckFunc(!exists, func() string {
+	checkutil.CheckFuncAt(namePos, !exists, func() string {
 		return fmt.Sprintf(errMsg, namePos, name, previousEnum.Pos)
 	})
 	previousData, exists := p.dataMap[name]
-	checkutil.CheckFunc(!exists, func() string {
+	checkutil.CheckFuncAt(namePos, !exists, func() string {
 		return fmt.Sprintf(errMsg, namePos, name, previousData.Pos)
 	})
 	previousActor, exists := p.actorsMap[name]
-	checkutil.CheckFunc(!exists, func() string {
+	checkutil.CheckFuncAt(namePos, !exists, func() string {
 		return fmt.Sprintf(errMsg, namePos, name, previousActor.Pos)
 	})
 	previousService, exists := p.servicesMap[name]
-	checkutil.CheckFunc(!exists, func() string {
+	checkutil.CheckFuncAt(namePos, !exists, func() string {
 		return fmt.Sprintf(errMsg, namePos, name, previousService.Pos)
 	})
 	previousWeb, exists := p.websMap[name]
-	checkutil.CheckFunc(!exists, func() string {
+	checkutil.CheckFuncAt(namePos, !exists, func() string {
 		return fmt.Sprintf(errMsg, namePos, name, previousWeb.Pos)
 	})
 	previousTask, exists := p.tasksMap[name]
-	checkutil.CheckFunc(!exists, func() string {
+	checkutil.CheckFuncAt(namePos, !exists, func() string {
 		return fmt.Sprintf(errMsg, namePos, name, previousTask.Pos)
 	})
 }
 
 func (p *Analysis) checkDuplicatedResource(name string, namePos model.Position) {
 	previous, exists := p.resourcesMap[name]
-	checkutil.CheckFunc(!exists, func() string {
+	checkutil.CheckFuncAt(namePos, !exists, func() string {
 		return fmt.Sprintf(`%s duplicated resource "%s" found, also present at %s`, namePos, name, previous.Pos)
 	})
 }
@@ -108,7 +108,7 @@ func (p *Analysis) checkActorGeneratedNames() {
 func (p *Analysis) checkGeneratedIdentifier(name string, namePos model.Position, generated map[string]model.Position) {
 	p.checkDuplicated(name, namePos)
 	duplicatedPosition, duplicated := generated[name]
-	checkutil.CheckFunc(!duplicated, func() string {
+	checkutil.CheckFuncAt(namePos, !duplicated, func() string {
 		return fmt.Sprintf(`%s duplicated identifier "%s" found, also present at %s`, namePos, name, duplicatedPosition)
 	})
 	generated[name] = namePos

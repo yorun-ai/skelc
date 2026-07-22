@@ -38,7 +38,7 @@ func castType(p *model.Type) *Type {
 		return castTypeParameter(p)
 	}
 
-	checkutil.Panicf("unexpected type %+v", p)
+	checkutil.Failf("unexpected type %+v", p)
 	return nil
 }
 
@@ -97,7 +97,7 @@ func castScalarType(p *model.Type) *Type {
 			Plain: codegen.ChooseString(p.Nullable, "string | null", "string"),
 		}
 	}
-	checkutil.Panicf("unexpected scalar type %+v", p)
+	checkutil.Failf("unexpected scalar type %+v", p)
 	return nil
 }
 

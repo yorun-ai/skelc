@@ -146,7 +146,7 @@ func parseType(s *grammar.Type) *model.Type {
 		case grammar.SkelPermissionCode:
 			t.Kind = model.TypeKindSkelPermissionCode
 		default:
-			checkutil.Panicf("%s unknown PlainType %s", s.Pos, *s.Plain)
+			checkutil.Failf("%s unknown PlainType %s", s.Pos, *s.Plain)
 		}
 
 	case s.List != nil:
@@ -180,7 +180,7 @@ func parseType(s *grammar.Type) *model.Type {
 		t.TypeArguments = typeArgs
 
 	default:
-		checkutil.Panicf("%s unknown Type %+v", s.Pos, s)
+		checkutil.Failf("%s unknown Type %+v", s.Pos, s)
 	}
 
 	t.Nullable = s.Nullable

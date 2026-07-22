@@ -44,7 +44,7 @@ func castType(p *model.Type) *Type {
 		return castTypeParameter(p)
 	}
 
-	checkutil.Panicf("unexpected type %+v", p)
+	checkutil.Failf("unexpected type %+v", p)
 	return nil
 }
 

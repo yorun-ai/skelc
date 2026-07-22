@@ -124,7 +124,8 @@ func runCLICommand(command *ucli.Command, args []string) (result Result) {
 
 func recoverAsErrorResult(result *Result, rawLogFormat string) {
 	if recovered := recover(); recovered != nil {
-		*result = Result{ExitCode: ExitCodeError, Stderr: logutil.Format(logutil.Error("%s", recovered), rawLogFormat)}
+		err := checkutil.Recover(recovered)
+		*result = Result{ExitCode: ExitCodeError, Stderr: logutil.Format(logutil.Error("%s", err), rawLogFormat)}
 	}
 }
 

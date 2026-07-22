@@ -39,7 +39,7 @@ func (p *Analysis) checkHardCycleReferences() {
 			}
 		}
 
-		checkutil.CheckFunc(!isHard, func() string {
+		checkutil.CheckFuncAt(cycle[0].Pos, !isHard, func() string {
 			names := sliceutil.Map(cycle, func(dataType *model.Data) string {
 				return dataType.Name
 			})

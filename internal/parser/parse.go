@@ -82,6 +82,6 @@ func findDomainFile(sourceFiles []*loader.SourceFile) *loader.SourceFile {
 			return sourceFile
 		}
 	}
-	checkutil.Panicf("%s not found", loader.DomainFileName)
+	checkutil.Failf("%s not found", loader.DomainFileName)
 	return nil
 }

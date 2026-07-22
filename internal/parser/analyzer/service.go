@@ -69,7 +69,7 @@ func serviceAuthMarker(gs *grammar.Service) *grammar.AuthMarker {
 		if section.Auth == nil {
 			continue
 		}
-		checkutil.CheckFunc(marker == nil, func() string {
+		checkutil.CheckFuncAt(section.Auth.Pos, marker == nil, func() string {
 			return fmt.Sprintf("%s duplicated service auth marker found, also present at %s", section.Auth.Pos, markerPos)
 		})
 		marker = section.Auth
@@ -88,7 +88,7 @@ func serviceRequire(gs *grammar.Service) *grammar.Require {
 		if section.Require == nil {
 			continue
 		}
-		checkutil.CheckFunc(require == nil, func() string {
+		checkutil.CheckFuncAt(section.Require.Pos, require == nil, func() string {
 			return fmt.Sprintf("%s duplicated service require found, also present at %s", section.Require.Pos, requirePos)
 		})
 		require = section.Require
@@ -126,7 +126,7 @@ func parseServiceAudiences(audiences []*grammar.ServiceAudience) []*model.ActorA
 		name := audience.Actor.String()
 		key := fmt.Sprintf("%s:%s", name, via)
 		duplicatedPosition, duplicated := audiencePos[key]
-		checkutil.CheckFunc(!duplicated, func() string {
+		checkutil.CheckFuncAt(actorIdent.Pos, !duplicated, func() string {
 			if via != "" {
 				return fmt.Sprintf("%s duplicated service audience %s via %s found, also present at %s", actorIdent.Pos, name, via, duplicatedPosition)
 			}

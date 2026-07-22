@@ -108,7 +108,7 @@ func actorAuthSection(ga *grammar.Actor) *grammar.ActorAuth {
 		if section.Auth == nil {
 			continue
 		}
-		checkutil.CheckFunc(auth == nil, func() string {
+		checkutil.CheckFuncAt(section.Auth.Pos, auth == nil, func() string {
 			return fmt.Sprintf("%s duplicated actor auth found, also present at %s", section.Auth.Pos, authPos)
 		})
 		auth = section.Auth
@@ -129,7 +129,7 @@ func actorPermissionDeclared(ga *grammar.Actor) bool {
 		if section.Permission == nil {
 			continue
 		}
-		checkutil.CheckFunc(permission == nil, func() string {
+		checkutil.CheckFuncAt(section.Permission.Pos, permission == nil, func() string {
 			return fmt.Sprintf("%s duplicated actor permission found, also present at %s", section.Permission.Pos, permissionPos)
 		})
 		permission = section.Permission
@@ -149,7 +149,7 @@ func parseActorVias(owner *grammar.Identifier, grammarVias []*grammar.ActorVia) 
 	for _, grammarVia := range grammarVias {
 		via := parseActorVia(grammarVia)
 		duplicatedPosition, duplicated := viaPos[via.Name]
-		checkutil.CheckFunc(!duplicated, func() string {
+		checkutil.CheckFuncAt(via.Pos, !duplicated, func() string {
 			return fmt.Sprintf("%s duplicated actor via %s found, also present at %s",
 				via.Pos, via.Name, duplicatedPosition)
 		})

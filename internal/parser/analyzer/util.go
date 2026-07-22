@@ -53,7 +53,7 @@ func checkCaseAdvanced(kindName string, prefix string, suffix string, expectedCa
 	body := strings.TrimPrefix(name, prefix)
 	body = strings.TrimSuffix(body, suffix)
 	checkutil.Check(body != "", "%s missing body after trimming prefix & suffix: found=%s", pos, name)
-	checkutil.CheckFunc(matchesCase(body, expectedCase), func() string {
+	checkutil.CheckFuncAt(pos, matchesCase(body, expectedCase), func() string {
 		expectedName := fmt.Sprintf("%s%s%s", prefix, caseTypeExample(expectedCase), suffix)
 		return fmt.Sprintf("%s incorrect case: found=%s, expected=%s (%s -> %s)", pos, name, expectedName, kindName, expectedFormat)
 	})

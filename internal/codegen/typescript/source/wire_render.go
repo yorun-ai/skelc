@@ -122,7 +122,7 @@ func (b *_WireSchemaBuilder) renderType(type_ *model.Type, depth int) string {
 			rendered = "{ ..." + rendered + ", nullable: true }"
 		}
 	default:
-		checkutil.Panicf("unsupported TypeScript wire schema type %+v", type_)
+		checkutil.Failf("unsupported TypeScript wire schema type %+v", type_)
 	}
 	return rendered
 }

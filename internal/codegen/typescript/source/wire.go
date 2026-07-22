@@ -1,6 +1,10 @@
 package source
 
-import "go.yorun.ai/skelc/model"
+import (
+	"fmt"
+
+	"go.yorun.ai/skelc/model"
+)
 
 type _WireMethod struct {
 	Name            string
@@ -15,6 +19,13 @@ type _WireFactory struct {
 type _WireSchemaBuilder struct {
 	data         map[*model.Data]bool
 	factoryNames map[*model.Data]string
+	err          error
+}
+
+func (b *_WireSchemaBuilder) fail(format string, args ...any) {
+	if b.err == nil {
+		b.err = fmt.Errorf(format, args...)
+	}
 }
 
 func newWireSchemaBuilder() *_WireSchemaBuilder {

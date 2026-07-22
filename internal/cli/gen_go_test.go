@@ -185,6 +185,21 @@ func TestRunSkelcGenGoModuleRejectsMissingModulePrefix(t *testing.T) {
 	}
 }
 
+func TestRunSkelcGenGoModuleUsesFlagNameForSharedValidationError(t *testing.T) {
+	dir := t.TempDir()
+	goOut := filepath.Join(t.TempDir(), "skeled")
+	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
+
+	result := Run([]string{
+		"gen", "go-module", "--skel-in", dir, "--go-out", goOut,
+		"--go-module-prefix", "github.com/acme/skel/",
+	})
+
+	if result.ExitCode != ExitCodeError || result.Stderr != "Error: flag go-module-prefix must not end with /" {
+		t.Fatalf("unexpected result: exit=%d stderr=%q", result.ExitCode, result.Stderr)
+	}
+}
+
 func TestRunSkelcGenGoModuleWithModulePrefix(t *testing.T) {
 	dir := t.TempDir()
 	goOut := filepath.Join(t.TempDir(), "skeled")

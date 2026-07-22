@@ -11,7 +11,7 @@ func TestBuildDocGoPayloadUsesDomainDescription(t *testing.T) {
 	pkg := buildModelDomainForTest(t, domainModelWithDescriptionForTest("demo.user", "User domain"))
 	gen := newGen(Option{
 		Domain:      pkg,
-		View:        view.New(view.ModeFull, pkg),
+		View:        mustView(t, view.ModeFull, pkg),
 		Mode:        view.ModeFull,
 		PackageName: "skeled",
 		Out:         filepath.Join(t.TempDir(), "skeled"),
@@ -28,7 +28,7 @@ func TestBuildDocGoPayloadFallsBackToPackageName(t *testing.T) {
 	pkg := buildModelDomainForTest(t, domainModelForTest("demo.user"))
 	gen := newGen(Option{
 		Domain:      pkg,
-		View:        view.New(view.ModeFull, pkg),
+		View:        mustView(t, view.ModeFull, pkg),
 		Mode:        view.ModeFull,
 		PackageName: "skeled",
 		Out:         filepath.Join(t.TempDir(), "skeled"),

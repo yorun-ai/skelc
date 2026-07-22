@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"fmt"
 	"strconv"
 
 	"go.yorun.ai/skelc/model"
@@ -52,48 +53,48 @@ func actorVia(name string) _ActorVia {
 	case model.ActorViaOpenAPI:
 		return actorViaOpenAPI
 	default:
-		panic("unexpected actor via " + name)
+		return ""
 	}
 }
 
-func renderActorViaLiteral(method _ActorVia) string {
+func renderActorViaLiteral(method _ActorVia) (string, error) {
 	switch method {
 	case actorViaClient:
-		return "skel.ActorViaClient"
+		return "skel.ActorViaClient", nil
 	case actorViaAgent:
-		return "skel.ActorViaAgent"
+		return "skel.ActorViaAgent", nil
 	case actorViaOpenAPI:
-		return "skel.ActorViaOpenAPI"
+		return "skel.ActorViaOpenAPI", nil
 	default:
-		panic("unexpected actor via")
+		return "", fmt.Errorf("unsupported actor via %q", method)
 	}
 }
 
-func renderAuthModeLiteral(mode _AuthMode) string {
+func renderAuthModeLiteral(mode _AuthMode) (string, error) {
 	switch mode {
 	case authModeUnset:
-		return "skel.AuthModeUnset"
+		return "skel.AuthModeUnset", nil
 	case authModeAuth:
-		return "skel.AuthModeAuth"
+		return "skel.AuthModeAuth", nil
 	case authModeNoAuth:
-		return "skel.AuthModeNoAuth"
+		return "skel.AuthModeNoAuth", nil
 	default:
-		panic("unexpected auth mode")
+		return "", fmt.Errorf("unsupported auth mode %q", mode)
 	}
 }
 
-func renderPermRequireModeLiteral(mode _PermRequireMode) string {
+func renderPermRequireModeLiteral(mode _PermRequireMode) (string, error) {
 	switch mode {
 	case permRequireModeCode:
-		return "skel.PermRequireModeCode"
+		return "skel.PermRequireModeCode", nil
 	case permRequireModeCheck:
-		return "skel.PermRequireModeCheck"
+		return "skel.PermRequireModeCheck", nil
 	case permRequireModeAll:
-		return "skel.PermRequireModeAll"
+		return "skel.PermRequireModeAll", nil
 	case permRequireModeAny:
-		return "skel.PermRequireModeAny"
+		return "skel.PermRequireModeAny", nil
 	default:
-		panic("unexpected permission require mode")
+		return "", fmt.Errorf("unsupported permission require mode %q", mode)
 	}
 }
 

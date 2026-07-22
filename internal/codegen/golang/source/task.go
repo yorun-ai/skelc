@@ -3,7 +3,6 @@ package source
 import (
 	"fmt"
 
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/internal/util/sliceutil"
 	"go.yorun.ai/skelc/model"
@@ -136,8 +135,9 @@ func castTaskTrigger(task_ *model.Task, p *model.TaskTrigger) *TaskTrigger {
 			member, ok := sliceutil.Find(trigger.ArgumentsData.Members, func(mem *DataMember) bool {
 				return mem.SkelName == arg.SkelName
 			})
-			checkutil.Check(ok, "argument member %s not found", arg.SkelName)
-			arg.MemberName = member.Name
+			if ok {
+				arg.MemberName = member.Name
+			}
 		}
 	}
 	return trigger

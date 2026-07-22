@@ -121,5 +121,5 @@ func castActorVia(via string) string {
 	case model.ActorViaOpenAPI:
 		return "skel.ActorViaOpenAPI"
 	}
-	panic("unexpected actor via " + via)
+	return ""
 }

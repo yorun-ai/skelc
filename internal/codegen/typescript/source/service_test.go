@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -166,7 +165,7 @@ func TestTypesTemplateRendersExternalImports(t *testing.T) {
 		}},
 	}
 
-	output := common.RenderTemplate(dataTsTemplate, payload)
+	output := renderTemplate(t, dataTsTemplate, payload)
 	if !strings.Contains(output, "import type * as userpub from '@acme/skeled-userpub';") {
 		t.Fatalf("expected external type import, got:\n%s", output)
 	}
@@ -274,7 +273,7 @@ func TestServicesTemplatePassesOptionsDirectly(t *testing.T) {
 		}},
 	}
 
-	output := common.RenderTemplate(serviceTsTemplate, payload)
+	output := renderTemplate(t, serviceTsTemplate, payload)
 	if !strings.Contains(output, "options,\n      });") {
 		t.Fatalf("expected rendered services to pass options directly, got:\n%s", output)
 	}
@@ -327,7 +326,7 @@ func TestServicesTemplateInjectsWireOnlyForBinaryMethods(t *testing.T) {
 		}},
 	}
 
-	output := common.RenderTemplate(serviceTsTemplate, payload)
+	output := renderTemplate(t, serviceTsTemplate, payload)
 	for _, check := range []string{
 		"methodName: FileServiceSpec.methods.ping,\n        params,\n        options,",
 		"methodName: FileServiceSpec.methods.upload,",

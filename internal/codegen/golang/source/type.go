@@ -2,11 +2,10 @@ package source
 
 import (
 	"fmt"
+	"strings"
 
 	"go.yorun.ai/skelc/internal/codegen/common"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/model"
-	"strings"
 )
 
 type Type struct {
@@ -44,7 +43,6 @@ func castType(p *model.Type) *Type {
 		return castTypeParameter(p)
 	}
 
-	checkutil.Failf("unexpected type %+v", p)
 	return nil
 }
 

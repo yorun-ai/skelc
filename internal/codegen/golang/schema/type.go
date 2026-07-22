@@ -65,7 +65,7 @@ func (g *_Gen) buildTypeSchema(type_ *model.Type) *_TypeSchema {
 		meta.Kind = typeKindTypeParameter
 		meta.Name = type_.TypeParameter.Name
 	default:
-		panic(fmt.Sprintf("unsupported type kind %d", type_.Kind))
+		return nil
 	}
 	return meta
 }
@@ -99,7 +99,7 @@ func scalar(value model.Scalar) _Scalar {
 	case model.ScalarJSON:
 		return scalarJson
 	default:
-		panic(fmt.Sprintf("unsupported scalar %s", value.Name()))
+		return ""
 	}
 }
 
@@ -112,7 +112,7 @@ func (g *_Gen) typeMetaKind(kind model.DataKind) _TypeKind {
 	case model.DataKindEvent:
 		return typeKindEvent
 	default:
-		panic("unexpected data kind")
+		return ""
 	}
 }
 

@@ -17,9 +17,23 @@ import (
 	"go.yorun.ai/skelc/model"
 )
 
+type _OptionValidationError struct {
+	field   string
+	rule    string
+	message string
+}
+
+func (err *_OptionValidationError) Error() string           { return err.message }
+func (err *_OptionValidationError) ValidationField() string { return err.field }
+func (err *_OptionValidationError) ValidationRule() string  { return err.rule }
+
+func optionValidationError(field, rule, message string) error {
+	return &_OptionValidationError{field: field, rule: rule, message: message}
+}
+
 func normalizeInput(input Input) (parser.Option, error) {
 	if strings.TrimSpace(input.SkelIn) == "" {
-		return parser.Option{}, fmt.Errorf("skel input is required")
+		return parser.Option{}, optionValidationError("skel.input", "required", "skel input is required")
 	}
 	skelIn, err := absolutePath(input.SkelIn)
 	if err != nil {
@@ -34,48 +48,51 @@ func normalizeInput(input Input) (parser.Option, error) {
 
 func normalizeGolangOption(option GolangOption) (golang.Option, error) {
 	if strings.TrimSpace(option.Out) == "" {
-		return golang.Option{}, fmt.Errorf("Go output is required")
+		return golang.Option{}, optionValidationError("go.output", "required", "Go output is required")
 	}
 	if err := gomodule.ValidateVineVersion(option.VineVersion); err != nil {
 		return golang.Option{}, err
 	}
+	modulePrefix := strings.TrimSpace(option.ModulePrefix)
+	module := strings.TrimSpace(option.Module)
+	pubOutValue := strings.TrimSpace(option.PubOut)
+	pubModule := strings.TrimSpace(option.PubModule)
 	if option.AsModule {
-		if option.Module == "" && option.ModulePrefix == "" {
-			return golang.Option{}, fmt.Errorf("Go module or module prefix is required")
+		if module == "" && modulePrefix == "" {
+			return golang.Option{}, optionValidationError("go.module-identity", "required", "Go module or module prefix is required")
 		}
 	} else {
 		invalidFields := []struct {
+			field   string
 			value   string
 			message string
 		}{
-			{option.PubOut, "Go public output requires module generation"},
-			{option.PubModule, "Go public module requires module generation"},
-			{option.Module, "Go module requires module generation"},
-			{option.ModulePrefix, "Go module prefix requires module generation"},
+			{"go.public-output", pubOutValue, "Go public output requires module generation"},
+			{"go.public-module", pubModule, "Go public module requires module generation"},
+			{"go.module", module, "Go module requires module generation"},
+			{"go.module-prefix", modulePrefix, "Go module prefix requires module generation"},
 		}
 		for _, field := range invalidFields {
 			if field.value != "" {
-				return golang.Option{}, fmt.Errorf("%s", field.message)
+				return golang.Option{}, optionValidationError(field.field, "requires-module", field.message)
 			}
 		}
 	}
-	if option.PubModule != "" && option.PubOut == "" {
-		return golang.Option{}, fmt.Errorf("Go public module requires public output")
+	if pubModule != "" && pubOutValue == "" {
+		return golang.Option{}, optionValidationError("go.public-module", "requires-public-output", "Go public module requires public output")
 	}
 
-	modulePrefix := strings.TrimSpace(option.ModulePrefix)
-	module := strings.TrimSpace(option.Module)
-	pubModule := strings.TrimSpace(option.PubModule)
 	moduleFields := []struct {
 		value string
 		name  string
+		field string
 	}{
-		{modulePrefix, "Go module prefix"},
-		{module, "Go module"},
-		{pubModule, "Go public module"},
+		{modulePrefix, "Go module prefix", "go.module-prefix"},
+		{module, "Go module", "go.module"},
+		{pubModule, "Go public module", "go.public-module"},
 	}
 	for _, field := range moduleFields {
-		if err := checkNoTrailingSlash(field.value, field.name); err != nil {
+		if err := checkNoTrailingSlash(field.value, field.name, field.field); err != nil {
 			return golang.Option{}, err
 		}
 	}
@@ -89,7 +106,7 @@ func normalizeGolangOption(option GolangOption) (golang.Option, error) {
 			return golang.Option{}, fmt.Errorf("go output directory name %q is not a valid package name", name)
 		}
 	}
-	pubOut, err := optionalAbsolutePath(option.PubOut)
+	pubOut, err := optionalAbsolutePath(pubOutValue)
 	if err != nil {
 		return golang.Option{}, err
 	}
@@ -136,20 +153,20 @@ func validateTypeScriptImports(domain *model.Domain, option typescript.Option) e
 
 func normalizeTypeScriptOption(option TypeScriptOption) (typescript.Option, error) {
 	if strings.TrimSpace(option.Out) == "" {
-		return typescript.Option{}, fmt.Errorf("TypeScript output is required")
+		return typescript.Option{}, optionValidationError("typescript.output", "required", "TypeScript output is required")
 	}
 	moduleScope := strings.TrimRight(strings.TrimSpace(option.ModuleScope), "/")
 	module := strings.TrimRight(strings.TrimSpace(option.Module), "/")
 	if option.AsModule {
 		if module == "" && moduleScope == "" {
-			return typescript.Option{}, fmt.Errorf("TypeScript module or module scope is required")
+			return typescript.Option{}, optionValidationError("typescript.module-identity", "required", "TypeScript module or module scope is required")
 		}
 	} else {
 		if module != "" {
-			return typescript.Option{}, fmt.Errorf("TypeScript module requires module generation")
+			return typescript.Option{}, optionValidationError("typescript.module", "requires-module", "TypeScript module requires module generation")
 		}
 		if moduleScope != "" {
-			return typescript.Option{}, fmt.Errorf("TypeScript module scope requires module generation")
+			return typescript.Option{}, optionValidationError("typescript.module-scope", "requires-module", "TypeScript module scope requires module generation")
 		}
 	}
 	out, err := absolutePath(option.Out)
@@ -178,10 +195,10 @@ func normalizeTypeScriptOption(option TypeScriptOption) (typescript.Option, erro
 
 func normalizeSkeletonOption(option SkeletonOption) (skeleton.Option, error) {
 	if strings.TrimSpace(option.Out) == "" {
-		return skeleton.Option{}, fmt.Errorf("Skel output is required")
+		return skeleton.Option{}, optionValidationError("skeleton.output", "required", "Skel output is required")
 	}
 	if !option.PubOnly {
-		return skeleton.Option{}, fmt.Errorf("Skel generation requires PubOnly")
+		return skeleton.Option{}, optionValidationError("skeleton.public-only", "required", "Skel generation requires PubOnly")
 	}
 	out, err := absolutePath(option.Out)
 	if err != nil {
@@ -207,9 +224,9 @@ func validateVersionedImport(path, kind string) error {
 	return nil
 }
 
-func checkNoTrailingSlash(value string, field string) error {
+func checkNoTrailingSlash(value, label, field string) error {
 	if strings.HasSuffix(value, "/") {
-		return fmt.Errorf("%s must not end with /", field)
+		return optionValidationError(field, "no-trailing-slash", label+" must not end with /")
 	}
 	return nil
 }
@@ -301,7 +318,7 @@ func normalizeImportMap(values map[string]string) (map[string]string, error) {
 		if value == "" {
 			return nil, fmt.Errorf("Go import path for domain %s is required", normalizedKey)
 		}
-		if err := checkNoTrailingSlash(value, "Go import"); err != nil {
+		if err := checkNoTrailingSlash(value, "Go import", "go.import"); err != nil {
 			return nil, err
 		}
 		if _, exists := normalized[normalizedKey]; exists {

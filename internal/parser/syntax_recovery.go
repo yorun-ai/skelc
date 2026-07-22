@@ -6,19 +6,55 @@ import (
 	"strings"
 
 	"github.com/alecthomas/participle/v2"
+	"github.com/alecthomas/participle/v2/lexer"
 	"go.yorun.ai/skelc/internal/parser/analyzer"
 	"go.yorun.ai/skelc/internal/parser/grammar"
 	"go.yorun.ai/skelc/model"
 )
 
+type _SourceSegment struct {
+	start int
+	end   int
+	line  int
+}
+
+type _OffsetLexer struct {
+	lexer      lexer.Lexer
+	lineOffset int
+	byteOffset int
+}
+
 // ParseSourceRecovering returns the declarations that can be recovered from a
-// source together with independent syntax diagnostics in source order.
+// source together with independent syntax diagnostics in source order. The
+// initial token pass isolates top-level declarations so recovery reparses only
+// the declaration containing an error, never the complete source file.
 func ParseSourceRecovering(path string, source []byte) (*grammar.SkelContent, Diagnostics) {
-	working := append([]byte{}, source...)
+	segments := splitSourceSegments(path, source)
+	content := new(grammar.SkelContent)
+	diagnostics := Diagnostics{}
+	for _, segment := range segments {
+		remaining := analyzer.MaxDiagnosticsPerDomain - len(diagnostics)
+		if remaining == 0 {
+			break
+		}
+		fragment, fragmentDiagnostics := parseSourceSegmentRecovering(path, source, segment, remaining)
+		diagnostics = append(diagnostics, fragmentDiagnostics...)
+		orderDiagnostics := mergeRecoveredContent(path, source, content, fragment)
+		remaining = analyzer.MaxDiagnosticsPerDomain - len(diagnostics)
+		if len(orderDiagnostics) > remaining {
+			orderDiagnostics = orderDiagnostics[:remaining]
+		}
+		diagnostics = append(diagnostics, orderDiagnostics...)
+	}
+	return content, diagnostics
+}
+
+func parseSourceSegmentRecovering(path string, source []byte, segment _SourceSegment, limit int) (*grammar.SkelContent, Diagnostics) {
+	working := append([]byte{}, source[segment.start:segment.end]...)
 	diagnostics := Diagnostics{}
 	seen := map[string]bool{}
-	for len(diagnostics) < analyzer.MaxDiagnosticsPerDomain {
-		content, err, finalize := parseSourceOnce(path, working)
+	for len(diagnostics) < limit {
+		content, err, finalize := parseSourceFragment(path, working, segment.line, segment.start)
 		if err == nil {
 			return content, diagnostics
 		}
@@ -29,11 +65,157 @@ func ParseSourceRecovering(path string, source []byte) (*grammar.SkelContent, Di
 		}
 		seen[key] = true
 		diagnostics = append(diagnostics, diagnostic)
-		if !recoverSyntaxLine(&working, diagnostic.Position, diagnostic.Message) {
+		localPosition := diagnostic.Position
+		localPosition.Line -= segment.line - 1
+		if !recoverSyntaxLine(&working, localPosition, diagnostic.Message) {
 			return content, diagnostics
 		}
 	}
-	return nil, diagnostics
+	content, _, _ := parseSourceFragment(path, working, segment.line, segment.start)
+	return content, diagnostics
+}
+
+func splitSourceSegments(path string, source []byte) []_SourceSegment {
+	lex, err := grammar.LexerDefinition().Lex(path, bytes.NewReader(source))
+	if err != nil {
+		return []_SourceSegment{{end: len(source), line: 1}}
+	}
+	tokens, err := lexer.ConsumeAll(lex)
+	if err != nil {
+		return []_SourceSegment{{end: len(source), line: 1}}
+	}
+
+	symbols := grammar.LexerDefinition().Symbols()
+	elided := map[lexer.TokenType]bool{
+		symbols["Whitespace"]:   true,
+		symbols["LineComment"]:  true,
+		symbols["BlockComment"]: true,
+		symbols["Newline"]:      true,
+	}
+	starts := []_SourceSegment{{line: 1}}
+	depth := 0
+	hasDeclaration := false
+	lastLine := 0
+	pendingDecoratorStart := -1
+	pendingDecoratorLine := 0
+	for index, token := range tokens {
+		if token.EOF() || elided[token.Type] {
+			continue
+		}
+		firstOnLine := token.Pos.Line != lastLine
+		lastLine = token.Pos.Line
+		if firstOnLine {
+			kind := topLevelTokenKind(tokens, index, symbols["Identifier"], elided)
+			if depth > 0 && kind == "decorator" {
+				if pendingDecoratorStart < 0 {
+					pendingDecoratorStart, _, _ = sourceLineOffsets(source, token.Pos.Line)
+					pendingDecoratorLine = token.Pos.Line
+				}
+			} else if kind != "" {
+				if hasDeclaration || depth > 0 {
+					start, _, _ := sourceLineOffsets(source, token.Pos.Line)
+					line := token.Pos.Line
+					if depth > 0 && pendingDecoratorStart >= 0 {
+						start = pendingDecoratorStart
+						line = pendingDecoratorLine
+					}
+					starts = append(starts, _SourceSegment{start: start, line: line})
+				}
+				hasDeclaration = kind != "decorator"
+				if depth > 0 {
+					depth = 0
+				}
+				pendingDecoratorStart = -1
+			} else {
+				pendingDecoratorStart = -1
+			}
+		}
+		switch token.Value {
+		case "{":
+			depth++
+		case "}":
+			if depth > 0 {
+				depth--
+			}
+		}
+	}
+	for index := range starts {
+		if index+1 < len(starts) {
+			starts[index].end = starts[index+1].start
+		} else {
+			starts[index].end = len(source)
+		}
+	}
+	return starts
+}
+
+func topLevelTokenKind(tokens []lexer.Token, index int, identifier lexer.TokenType, elided map[lexer.TokenType]bool) string {
+	value := tokens[index].Value
+	if value == "@" {
+		return "decorator"
+	}
+	line := tokens[index].Pos.Line
+	if value == "pub" {
+		index = nextSignificantToken(tokens, index+1, line, elided)
+		if index < 0 {
+			return ""
+		}
+		value = tokens[index].Value
+	}
+	for _, keyword := range []string{"domain", "import", "enum", "data", "config", "actor", "resource", "service", "web", "event", "task"} {
+		next := nextSignificantToken(tokens, index+1, line, elided)
+		if value == keyword && next >= 0 && tokens[next].Type == identifier {
+			return keyword
+		}
+	}
+	return ""
+}
+
+func nextSignificantToken(tokens []lexer.Token, index, line int, elided map[lexer.TokenType]bool) int {
+	for ; index < len(tokens); index++ {
+		if tokens[index].EOF() || tokens[index].Pos.Line != line {
+			return -1
+		}
+		if !elided[tokens[index].Type] {
+			return index
+		}
+	}
+	return -1
+}
+
+func mergeRecoveredContent(path string, original []byte, target, source *grammar.SkelContent) Diagnostics {
+	if source == nil {
+		return nil
+	}
+	if target.Pos == (lexer.Position{}) {
+		target.Pos = source.Pos
+	}
+	diagnostics := Diagnostics{}
+	if source.Domain != nil && target.Domain == nil && len(target.Imports) == 0 && len(target.Entries) == 0 {
+		target.Domain = source.Domain
+	} else if source.Domain != nil {
+		diagnostics = append(diagnostics, declarationOrderDiagnostic(
+			path, original, source.Domain.Pos, "domain declaration must be the first declaration in a file",
+		))
+	}
+	if len(source.Imports) > 0 && len(target.Entries) > 0 {
+		diagnostics = append(diagnostics, declarationOrderDiagnostic(
+			path, original, source.Imports[0].Pos, "import declaration must appear before type and endpoint declarations",
+		))
+	} else {
+		target.Imports = append(target.Imports, source.Imports...)
+	}
+	target.Entries = append(target.Entries, source.Entries...)
+	return diagnostics
+}
+
+func declarationOrderDiagnostic(path string, source []byte, position lexer.Position, message string) Diagnostic {
+	start := workspacePosition(position)
+	start.File = path
+	return Diagnostic{
+		Code: DiagnosticCodeSyntaxUnexpected, Severity: DiagnosticSeverityError,
+		Position: start, Range: sourceRangeAt(start, source), Message: message,
+	}
 }
 
 func parseSourceOnce(path string, source []byte) (*grammar.SkelContent, error, bool) {
@@ -50,6 +232,46 @@ func parseSourceOnce(path string, source []byte) (*grammar.SkelContent, error, b
 		}
 	}
 	return content, nil, false
+}
+
+func parseSourceFragment(path string, source []byte, line, offset int) (*grammar.SkelContent, error, bool) {
+	lex, err := grammar.LexerDefinition().Lex(path, bytes.NewReader(source))
+	if err != nil {
+		return nil, err, false
+	}
+	adjusted := &_OffsetLexer{lexer: lex, lineOffset: line - 1, byteOffset: offset}
+	symbols := grammar.LexerDefinition().Symbols()
+	peeking, err := lexer.Upgrade(adjusted, symbols["Whitespace"], symbols["LineComment"], symbols["BlockComment"])
+	if err != nil {
+		return nil, err, false
+	}
+	content, err := sourceParser.ParseFromLexer(peeking)
+	if err != nil {
+		return content, err, false
+	}
+	if err := content.Finalize(); err != nil {
+		return content, err, true
+	}
+	if content.Domain != nil {
+		if err := content.Domain.Finalize(); err != nil {
+			return content, err, true
+		}
+	}
+	return content, nil, false
+}
+
+func (lex *_OffsetLexer) Next() (lexer.Token, error) {
+	token, err := lex.lexer.Next()
+	token.Pos.Line += lex.lineOffset
+	token.Pos.Offset += lex.byteOffset
+	var parseError participle.Error
+	if errors.As(err, &parseError) {
+		position := parseError.Position()
+		position.Line += lex.lineOffset
+		position.Offset += lex.byteOffset
+		err = participle.Errorf(position, "%s", parseError.Message())
+	}
+	return token, err
 }
 
 func syntaxDiagnostic(path string, source []byte, err error, finalize bool) Diagnostic {

@@ -2,13 +2,12 @@ package source
 
 import (
 	"fmt"
+	"strings"
 
 	"go.yorun.ai/skelc/internal/codegen/common"
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/internal/util/sliceutil"
 	"go.yorun.ai/skelc/model"
-	"strings"
 )
 
 type ServiceMethod struct {
@@ -49,8 +48,9 @@ func castServiceMethod(ps *model.Service, pm *model.Method) *ServiceMethod {
 			member, ok := sliceutil.Find(method.ArgumentsData.Members, func(mem *DataMember) bool {
 				return mem.SkelName == arg.SkelName
 			})
-			checkutil.Check(ok, "argument member %s not found", arg.SkelName)
-			arg.MemberName = member.Name
+			if ok {
+				arg.MemberName = member.Name
+			}
 		}
 	}
 	method.ValidateArguments = buildMethodValidateArguments(method)

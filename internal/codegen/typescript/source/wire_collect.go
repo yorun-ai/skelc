@@ -3,6 +3,7 @@ package source
 import (
 	"sort"
 
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/model"
 )
@@ -19,26 +20,13 @@ func (b *_WireSchemaBuilder) collectMethod(method *model.Method) {
 }
 
 func (b *_WireSchemaBuilder) collectType(type_ *model.Type) {
-	if type_ == nil {
-		return
-	}
-
-	switch type_.Kind {
-	case model.TypeKindList:
-		b.collectType(type_.List.Value)
-	case model.TypeKindMap:
-		b.collectType(type_.Map.Value)
-	case model.TypeKindData:
-		for _, argument := range type_.TypeArguments {
-			b.collectType(argument)
+	if err := common.WalkTypeGraph(type_, func(current *model.Type) error {
+		if current.Kind == model.TypeKindData {
+			b.data[current.Data] = true
 		}
-		if b.data[type_.Data] {
-			return
-		}
-		b.data[type_.Data] = true
-		for _, member := range type_.Data.Members {
-			b.collectType(member.Type)
-		}
+		return nil
+	}); err != nil {
+		b.fail("collect TypeScript wire schema types: %v", err)
 	}
 }
 

@@ -81,7 +81,7 @@ func TestResourceGoRegistersCheckServices(t *testing.T) {
 	outputDir := filepath.Join(t.TempDir(), "skeled")
 	gen := newGen(Option{
 		Domain:      pkg,
-		View:        view.New(view.ModeFull, pkg),
+		View:        mustView(t, view.ModeFull, pkg),
 		Mode:        view.ModeFull,
 		PackageName: "skeled",
 		Out:         outputDir,

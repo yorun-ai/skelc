@@ -65,7 +65,7 @@ func newGenGoCommand() *ucli.Command {
 			}
 			result, err := skelc.CompileGolang(input, option)
 			if err != nil {
-				return err
+				return formatGenerationError(err)
 			}
 			printDiagnostics(cmd, result.Diagnostics)
 			return nil
@@ -89,7 +89,7 @@ func newGenGoModuleCommand() *ucli.Command {
 			}
 			result, err := skelc.CompileGolang(input, option)
 			if err != nil {
-				return err
+				return formatGenerationError(err)
 			}
 			printDiagnostics(cmd, result.Diagnostics)
 			return nil
@@ -109,7 +109,7 @@ func newGenTSCommand() *ucli.Command {
 			}
 			result, err := skelc.CompileTypeScript(input, option)
 			if err != nil {
-				return err
+				return formatGenerationError(err)
 			}
 			printDiagnostics(cmd, result.Diagnostics)
 			return nil
@@ -129,7 +129,7 @@ func newGenSkelCommand() *ucli.Command {
 			}
 			result, err := skelc.CompileSkeleton(input, option)
 			if err != nil {
-				return err
+				return formatGenerationError(err)
 			}
 			printDiagnostics(cmd, result.Diagnostics)
 			return nil
@@ -163,7 +163,7 @@ func parseGenGoCommand(cmd *ucli.Command) (skelc.Input, skelc.GolangOption, erro
 		Out:         cmd.String(flagGenGoOut),
 		VineVersion: strings.TrimSpace(cmd.String(flagGenGoVineVersion)),
 	}
-	return input, option, validateGoGenOption(input, option)
+	return input, option, nil
 }
 
 func newGenGoModuleFlags() []ucli.Flag {
@@ -209,7 +209,7 @@ func parseGenGoModuleCommand(cmd *ucli.Command) (skelc.Input, skelc.GolangOption
 		Imports:      goImports,
 		VineVersion:  strings.TrimSpace(cmd.String(flagGenGoVineVersion)),
 	}
-	return input, option, validateGoGenOption(input, option)
+	return input, option, nil
 }
 
 func newGenSkelFlags() []ucli.Flag {
@@ -238,7 +238,7 @@ func parseGenSkelCommand(cmd *ucli.Command) (skelc.Input, skelc.SkeletonOption, 
 		PubOnly: cmd.Bool(flagGenPub),
 		Out:     cmd.String(flagGenSkelOut),
 	}
-	return input, option, validateSkelGenOption(input, option)
+	return input, option, nil
 }
 
 func newGenTSFlags() []ucli.Flag {
@@ -279,5 +279,5 @@ func parseGenTSCommand(cmd *ucli.Command) (skelc.Input, skelc.TypeScriptOption, 
 		Module:      cmd.String(flagGenTSModule),
 		Imports:     tsImports,
 	}
-	return input, option, validateTypeScriptGenOption(input, option)
+	return input, option, nil
 }

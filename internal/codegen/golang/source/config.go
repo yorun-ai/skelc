@@ -1,7 +1,6 @@
 package source
 
 import (
-	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -33,8 +32,6 @@ func (g *_Gen) buildConfigGoPayload() *DataGoPayload {
 		castedData.SpecName = "_" + castedData.Name + "Spec"
 		castedData.SkelName = dataType.SkelName
 		castedData.Hash = dataType.Hash
-		checkutil.Check(dataType.Lifecycle == model.ConfigLifecycleEternal || dataType.Lifecycle == model.ConfigLifecycleInstant,
-			"unsupported config lifecycle %q", dataType.Lifecycle)
 		switch dataType.Lifecycle {
 		case model.ConfigLifecycleEternal:
 			castedData.Lifecycle = string(dataType.Lifecycle)

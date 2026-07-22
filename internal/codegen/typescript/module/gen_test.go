@@ -3,8 +3,6 @@ package module
 import (
 	"strings"
 	"testing"
-
-	"go.yorun.ai/skelc/internal/codegen/common"
 )
 
 func TestBuildPackageJSONPayload(t *testing.T) {
@@ -18,7 +16,7 @@ func TestBuildPackageJSONPayload(t *testing.T) {
 	if got := joinPackageJSONDependencies(payload.PeerDependencies); got != "@yorun-ai/vrpc@*" {
 		t.Fatalf("unexpected peer dependencies: %#v", payload.PeerDependencies)
 	}
-	output := common.RenderTemplate(packageJSONTemplate, payload)
+	output := renderTemplate(t, packageJSONTemplate, payload)
 	if !strings.Contains(output, `"@yorun-ai/vrpc": "*"`) {
 		t.Fatalf("expected rendered package.json to include @yorun-ai/vrpc, got:\n%s", output)
 	}
@@ -66,7 +64,7 @@ func TestImportPathRejectsMissingVersion(t *testing.T) {
 }
 
 func TestPackageJSONTemplateUsesPureTypeScriptEntry(t *testing.T) {
-	output := common.RenderTemplate(packageJSONTemplate, &PackageJSONPayload{
+	output := renderTemplate(t, packageJSONTemplate, &PackageJSONPayload{
 		PackageName: "@yorun-ai/skeled-example",
 		PeerDependencies: []PackageJSONDependency{
 			{Package: "@vine-demo/skeled-user", Version: "workspace:*"},

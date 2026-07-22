@@ -166,6 +166,92 @@ func TestGenerateGolangReturnsErrorBeforeCleaningOutput(t *testing.T) {
 	assertTestFileExists(t, oldFile)
 }
 
+func TestCompileNormalizesGenerationOptionsBeforeReadingInput(t *testing.T) {
+	missingInput := skelc.Input{SkelIn: filepath.Join(t.TempDir(), "missing")}
+	tests := []struct {
+		name     string
+		compile  func() error
+		expected string
+	}{
+		{
+			name: "Go",
+			compile: func() error {
+				_, err := skelc.CompileGolang(missingInput, skelc.GolangOption{})
+				return err
+			},
+			expected: "Go output is required",
+		},
+		{
+			name: "TypeScript",
+			compile: func() error {
+				_, err := skelc.CompileTypeScript(missingInput, skelc.TypeScriptOption{})
+				return err
+			},
+			expected: "TypeScript output is required",
+		},
+		{
+			name: "Skel",
+			compile: func() error {
+				_, err := skelc.CompileSkeleton(missingInput, skelc.SkeletonOption{})
+				return err
+			},
+			expected: "Skel output is required",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if err := test.compile(); err == nil || !strings.Contains(err.Error(), test.expected) {
+				t.Fatalf("expected %q before input loading, got %v", test.expected, err)
+			}
+		})
+	}
+}
+
+func TestGeneratorsReturnErrorsForMalformedProgrammaticModels(t *testing.T) {
+	domain := model.NewDomainFromSpec(model.DomainSpec{
+		Name: "demo.invalid",
+		Data: []*model.Data{{
+			Name: "Broken",
+			Pub:  true,
+			Members: []*model.DataMember{{
+				Name: "value",
+				Type: &model.Type{Kind: model.TypeKind(999)},
+			}},
+		}},
+	})
+	tests := []struct {
+		name     string
+		generate func() error
+	}{
+		{
+			name: "Go",
+			generate: func() error {
+				return skelc.GenerateGolang(domain, skelc.GolangOption{Out: filepath.Join(t.TempDir(), "generated")})
+			},
+		},
+		{
+			name: "TypeScript",
+			generate: func() error {
+				return skelc.GenerateTypeScript(domain, skelc.TypeScriptOption{Out: t.TempDir()})
+			},
+		},
+		{
+			name: "Skel",
+			generate: func() error {
+				return skelc.GenerateSkeleton(domain, skelc.SkeletonOption{Out: t.TempDir(), PubOnly: true})
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := test.generate()
+			if err == nil || !strings.Contains(err.Error(), "unsupported type kind 999") {
+				t.Fatalf("expected malformed model error, got %v", err)
+			}
+		})
+	}
+}
+
 func TestGeneratorsReturnErrorsForMissingExternalImportMappings(t *testing.T) {
 	userDir := t.TempDir()
 	writeTestFile(t, filepath.Join(userDir, "domain.skel"), "domain demo.user")

@@ -1,6 +1,8 @@
 package source
 
 import (
+	"fmt"
+
 	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/codegen/golang/view"
 	"go.yorun.ai/skelc/model"
@@ -27,6 +29,9 @@ type Option struct {
 }
 
 func Generate(option Option) error {
+	if err := common.ValidateDomain(option.Domain); err != nil {
+		return fmt.Errorf("validate Go source model: %w", err)
+	}
 	gen := newGen(option)
 	gen.gen()
 	return gen.Renderer.Err()

@@ -129,19 +129,23 @@ func GenerateGolang(domain *model.Domain, option GolangOption) error {
 	if err != nil {
 		return err
 	}
-	if err := validateGolangImports(domain, codegenOption); err != nil {
+	return generateGolang(domain, codegenOption)
+}
+
+func generateGolang(domain *model.Domain, option golang.Option) error {
+	if err := validateGolangImports(domain, option); err != nil {
 		return err
 	}
-	outputs, outputErr := stageManagedOutputs(codegenOption.Out, codegenOption.PubOut)
+	outputs, outputErr := stageManagedOutputs(option.Out, option.PubOut)
 	if outputErr != nil {
 		return outputErr
 	}
 	defer abortManagedOutputs(outputs)
-	codegenOption.Out = outputs[0].StageDir()
-	if codegenOption.PubOut != "" {
-		codegenOption.PubOut = outputs[1].StageDir()
+	option.Out = outputs[0].StageDir()
+	if option.PubOut != "" {
+		option.PubOut = outputs[1].StageDir()
 	}
-	if err := golang.Generate(domain, codegenOption); err != nil {
+	if err := golang.Generate(domain, option); err != nil {
 		return err
 	}
 	return commitManagedOutputs(outputs)
@@ -150,11 +154,19 @@ func GenerateGolang(domain *model.Domain, option GolangOption) error {
 // CompileGolang parses input and generates Go source or a standalone Go module.
 // Parsing completes before any generated output is committed.
 func CompileGolang(input Input, option GolangOption) (CompileResult, error) {
-	parsed, err := Parse(input)
+	parserOption, err := normalizeInput(input)
 	if err != nil {
 		return CompileResult{}, err
 	}
-	if err := GenerateGolang(parsed.Domain, option); err != nil {
+	codegenOption, err := normalizeGolangOption(option)
+	if err != nil {
+		return CompileResult{}, err
+	}
+	parsed, err := parser.Parse(parserOption)
+	if err != nil {
+		return CompileResult{}, err
+	}
+	if err := generateGolang(parsed.Domain, codegenOption); err != nil {
 		return CompileResult{}, err
 	}
 	return CompileResult{Diagnostics: parsed.Diagnostics}, nil
@@ -170,16 +182,20 @@ func GenerateTypeScript(domain *model.Domain, option TypeScriptOption) error {
 	if err != nil {
 		return err
 	}
-	if err := validateTypeScriptImports(domain, codegenOption); err != nil {
+	return generateTypeScript(domain, codegenOption)
+}
+
+func generateTypeScript(domain *model.Domain, option typescript.Option) error {
+	if err := validateTypeScriptImports(domain, option); err != nil {
 		return err
 	}
-	outputs, outputErr := stageManagedOutputs(codegenOption.Out)
+	outputs, outputErr := stageManagedOutputs(option.Out)
 	if outputErr != nil {
 		return outputErr
 	}
 	defer abortManagedOutputs(outputs)
-	codegenOption.Out = outputs[0].StageDir()
-	if err := typescript.Generate(domain, codegenOption); err != nil {
+	option.Out = outputs[0].StageDir()
+	if err := typescript.Generate(domain, option); err != nil {
 		return err
 	}
 	return commitManagedOutputs(outputs)
@@ -188,11 +204,19 @@ func GenerateTypeScript(domain *model.Domain, option TypeScriptOption) error {
 // CompileTypeScript parses input and generates TypeScript source. Parsing
 // completes before generated output is committed.
 func CompileTypeScript(input Input, option TypeScriptOption) (CompileResult, error) {
-	parsed, err := Parse(input)
+	parserOption, err := normalizeInput(input)
 	if err != nil {
 		return CompileResult{}, err
 	}
-	if err := GenerateTypeScript(parsed.Domain, option); err != nil {
+	codegenOption, err := normalizeTypeScriptOption(option)
+	if err != nil {
+		return CompileResult{}, err
+	}
+	parsed, err := parser.Parse(parserOption)
+	if err != nil {
+		return CompileResult{}, err
+	}
+	if err := generateTypeScript(parsed.Domain, codegenOption); err != nil {
 		return CompileResult{}, err
 	}
 	return CompileResult{Diagnostics: parsed.Diagnostics}, nil
@@ -208,13 +232,17 @@ func GenerateSkeleton(domain *model.Domain, option SkeletonOption) error {
 	if err != nil {
 		return err
 	}
-	outputs, outputErr := stageManagedOutputs(codegenOption.Out)
+	return generateSkeleton(domain, codegenOption)
+}
+
+func generateSkeleton(domain *model.Domain, option skeleton.Option) error {
+	outputs, outputErr := stageManagedOutputs(option.Out)
 	if outputErr != nil {
 		return outputErr
 	}
 	defer abortManagedOutputs(outputs)
-	codegenOption.Out = outputs[0].StageDir()
-	if err := skeleton.Generate(domain, codegenOption); err != nil {
+	option.Out = outputs[0].StageDir()
+	if err := skeleton.Generate(domain, option); err != nil {
 		return err
 	}
 	return commitManagedOutputs(outputs)
@@ -223,11 +251,19 @@ func GenerateSkeleton(domain *model.Domain, option SkeletonOption) error {
 // CompileSkeleton parses input and generates a Skel contract. Parsing completes
 // before generated output is committed.
 func CompileSkeleton(input Input, option SkeletonOption) (CompileResult, error) {
-	parsed, err := Parse(input)
+	parserOption, err := normalizeInput(input)
 	if err != nil {
 		return CompileResult{}, err
 	}
-	if err := GenerateSkeleton(parsed.Domain, option); err != nil {
+	codegenOption, err := normalizeSkeletonOption(option)
+	if err != nil {
+		return CompileResult{}, err
+	}
+	parsed, err := parser.Parse(parserOption)
+	if err != nil {
+		return CompileResult{}, err
+	}
+	if err := generateSkeleton(parsed.Domain, codegenOption); err != nil {
 		return CompileResult{}, err
 	}
 	return CompileResult{Diagnostics: parsed.Diagnostics}, nil

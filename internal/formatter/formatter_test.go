@@ -1,45 +1,114 @@
 package formatter
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
 
-func TestSource(t *testing.T) {
-	source := []byte("  domain demo.user  \r\n\r\n\r\nservice UserService {\r\nmethod ping {\r\ninput {\r\nvalue: string   \r\n}\r\n}\r\n}\r\n")
-	want := "domain demo.user\n\nservice UserService {\n    method ping {\n        input {\n            value: string\n        }\n    }\n}\n"
-	got := string(Source(source))
-	if got != want {
+	"go.yorun.ai/skelc/internal/parser"
+	"go.yorun.ai/skelc/internal/parser/grammar"
+)
+
+func TestSourceGolden(t *testing.T) {
+	input := readTestFile(t, "complete.input.skel")
+	want := readTestFile(t, "complete.golden.skel")
+
+	if _, err := parser.ParseSource("complete.input.skel", input); err != nil {
+		t.Fatalf("input fixture does not parse: %v", err)
+	}
+	got := Source(input)
+	if string(got) != string(want) {
 		t.Fatalf("unexpected formatted source:\n%s\nwant:\n%s", got, want)
 	}
-	if second := string(Source([]byte(got))); second != got {
+	if _, err := parser.ParseSource("complete.golden.skel", got); err != nil {
+		t.Fatalf("formatted fixture does not parse: %v", err)
+	}
+	if second := Source(got); string(second) != string(got) {
 		t.Fatalf("format is not idempotent:\n%s", second)
 	}
 }
 
 func TestSourcePreservesCommentsAndStrings(t *testing.T) {
-	source := []byte(`domain demo.user
+	source := []byte("domain demo.user\n\n/* comment { }\n   keep */\n@desc(\"\"\"\n  keep { content }\n\"\"\") // inline\nservice UserService {\nmethod ping {}\n}\n")
+	want := "domain demo.user\n\n/* comment { }\n   keep */\n@desc(\"\"\"\nkeep { content }\n\"\"\") // inline\nservice UserService {\n    method ping {}\n}\n"
 
-/* comment { }
-   keep */
-@desc("""
-  keep { content }
-""")
-service UserService {
-for ClientActor
-method ping {}
-}
-`)
-	want := `domain demo.user
-
-/* comment { }
-   keep */
-@desc("""
-  keep { content }
-""")
-service UserService {
-    for ClientActor
-    method ping {}
-}
-`
-	if got := string(Source(source)); got != want {
+	got := Source(source)
+	if string(got) != want {
 		t.Fatalf("unexpected formatted source:\n%s\nwant:\n%s", got, want)
 	}
+	before := descriptionValue(t, source)
+	after := descriptionValue(t, got)
+	if before != after {
+		t.Fatalf("format changed triple-string value: before=%q after=%q", before, after)
+	}
+}
+
+func descriptionValue(t *testing.T, source []byte) string {
+	t.Helper()
+	content, err := parser.ParseSource("description.skel", source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw := content.Entries[0].Service.Decorators[0].Value.Raw
+	return grammar.UnquoteDescriptionString(raw)
+}
+
+func TestSourcePreservesSemanticHash(t *testing.T) {
+	source := []byte(`domain demo.user
+
+pub actor ClientActor {
+via client {}
+}
+
+pub data User {
+id:uuid
+}
+
+pub service UserService {
+for ClientActor via client
+method get {
+input {
+id:uuid
+}
+output User?
+}
+}
+`)
+	formatted := Source(source)
+	before := parseDomainHash(t, "before.skel", source)
+	after := parseDomainHash(t, "after.skel", formatted)
+	if before != after {
+		t.Fatalf("format changed semantic hash: before=%s after=%s", before, after)
+	}
+}
+
+func TestSourceNormalizesEmptyAndInvalidInput(t *testing.T) {
+	if got := Source([]byte(" \r\n\t")); len(got) != 0 {
+		t.Fatalf("expected empty output, got %q", got)
+	}
+	if got := string(Source([]byte("invalid !  \r\n"))); got != "invalid !\n" {
+		t.Fatalf("unexpected invalid-source fallback: %q", got)
+	}
+}
+
+func readTestFile(t *testing.T, name string) []byte {
+	t.Helper()
+	content, err := os.ReadFile(filepath.Join("testdata", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return content
+}
+
+func parseDomainHash(t *testing.T, name string, source []byte) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), name)
+	if err := os.WriteFile(path, source, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	result, err := parser.Parse(parser.Option{SkelIn: path})
+	if err != nil {
+		t.Fatalf("parse %s: %v", name, err)
+	}
+	return result.Domain.Hash()
 }

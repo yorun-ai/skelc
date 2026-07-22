@@ -73,10 +73,6 @@ func classifyFile(fileName string) string {
 	}
 }
 
-func isSkelFile(filePath string) bool {
-	return strings.HasSuffix(filePath, ".skel")
-}
-
 func (l *_Loader) discoverFiles() error {
 	skelInPath, err := filepath.Abs(l.skelIn)
 	if err != nil {
@@ -95,7 +91,7 @@ func (l *_Loader) discoverFiles() error {
 }
 
 func (l *_Loader) discoverSingleFile(filePath string) error {
-	if !isSkelFile(filePath) {
+	if !strings.HasSuffix(filePath, ".skel") {
 		return fmt.Errorf("%s is not a .skel file", filePath)
 	}
 	l.domainFile = filePath

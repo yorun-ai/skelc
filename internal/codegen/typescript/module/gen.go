@@ -40,7 +40,7 @@ func Generate(option Option) error {
 		return err
 	}
 	renderer := common.NewRenderer(option.Out)
-	renderer.Render(packageJSONFilename, packageJSONTemplate, payload)
+	renderer.Write(packageJSONFilename, common.RenderTemplate(packageJSONTemplate, payload))
 	return renderer.Err()
 }
 

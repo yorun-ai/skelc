@@ -75,21 +75,20 @@ func parseSource(skelIn string, importedDomains []*analyzer.Analysis, importOnly
 		return nil, err
 	}
 	*diagnostics = append(*diagnostics, loaderWarningDiagnostics(loadResult.Warnings)...)
-	sourceParser := newParser()
 	if !loadResult.IsDir {
 		if importOnly {
-			return sourceParser.parseImportFile(loadResult.Files[0])
+			return parseImportFile(loadResult.Files[0])
 		}
-		return sourceParser.parseFileWithImports(loadResult.Files[0], importedDomains)
+		return parseFileWithImports(loadResult.Files[0], importedDomains)
 	}
 	domainFile, err := findDomainFile(loadResult.Files)
 	if err != nil {
 		return nil, err
 	}
 	if importOnly {
-		return sourceParser.parseImportFiles(domainFile, loadResult.Files)
+		return parseImportFiles(domainFile, loadResult.Files)
 	}
-	return sourceParser.parseDomainFilesWithImports(domainFile, loadResult.Files, importedDomains)
+	return parseDomainFilesWithImports(domainFile, loadResult.Files, importedDomains)
 }
 
 func loaderWarningDiagnostics(warnings []loader.Warning) Diagnostics {

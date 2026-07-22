@@ -147,23 +147,6 @@ func (arg *PermissionArg) String() string {
 	return strings.Join(parts, ".")
 }
 
-func parseQualifiedIdentifierParts(lex *lexer.PeekingLexer) ([]*Identifier, error) {
-	first, err := parseIdentifier(lex)
-	if err != nil {
-		return nil, err
-	}
-	parts := []*Identifier{first}
-	for lex.Peek().Value == "." {
-		lex.Next()
-		part, err := parseIdentifier(lex)
-		if err != nil {
-			return nil, err
-		}
-		parts = append(parts, part)
-	}
-	return parts, nil
-}
-
 func parsePermissionTargetFromFirst(lex *lexer.PeekingLexer, first *Identifier, allowCheck bool) (*PermissionTarget, *Identifier, error) {
 	resourceParts := []*Identifier{first}
 	for lex.Peek().Value == "." {

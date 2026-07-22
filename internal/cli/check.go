@@ -18,7 +18,9 @@ func newCheckCommand() *ucli.Command {
 	return &ucli.Command{
 		Name:  commandCheck,
 		Usage: "validate skel definition files",
-		Flags: newCheckFlags(),
+		Flags: []ucli.Flag{
+			&ucli.StringFlag{Name: flagCheckSkelIn, Usage: "skeleton input file or directory"},
+		},
 		Action: func(_ context.Context, cmd *ucli.Command) error {
 			option, err := parseCheckCommand(cmd)
 			if err != nil {
@@ -34,12 +36,6 @@ func newCheckCommand() *ucli.Command {
 			}
 			return nil
 		},
-	}
-}
-
-func newCheckFlags() []ucli.Flag {
-	return []ucli.Flag{
-		&ucli.StringFlag{Name: flagCheckSkelIn, Usage: "skeleton input file or directory"},
 	}
 }
 

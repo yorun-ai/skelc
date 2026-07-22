@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	ucli "github.com/urfave/cli/v3"
 	"go.yorun.ai/skelc/internal/formatter"
@@ -27,7 +28,9 @@ func newFormatCommand() *ucli.Command {
 	return &ucli.Command{
 		Name:  commandFormat,
 		Usage: "format skel definition files",
-		Flags: newFormatFlags(),
+		Flags: []ucli.Flag{
+			&ucli.StringFlag{Name: flagFormatSkelIn, Usage: "skeleton input file or directory"},
+		},
 		Action: func(_ context.Context, cmd *ucli.Command) error {
 			path, err := parseFormatCommand(cmd)
 			if err != nil {
@@ -35,12 +38,6 @@ func newFormatCommand() *ucli.Command {
 			}
 			return formatFiles(path)
 		},
-	}
-}
-
-func newFormatFlags() []ucli.Flag {
-	return []ucli.Flag{
-		&ucli.StringFlag{Name: flagFormatSkelIn, Usage: "skeleton input file or directory"},
 	}
 }
 
@@ -52,7 +49,11 @@ func parseFormatCommand(cmd *ucli.Command) (string, error) {
 	if skelIn == "" {
 		return "", fmt.Errorf("missing flag skel-in")
 	}
-	return normalizeRequiredPath(skelIn)
+	path, err := filepath.Abs(skelIn)
+	if err != nil {
+		return "", fmt.Errorf("resolve path %s: %w", skelIn, err)
+	}
+	return path, nil
 }
 
 func formatFiles(skelIn string) error {

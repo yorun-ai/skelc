@@ -41,27 +41,23 @@ func Full(domain *model.Domain) *Domain {
 	}
 }
 
-func newPub(domain *model.Domain) (*Domain, error) {
-	public, err := common.BuildPublicView(domain)
-	if err != nil {
-		return nil, err
-	}
-	return &Domain{
-		Enums:     public.Enums,
-		Data:      public.Data,
-		Configs:   public.Configs,
-		Actors:    public.Actors,
-		Resources: public.Resources,
-		Webs:      []*model.Web{},
-		Events:    public.Events,
-		Services:  public.Services,
-		Tasks:     []*model.Task{},
-	}, nil
-}
-
 func Build(mode Mode, domain *model.Domain) (*Domain, error) {
 	if mode == ModePub {
-		return newPub(domain)
+		public, err := common.BuildPublicView(domain)
+		if err != nil {
+			return nil, err
+		}
+		return &Domain{
+			Enums:     public.Enums,
+			Data:      public.Data,
+			Configs:   public.Configs,
+			Actors:    public.Actors,
+			Resources: public.Resources,
+			Webs:      []*model.Web{},
+			Events:    public.Events,
+			Services:  public.Services,
+			Tasks:     []*model.Task{},
+		}, nil
 	}
 	if mode == ModeFull {
 		return Full(domain), nil

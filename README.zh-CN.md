@@ -3,6 +3,7 @@
 [![License](https://img.shields.io/github/license/yorun-ai/skelc)](LICENSE)
 [![Version](https://img.shields.io/github/v/release/yorun-ai/skelc?label=version&cacheSeconds=300)](https://github.com/yorun-ai/skelc/releases/latest)
 [![Go](https://img.shields.io/github/go-mod/go-version/yorun-ai/skelc)](go.mod)
+[![Go Reference](https://pkg.go.dev/badge/go.yorun.ai/skelc.svg)](https://pkg.go.dev/go.yorun.ai/skelc)
 [![CI](https://github.com/yorun-ai/skelc/actions/workflows/ci.yml/badge.svg)](https://github.com/yorun-ai/skelc/actions/workflows/ci.yml)
 
 [English](README.md) | **简体中文**

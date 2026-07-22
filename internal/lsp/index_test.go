@@ -43,7 +43,34 @@ func TestIndexDocumentUsesUTF16Positions(t *testing.T) {
 func TestIndexDocumentKeepsSyntaxError(t *testing.T) {
 	document := indexDocument(uri.File("/workspace/invalid.skel"), "/workspace/invalid.skel", "domain demo\ndata User {", 1)
 	assert.Error(t, document.ParseError)
-	assert.Empty(t, document.Definitions)
+	require.Len(t, document.Definitions, 1)
+	assert.Equal(t, "demo.User", document.Definitions[0].Key)
+	require.Len(t, document.Occurrences, 1)
+	assert.Equal(t, "demo.User", document.Occurrences[0].Key)
+}
+
+func TestIndexDocumentBuildsNestedSymbols(t *testing.T) {
+	source := `domain demo
+service UserService {
+    method getUser {
+        input {
+            userId: int
+        }
+        output string
+    }
+}
+`
+	document := indexDocument(uri.File("/workspace/service.skel"), "/workspace/service.skel", source, 1)
+	require.NoError(t, document.ParseError)
+	require.Len(t, document.Symbols, 1)
+	service := document.Symbols[0]
+	assert.Equal(t, "UserService", service.Name)
+	require.Len(t, service.Children, 1)
+	method := service.Children[0]
+	assert.Equal(t, "getUser", method.Name)
+	require.Len(t, method.Children, 1)
+	assert.Equal(t, "userId", method.Children[0].Name)
+	assert.LessOrEqual(t, comparePosition(method.Children[0].Range.End, method.Range.End), 0)
 }
 
 func TestServerDefinitionAndReferencesAcrossDomains(t *testing.T) {

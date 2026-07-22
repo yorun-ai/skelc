@@ -18,10 +18,12 @@ func TestCaseConversions(t *testing.T) {
 	assert.Equal(t, "HttpServer2", ToCamel("http-server_2"))
 	assert.Equal(t, "userService", ToLowerCamel("user_service"))
 	assert.Equal(t, "userService2", ToLowerCamel("UserService2"))
+	assert.Equal(t, "user_service", ToSnake("UserService"))
 	assert.Equal(t, "USER_SERVICE", ToScreamingSnake("userService"))
 	assert.Equal(t, "T_ITEM", ToScreamingSnake("TItem"))
 	assert.Equal(t, "", ToCamel(""))
 	assert.Equal(t, "", ToLowerCamel(""))
+	assert.Equal(t, "", ToSnake(""))
 	assert.Equal(t, "", ToScreamingSnake(""))
 }
 

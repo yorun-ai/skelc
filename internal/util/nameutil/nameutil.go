@@ -44,6 +44,10 @@ func ToLowerCamel(value string) string {
 	return string(runes)
 }
 
+func ToSnake(value string) string {
+	return strings.ToLower(ToScreamingSnake(value))
+}
+
 func ToScreamingSnake(value string) string {
 	words := splitWords(value)
 	if len(words) == 0 {

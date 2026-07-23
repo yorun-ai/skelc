@@ -22,6 +22,7 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 ### Fixed
 
 - Resolve enum, data, and generic type references declared inside imported domains before code generation
+- Resolve named types used by actor authentication info, enforce its implicit-data rules, and keep type parameters scoped to their declaring data
 - Prevent analyzer panics when syntax recovery produces an incomplete nested permission expression
 - Preserve formatter idempotence and relative indentation for multiline comments and triple-quoted strings
 - Calculate parser diagnostic and LSP ranges correctly when non-ASCII characters precede a token on the same line

@@ -150,6 +150,22 @@ pub data Item {
     type: ItemType
     detail: Detail
     boxedType: Box<ItemType>
+    types: list<ItemType>
+    detailsByType: map<ItemType, Detail>
+    boxedDetails: Box<list<Detail>>
+}
+
+pub actor BaseActor {
+    via client {}
+    auth {
+        credential {
+            subject: string
+        }
+        info {
+            type: ItemType
+            detail: Detail
+        }
+    }
 }
 `)
 	writeParseFile(t, filepath.Join(appDir, "domain.skel"), "domain app\n")
@@ -186,14 +202,161 @@ data AppItem {
 	if got := box.Members[0].Type.Kind; got != model.TypeKindTypeParameter {
 		t.Fatalf("generic member kind = %d, want %d", got, model.TypeKindTypeParameter)
 	}
-	wantKinds := []model.TypeKind{model.TypeKindEnum, model.TypeKindData, model.TypeKindData}
-	for index, member := range item.Members {
+	members := make(map[string]*model.Type, len(item.Members))
+	for _, member := range item.Members {
+		members[member.Name] = member.Type
+	}
+	if got := members["type"].Kind; got != model.TypeKindEnum {
+		t.Fatalf("enum member kind = %d, want %d", got, model.TypeKindEnum)
+	}
+	if got := members["detail"].Kind; got != model.TypeKindData {
+		t.Fatalf("data member kind = %d, want %d", got, model.TypeKindData)
+	}
+	if got := members["boxedType"].TypeArguments[0].Kind; got != model.TypeKindEnum {
+		t.Fatalf("generic type argument kind = %d, want %d", got, model.TypeKindEnum)
+	}
+	if got := members["types"].List.Value.Kind; got != model.TypeKindEnum {
+		t.Fatalf("list element kind = %d, want %d", got, model.TypeKindEnum)
+	}
+	if got := members["detailsByType"].Map.Key.Kind; got != model.TypeKindEnum {
+		t.Fatalf("map key kind = %d, want %d", got, model.TypeKindEnum)
+	}
+	if got := members["detailsByType"].Map.Value.Kind; got != model.TypeKindData {
+		t.Fatalf("map value kind = %d, want %d", got, model.TypeKindData)
+	}
+	if got := members["boxedDetails"].TypeArguments[0].List.Value.Kind; got != model.TypeKindData {
+		t.Fatalf("nested generic list element kind = %d, want %d", got, model.TypeKindData)
+	}
+	authInfo := baseDomain.Actors()[0].AuthInfo
+	wantKinds := []model.TypeKind{model.TypeKindEnum, model.TypeKindData}
+	for index, member := range authInfo.Members {
 		if member.Type.Kind != wantKinds[index] {
-			t.Fatalf("member %s kind = %d, want %d", member.Name, member.Type.Kind, wantKinds[index])
+			t.Fatalf("actor info member %s kind = %d, want %d", member.Name, member.Type.Kind, wantKinds[index])
 		}
 	}
-	if got := item.Members[2].Type.TypeArguments[0].Kind; got != model.TypeKindEnum {
-		t.Fatalf("generic type argument kind = %d, want %d", got, model.TypeKindEnum)
+}
+
+func TestParseRejectsTypeParameterOutsideDeclaringData(t *testing.T) {
+	tests := []struct {
+		name        string
+		declaration string
+	}{
+		{
+			name: "actor auth info",
+			declaration: `
+actor DemoActor {
+    via client {}
+    auth {
+        credential {
+            subject: string
+        }
+        info {
+            value: TItem
+        }
+    }
+}
+`,
+		},
+		{
+			name: "resource check",
+			declaration: `
+resource DemoResource {
+    check byValue(value: TItem)
+    action read
+}
+`,
+		},
+		{
+			name: "service method",
+			declaration: `
+service DemoService {
+    method getValue {
+        output TItem
+    }
+}
+`,
+		},
+		{
+			name: "task trigger",
+			declaration: `
+task DemoTask {
+    trigger manually {
+        input {
+            value: TItem
+        }
+    }
+}
+`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			skelFile := filepath.Join(t.TempDir(), "types.skel")
+			writeParseFile(t, skelFile, `
+domain demo.types
+
+data Wrapper<TItem> {
+    value: TItem
+}
+
+`+test.declaration)
+
+			_, err := Parse(Option{SkelIn: skelFile})
+			if err == nil || !strings.Contains(err.Error(), "definition of TItem not found") {
+				t.Fatalf("expected out-of-scope type parameter error, got %v", err)
+			}
+		})
+	}
+}
+
+func TestParseRejectsConfigReferenceFromActorAuthInfo(t *testing.T) {
+	skelFile := filepath.Join(t.TempDir(), "types.skel")
+	writeParseFile(t, skelFile, `
+domain demo.types
+
+config SessionConfig eternal {
+    issuer: string
+}
+
+actor DemoActor {
+    via client {}
+    auth {
+        credential {
+            subject: string
+        }
+        info {
+            session: SessionConfig
+        }
+    }
+}
+`)
+
+	tests := []struct {
+		name  string
+		parse func() error
+	}{
+		{
+			name: "primary domain",
+			parse: func() error {
+				_, err := Parse(Option{SkelIn: skelFile})
+				return err
+			},
+		},
+		{
+			name: "imported domain",
+			parse: func() error {
+				_, err := ParseImport(skelFile)
+				return err
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := test.parse()
+			if err == nil || !strings.Contains(err.Error(), "data DemoActorInfo cannot reference config SessionConfig") {
+				t.Fatalf("expected actor info config reference error, got %v", err)
+			}
+		})
 	}
 }
 

@@ -99,6 +99,44 @@ func TestGenerateGolang(t *testing.T) {
 	assertTestFileExists(t, filepath.Join(goOut, "schema.go"))
 }
 
+func TestCompileGolangWithImportedEnumReference(t *testing.T) {
+	baseDir := t.TempDir()
+	writeTestFile(t, filepath.Join(baseDir, "domain.skel"), "domain base")
+	writeTestFile(t, filepath.Join(baseDir, "types.skel"), `
+domain base
+
+pub enum ItemType {
+    STANDARD
+}
+
+pub data Item {
+    type: ItemType
+}
+`)
+	appDir := t.TempDir()
+	writeTestFile(t, filepath.Join(appDir, "domain.skel"), "domain app")
+	writeTestFile(t, filepath.Join(appDir, "types.skel"), `
+domain app
+
+import base
+
+data AppItem {
+    item: base.Item
+}
+`)
+
+	_, err := skelc.CompileGolang(
+		skelc.Input{SkelIn: appDir, SkelImports: map[string]string{"base": baseDir}},
+		skelc.GolangOption{
+			Out:     filepath.Join(t.TempDir(), "generated"),
+			Imports: map[string]string{"base": "example.com/basepub"},
+		},
+	)
+	if err != nil {
+		t.Fatalf("compile Go with imported enum reference: %v", err)
+	}
+}
+
 func TestGenerateTargetsShareParsedDomain(t *testing.T) {
 	skelDir := t.TempDir()
 	writeTestFile(t, filepath.Join(skelDir, "domain.skel"), "domain demo.user")

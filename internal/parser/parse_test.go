@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"go.yorun.ai/skelc/model"
 )
 
 func TestParseDirectory(t *testing.T) {
@@ -115,6 +117,83 @@ pub data Loan {
 	}
 	if len(result.Domain.Imports()) != 1 || result.Domain.Imports()[0].Name != "user" {
 		t.Fatalf("unexpected imports: %#v", result.Domain.Imports())
+	}
+}
+
+func TestParseNormalizesImportedDomainLocalTypeReferences(t *testing.T) {
+	root := t.TempDir()
+	baseDir := filepath.Join(root, "base")
+	appDir := filepath.Join(root, "app")
+	for _, dir := range []string{baseDir, appDir} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("create %s: %v", dir, err)
+		}
+	}
+
+	writeParseFile(t, filepath.Join(baseDir, "domain.skel"), "domain base\n")
+	writeParseFile(t, filepath.Join(baseDir, "types.skel"), `
+domain base
+
+pub enum ItemType {
+    STANDARD
+}
+
+pub data Detail {
+    name: string
+}
+
+pub data Box<TItem> {
+    value: TItem
+}
+
+pub data Item {
+    type: ItemType
+    detail: Detail
+    boxedType: Box<ItemType>
+}
+`)
+	writeParseFile(t, filepath.Join(appDir, "domain.skel"), "domain app\n")
+	writeParseFile(t, filepath.Join(appDir, "types.skel"), `
+domain app
+
+import base
+
+data AppItem {
+    item: base.Item
+}
+`)
+
+	result, err := Parse(Option{
+		SkelIn:      appDir,
+		SkelImports: map[string]string{"base": baseDir},
+	})
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	baseDomain := result.Domain.Imports()[0].Domain
+	var box, item *model.Data
+	for _, dataType := range baseDomain.Data() {
+		switch dataType.Name {
+		case "Box":
+			box = dataType
+		case "Item":
+			item = dataType
+		}
+	}
+	if box == nil || item == nil {
+		t.Fatalf("expected imported Box and Item data: %+v", baseDomain.Data())
+	}
+	if got := box.Members[0].Type.Kind; got != model.TypeKindTypeParameter {
+		t.Fatalf("generic member kind = %d, want %d", got, model.TypeKindTypeParameter)
+	}
+	wantKinds := []model.TypeKind{model.TypeKindEnum, model.TypeKindData, model.TypeKindData}
+	for index, member := range item.Members {
+		if member.Type.Kind != wantKinds[index] {
+			t.Fatalf("member %s kind = %d, want %d", member.Name, member.Type.Kind, wantKinds[index])
+		}
+	}
+	if got := item.Members[2].Type.TypeArguments[0].Kind; got != model.TypeKindEnum {
+		t.Fatalf("generic type argument kind = %d, want %d", got, model.TypeKindEnum)
 	}
 }
 

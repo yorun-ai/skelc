@@ -11,12 +11,23 @@ import (
 )
 
 func (p *Analysis) normalize() {
+	p.normalizeWithMissingImports(false)
+}
+
+// normalizeImport resolves references owned by the imported domain while
+// preserving qualified references whose transitive domains were not loaded.
+func (p *Analysis) normalizeImport() {
+	p.normalizeWithMissingImports(true)
+}
+
+func (p *Analysis) normalizeWithMissingImports(allowMissingImports bool) {
 	refs := &refContext{
-		enums:       p.enumsMap,
-		dataList:    p.dataMap,
-		imports:     p.importsMap,
-		invalidData: p.invalidData,
-		unavailable: p.unavailable,
+		enums:                  p.enumsMap,
+		dataList:               p.dataMap,
+		imports:                p.importsMap,
+		invalidData:            p.invalidData,
+		unavailable:            p.unavailable,
+		allowUnresolvedImports: allowMissingImports,
 	}
 	for _, name := range slices.Sorted(maps.Keys(p.dataMap)) {
 		dataType := p.dataMap[name]
@@ -46,15 +57,20 @@ func (p *Analysis) normalize() {
 	}
 	for _, name := range slices.Sorted(maps.Keys(p.servicesMap)) {
 		service := p.servicesMap[name]
-		valid := p.checkActorAudiences(service.Audiences, service.Pos, "service", service.Name)
-		valid = p.normalizeServiceTypes(service, refs) && valid
+		valid := p.normalizeServiceTypes(service, refs)
+		if allowMissingImports {
+			continue
+		}
+		valid = p.checkActorAudiences(service.Audiences, service.Pos, "service", service.Name) && valid
 		if valid {
 			p.normalizeServiceRequire(service)
 		}
 	}
-	for _, name := range slices.Sorted(maps.Keys(p.websMap)) {
-		web := p.websMap[name]
-		p.checkActorAudiences(web.Audiences, web.Pos, "web", web.Name)
+	if !allowMissingImports {
+		for _, name := range slices.Sorted(maps.Keys(p.websMap)) {
+			web := p.websMap[name]
+			p.checkActorAudiences(web.Audiences, web.Pos, "web", web.Name)
+		}
 	}
 	for _, name := range slices.Sorted(maps.Keys(p.tasksMap)) {
 		task := p.tasksMap[name]
@@ -63,6 +79,9 @@ func (p *Analysis) normalize() {
 				fixTypeRef(p.reporter, arg.Type, refs)
 			}
 		}
+	}
+	if allowMissingImports {
+		return
 	}
 	allData := sliceutil.Filter(sortData(p.dataMap), func(dataType *model.Data) bool {
 		return !p.invalidData[dataType]

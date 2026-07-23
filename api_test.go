@@ -99,7 +99,7 @@ func TestGenerateGolang(t *testing.T) {
 	assertTestFileExists(t, filepath.Join(goOut, "schema.go"))
 }
 
-func TestCompileGolangWithImportedEnumReference(t *testing.T) {
+func TestCompileTargetsWithImportedDomainNamedTypeReferences(t *testing.T) {
 	baseDir := t.TempDir()
 	writeTestFile(t, filepath.Join(baseDir, "domain.skel"), "domain base")
 	writeTestFile(t, filepath.Join(baseDir, "types.skel"), `
@@ -111,6 +111,54 @@ pub enum ItemType {
 
 pub data Item {
     type: ItemType
+    types: list<ItemType>
+    itemsByType: map<ItemType, Item>
+}
+
+pub config ItemConfig eternal {
+    defaultType: ItemType
+}
+
+pub event ItemCreatedEvent {
+    payload {
+        item: Item
+    }
+}
+
+pub actor BaseActor {
+    via client {}
+    auth {
+        credential {
+            subject: string
+        }
+        info {
+            item: Item
+        }
+    }
+}
+
+pub resource ItemResource {
+    check byItem(item: Item)
+    action read
+}
+
+pub service BaseService {
+    for BaseActor
+
+    method getItem {
+        input {
+            type: ItemType
+        }
+        output Item
+    }
+}
+
+task SyncItemTask {
+    trigger manually {
+        input {
+            item: Item
+        }
+    }
 }
 `)
 	appDir := t.TempDir()
@@ -125,15 +173,112 @@ data AppItem {
 }
 `)
 
+	input := skelc.Input{SkelIn: appDir, SkelImports: map[string]string{"base": baseDir}}
+	tests := []struct {
+		name    string
+		compile func() error
+	}{
+		{
+			name: "Go",
+			compile: func() error {
+				_, err := skelc.CompileGolang(input, skelc.GolangOption{
+					Out:     filepath.Join(t.TempDir(), "golang"),
+					Imports: map[string]string{"base": "example.com/basepub"},
+				})
+				return err
+			},
+		},
+		{
+			name: "TypeScript",
+			compile: func() error {
+				_, err := skelc.CompileTypeScript(input, skelc.TypeScriptOption{
+					Out:     filepath.Join(t.TempDir(), "typescript"),
+					Imports: map[string]string{"base": "@example/base"},
+				})
+				return err
+			},
+		},
+		{
+			name: "Skel",
+			compile: func() error {
+				_, err := skelc.CompileSkeleton(input, skelc.SkeletonOption{
+					Out:     filepath.Join(t.TempDir(), "skeleton"),
+					PubOnly: true,
+				})
+				return err
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if err := test.compile(); err != nil {
+				t.Fatalf("compile %s with imported named type references: %v", test.name, err)
+			}
+		})
+	}
+}
+
+func TestCompileGolangAnalyzesTransitiveImportsButGeneratesOnlyTarget(t *testing.T) {
+	baseDir := t.TempDir()
+	writeTestFile(t, filepath.Join(baseDir, "domain.skel"), "domain base")
+	writeTestFile(t, filepath.Join(baseDir, "types.skel"), `
+domain base
+
+pub enum UserStatus {
+    ACTIVE
+}
+`)
+	userDir := t.TempDir()
+	writeTestFile(t, filepath.Join(userDir, "domain.skel"), "domain user")
+	writeTestFile(t, filepath.Join(userDir, "types.skel"), `
+domain user
+
+import base
+
+pub data User {
+    status: base.UserStatus
+}
+`)
+	appDir := t.TempDir()
+	writeTestFile(t, filepath.Join(appDir, "domain.skel"), "domain app")
+	writeTestFile(t, filepath.Join(appDir, "types.skel"), `
+domain app
+
+import user
+
+data AppUser {
+    user: user.User
+}
+`)
+
+	goOut := filepath.Join(t.TempDir(), "generated")
 	_, err := skelc.CompileGolang(
-		skelc.Input{SkelIn: appDir, SkelImports: map[string]string{"base": baseDir}},
+		skelc.Input{
+			SkelIn: appDir,
+			SkelImports: map[string]string{
+				"base": baseDir,
+				"user": userDir,
+			},
+		},
 		skelc.GolangOption{
-			Out:     filepath.Join(t.TempDir(), "generated"),
-			Imports: map[string]string{"base": "example.com/basepub"},
+			Out:     goOut,
+			Imports: map[string]string{"user": "example.com/userpub"},
 		},
 	)
 	if err != nil {
-		t.Fatalf("compile Go with imported enum reference: %v", err)
+		t.Fatalf("compile Go with transitive imports: %v", err)
+	}
+
+	content, err := os.ReadFile(filepath.Join(goOut, "data.go"))
+	if err != nil {
+		t.Fatalf("read generated target data: %v", err)
+	}
+	generated := string(content)
+	if !strings.Contains(generated, "type AppUser struct") {
+		t.Fatalf("target data was not generated:\n%s", generated)
+	}
+	if strings.Contains(generated, "type User struct") || strings.Contains(generated, "type UserStatus ") {
+		t.Fatalf("dependency declarations were generated into target output:\n%s", generated)
 	}
 }
 

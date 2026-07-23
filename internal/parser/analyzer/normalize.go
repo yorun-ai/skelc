@@ -31,20 +31,17 @@ func (p *Analysis) normalizeWithMissingImports(allowMissingImports bool) {
 	}
 	for _, name := range slices.Sorted(maps.Keys(p.dataMap)) {
 		dataType := p.dataMap[name]
-		refs.typeParameters = sliceutil.MapToMap(dataType.TypeParameters, func(typeParam *model.TypeParameter) (string, *model.TypeParameter) {
-			return typeParam.Name, typeParam
-		})
-		for _, member := range dataType.Members {
-			if !fixTypeRef(p.reporter, member.Type, refs) {
-				p.invalidData[dataType] = true
-				p.unavailable[dataType.Name] = true
-			}
+		if !p.normalizeDataType(dataType, refs) {
+			p.invalidData[dataType] = true
+			p.unavailable[dataType.Name] = true
 		}
 	}
 	p.propagateInvalidData()
 
 	for _, name := range slices.Sorted(maps.Keys(p.actorsMap)) {
 		actor := p.actorsMap[name]
+		p.normalizeDataType(actor.AuthCredential, refs)
+		p.normalizeDataType(actor.AuthInfo, refs)
 		if actor.PermService != nil {
 			p.normalizeServiceTypes(actor.PermService, refs)
 		}
@@ -80,15 +77,42 @@ func (p *Analysis) normalizeWithMissingImports(allowMissingImports bool) {
 			}
 		}
 	}
-	if allowMissingImports {
-		return
-	}
 	allData := sliceutil.Filter(sortData(p.dataMap), func(dataType *model.Data) bool {
 		return !p.invalidData[dataType]
 	})
+	for _, name := range slices.Sorted(maps.Keys(p.actorsMap)) {
+		actor := p.actorsMap[name]
+		if actor.AuthCredential != nil {
+			allData = append(allData, actor.AuthCredential)
+		}
+		if actor.AuthInfo != nil {
+			allData = append(allData, actor.AuthInfo)
+		}
+	}
 	p.checkHardCycleReferences(allData)
 	p.checkDataDoesNotReferenceConfigs(allData)
+	if allowMissingImports {
+		return
+	}
 	p.checkConfigMemberTypes(allData)
+}
+
+func (p *Analysis) normalizeDataType(dataType *model.Data, refs *refContext) bool {
+	if dataType == nil {
+		return true
+	}
+	refs.typeParameters = sliceutil.MapToMap(dataType.TypeParameters, func(typeParam *model.TypeParameter) (string, *model.TypeParameter) {
+		return typeParam.Name, typeParam
+	})
+	defer func() {
+		refs.typeParameters = nil
+	}()
+
+	valid := true
+	for _, member := range dataType.Members {
+		valid = fixTypeRef(p.reporter, member.Type, refs) && valid
+	}
+	return valid
 }
 
 func (p *Analysis) propagateInvalidData() {

@@ -70,7 +70,10 @@ func Analyze(content *grammar.SkelContent, importedDomains []*Analysis) (*Analys
 
 func AnalyzeImport(content *grammar.SkelContent) (*Analysis, []error) {
 	domain := newAnalysis(content)
-	if domain.load() && len(domain.reporter.errors) == 0 {
+	if domain.load() {
+		domain.normalizeImport()
+	}
+	if len(domain.reporter.errors) == 0 {
 		domain.finalize()
 	}
 	return domain, domain.reporter.result()

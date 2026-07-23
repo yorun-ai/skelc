@@ -15,12 +15,13 @@ var (
 )
 
 type refContext struct {
-	enums          map[string]*model.Enum
-	dataList       map[string]*model.Data
-	typeParameters map[string]*model.TypeParameter
-	imports        map[string]*domainImport
-	invalidData    map[*model.Data]bool
-	unavailable    map[string]bool
+	enums                  map[string]*model.Enum
+	dataList               map[string]*model.Data
+	typeParameters         map[string]*model.TypeParameter
+	imports                map[string]*domainImport
+	invalidData            map[*model.Data]bool
+	unavailable            map[string]bool
+	allowUnresolvedImports bool
 }
 
 func fixTypeRef(reporter *diagnosticReporter, t *model.Type, refCtx *refContext) bool {
@@ -37,6 +38,13 @@ func fixTypeRef(reporter *diagnosticReporter, t *model.Type, refCtx *refContext)
 		refQualifier := t.ExternalAlias
 		if refQualifier != "" {
 			import_ := refCtx.imports[refQualifier]
+			if import_ == nil && refCtx.allowUnresolvedImports {
+				valid := true
+				for _, typeArg := range t.TypeArguments {
+					valid = fixTypeRef(reporter, typeArg, refCtx) && valid
+				}
+				return valid
+			}
 			if !reporter.check(import_ != nil, "%s import alias %s not found", t.Pos, refQualifier) {
 				return false
 			}
@@ -109,7 +117,7 @@ func fixTypeRef(reporter *diagnosticReporter, t *model.Type, refCtx *refContext)
 
 	case model.TypeKindMap:
 		keyValid := fixTypeRef(reporter, t.Map.Key, refCtx)
-		if keyValid {
+		if keyValid && !(refCtx.allowUnresolvedImports && t.Map.Key.Kind == typeKindReference) {
 			keyValid = checkTypeCanBeMapKey(reporter, t.Map.Key)
 		}
 		return fixTypeRef(reporter, t.Map.Value, refCtx) && keyValid

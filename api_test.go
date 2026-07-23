@@ -218,6 +218,70 @@ data AppItem {
 	}
 }
 
+func TestCompileGolangAnalyzesTransitiveImportsButGeneratesOnlyTarget(t *testing.T) {
+	baseDir := t.TempDir()
+	writeTestFile(t, filepath.Join(baseDir, "domain.skel"), "domain base")
+	writeTestFile(t, filepath.Join(baseDir, "types.skel"), `
+domain base
+
+pub enum UserStatus {
+    ACTIVE
+}
+`)
+	userDir := t.TempDir()
+	writeTestFile(t, filepath.Join(userDir, "domain.skel"), "domain user")
+	writeTestFile(t, filepath.Join(userDir, "types.skel"), `
+domain user
+
+import base
+
+pub data User {
+    status: base.UserStatus
+}
+`)
+	appDir := t.TempDir()
+	writeTestFile(t, filepath.Join(appDir, "domain.skel"), "domain app")
+	writeTestFile(t, filepath.Join(appDir, "types.skel"), `
+domain app
+
+import user
+
+data AppUser {
+    user: user.User
+}
+`)
+
+	goOut := filepath.Join(t.TempDir(), "generated")
+	_, err := skelc.CompileGolang(
+		skelc.Input{
+			SkelIn: appDir,
+			SkelImports: map[string]string{
+				"base": baseDir,
+				"user": userDir,
+			},
+		},
+		skelc.GolangOption{
+			Out:     goOut,
+			Imports: map[string]string{"user": "example.com/userpub"},
+		},
+	)
+	if err != nil {
+		t.Fatalf("compile Go with transitive imports: %v", err)
+	}
+
+	content, err := os.ReadFile(filepath.Join(goOut, "data.go"))
+	if err != nil {
+		t.Fatalf("read generated target data: %v", err)
+	}
+	generated := string(content)
+	if !strings.Contains(generated, "type AppUser struct") {
+		t.Fatalf("target data was not generated:\n%s", generated)
+	}
+	if strings.Contains(generated, "type User struct") || strings.Contains(generated, "type UserStatus ") {
+		t.Fatalf("dependency declarations were generated into target output:\n%s", generated)
+	}
+}
+
 func TestGenerateTargetsShareParsedDomain(t *testing.T) {
 	skelDir := t.TempDir()
 	writeTestFile(t, filepath.Join(skelDir, "domain.skel"), "domain demo.user")

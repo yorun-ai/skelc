@@ -169,7 +169,7 @@ func parseGenGoCommand(cmd *ucli.Command) (skelc.Input, skelc.GolangOption, erro
 func newGenGoModuleFlags() []ucli.Flag {
 	return []ucli.Flag{
 		&ucli.StringFlag{Name: flagGenSkelIn, Usage: "skeleton input file or directory"},
-		&ucli.StringSliceFlag{Name: flagGenSkelImport, Usage: "skel import mapping in domain=path form"},
+		&ucli.StringSliceFlag{Name: flagGenSkelImport, Usage: "skel dependency mapping in domain=path form; repeat for transitive imports"},
 		&ucli.StringFlag{Name: flagGenGoOut, Usage: "Go output directory"},
 		&ucli.StringFlag{Name: flagGenGoModule, Usage: "Go module path"},
 		&ucli.StringFlag{Name: flagGenGoPubOut, Usage: "Go pub output directory"},
@@ -217,7 +217,7 @@ func newGenSkelFlags() []ucli.Flag {
 		&ucli.BoolFlag{Name: flagGenPub, Usage: "required, generate only pub skel definitions"},
 		&ucli.StringFlag{Name: flagGenSkelIn, Usage: "skeleton input file or directory"},
 		&ucli.StringFlag{Name: flagGenSkelOut, Usage: "skel output directory"},
-		&ucli.StringSliceFlag{Name: flagGenSkelImport, Usage: "skel import mapping in domain=path form"},
+		&ucli.StringSliceFlag{Name: flagGenSkelImport, Usage: "skel dependency mapping in domain=path form; repeat for transitive imports"},
 	}
 }
 
@@ -246,7 +246,7 @@ func newGenTSFlags() []ucli.Flag {
 		&ucli.BoolFlag{Name: flagGenPub, Usage: "generate only pub TypeScript code"},
 		&ucli.StringFlag{Name: flagGenSkelIn, Usage: "skeleton input file or directory"},
 		&ucli.StringFlag{Name: flagGenTSOut, Usage: "TypeScript output directory"},
-		&ucli.StringSliceFlag{Name: flagGenSkelImport, Usage: "skel import mapping in domain=path form"},
+		&ucli.StringSliceFlag{Name: flagGenSkelImport, Usage: "skel dependency mapping in domain=path form; repeat for transitive imports"},
 		&ucli.BoolFlag{Name: flagGenTSAsModule, Usage: "generate TypeScript module package metadata"},
 		&ucli.StringFlag{Name: flagGenTSModuleScope, Usage: "TypeScript module package scope"},
 		&ucli.StringFlag{Name: flagGenTSModule, Usage: "TypeScript module package name"},

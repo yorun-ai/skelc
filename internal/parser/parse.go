@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"slices"
@@ -38,6 +39,8 @@ func Parse(option Option) (Result, error) {
 	return Result{Domain: parsed, Diagnostics: diagnostics}, nil
 }
 
+// ParseImport loads one domain without requiring its dependencies. It supports
+// symbol tooling; Parse and Compile APIs perform complete graph analysis.
 func ParseImport(skelIn string) (Result, error) {
 	diagnostics := Diagnostics{}
 	domain, err := parseSource(skelIn, nil, true, &diagnostics)
@@ -55,7 +58,7 @@ func parseImportedDomains(imports map[string]string, diagnostics *Diagnostics) (
 	if len(imports) == 0 {
 		return nil, nil
 	}
-	domains := make([]*analyzer.Analysis, 0, len(imports))
+	loaded := make(map[string]*analyzer.Analysis, len(imports))
 	for expectedName, importPath := range imports {
 		importedDomain, err := parseSource(importPath, nil, true, diagnostics)
 		if err != nil {
@@ -64,7 +67,58 @@ func parseImportedDomains(imports map[string]string, diagnostics *Diagnostics) (
 		if importedDomain.Model().Name() != expectedName {
 			return nil, fmt.Errorf("skel import %s has domain %s", expectedName, importedDomain.Model().Name())
 		}
-		domains = append(domains, importedDomain)
+		loaded[expectedName] = importedDomain
+	}
+
+	const (
+		importVisiting = iota + 1
+		importComplete
+	)
+	states := make(map[string]int, len(loaded))
+	resolved := make(map[string]*analyzer.Analysis, len(loaded))
+	var resolve func(string) (*analyzer.Analysis, error)
+	resolve = func(name string) (*analyzer.Analysis, error) {
+		switch states[name] {
+		case importVisiting:
+			return nil, fmt.Errorf("cyclic skel import involving %s", name)
+		case importComplete:
+			return resolved[name], nil
+		}
+
+		states[name] = importVisiting
+		domain := loaded[name]
+		dependencies := make([]*analyzer.Analysis, 0, len(domain.ImportNames()))
+		for _, dependencyName := range domain.ImportNames() {
+			if loaded[dependencyName] == nil {
+				continue
+			}
+			dependency, err := resolve(dependencyName)
+			if err != nil {
+				return nil, err
+			}
+			dependencies = append(dependencies, dependency)
+		}
+		domain, analysisErrors := domain.ResolveImports(dependencies)
+		if len(analysisErrors) > 0 {
+			return nil, errors.Join(analysisErrors...)
+		}
+		resolved[name] = domain
+		states[name] = importComplete
+		return domain, nil
+	}
+
+	names := make([]string, 0, len(loaded))
+	for name := range loaded {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	domains := make([]*analyzer.Analysis, 0, len(names))
+	for _, name := range names {
+		domain, err := resolve(name)
+		if err != nil {
+			return nil, err
+		}
+		domains = append(domains, domain)
 	}
 	return domains, nil
 }

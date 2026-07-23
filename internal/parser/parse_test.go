@@ -56,7 +56,7 @@ config SiteConfig eternal {
 	}
 }
 
-func TestParseImportedDomainDoesNotRequireTransitiveImports(t *testing.T) {
+func TestParseRequiresTransitiveImports(t *testing.T) {
 	root := t.TempDir()
 	appDir := filepath.Join(root, "app")
 	userDir := filepath.Join(root, "user")
@@ -104,12 +104,23 @@ pub data Loan {
 }
 `)
 
-	result, err := Parse(Option{
+	_, err := Parse(Option{
 		SkelIn:      bookerDir,
 		SkelImports: map[string]string{"user": userDir},
 	})
+	if err == nil || !strings.Contains(err.Error(), "skel import app not found") {
+		t.Fatalf("expected missing transitive import error, got %v", err)
+	}
+
+	result, err := Parse(Option{
+		SkelIn: bookerDir,
+		SkelImports: map[string]string{
+			"app":  appDir,
+			"user": userDir,
+		},
+	})
 	if err != nil {
-		t.Fatalf("Parse() error = %v", err)
+		t.Fatalf("Parse() with transitive imports error = %v", err)
 	}
 
 	if len(result.Domain.Data()) != 1 || result.Domain.Data()[0].Name != "Loan" {
@@ -117,6 +128,10 @@ pub data Loan {
 	}
 	if len(result.Domain.Imports()) != 1 || result.Domain.Imports()[0].Name != "user" {
 		t.Fatalf("unexpected imports: %#v", result.Domain.Imports())
+	}
+	userDomain := result.Domain.Imports()[0].Domain
+	if len(userDomain.Imports()) != 1 || userDomain.Imports()[0].Name != "app" {
+		t.Fatalf("unexpected transitive imports: %#v", userDomain.Imports())
 	}
 }
 
@@ -233,6 +248,92 @@ data AppItem {
 		if member.Type.Kind != wantKinds[index] {
 			t.Fatalf("actor info member %s kind = %d, want %d", member.Name, member.Type.Kind, wantKinds[index])
 		}
+	}
+}
+
+func TestParseNormalizesTransitiveImportedTypeReferences(t *testing.T) {
+	root := t.TempDir()
+	baseDir := filepath.Join(root, "base")
+	userDir := filepath.Join(root, "user")
+	appDir := filepath.Join(root, "app")
+	for _, dir := range []string{baseDir, userDir, appDir} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("create %s: %v", dir, err)
+		}
+	}
+
+	writeParseFile(t, filepath.Join(baseDir, "domain.skel"), "domain base\n")
+	writeParseFile(t, filepath.Join(baseDir, "types.skel"), `
+domain base
+
+pub enum UserStatus {
+    ACTIVE
+}
+`)
+	writeParseFile(t, filepath.Join(userDir, "domain.skel"), "domain user\n")
+	writeParseFile(t, filepath.Join(userDir, "types.skel"), `
+domain user
+
+import base
+
+pub data User {
+    status: base.UserStatus
+}
+`)
+	writeParseFile(t, filepath.Join(appDir, "domain.skel"), "domain app\n")
+	writeParseFile(t, filepath.Join(appDir, "types.skel"), `
+domain app
+
+import user
+
+data AppUser {
+    user: user.User
+}
+`)
+
+	result, err := Parse(Option{
+		SkelIn: appDir,
+		SkelImports: map[string]string{
+			"base": baseDir,
+			"user": userDir,
+		},
+	})
+	if err != nil {
+		t.Fatalf("Parse() error = %v", err)
+	}
+	userDomain := result.Domain.Imports()[0].Domain
+	if got := userDomain.Data()[0].Members[0].Type.Kind; got != model.TypeKindEnum {
+		t.Fatalf("transitive imported enum kind = %d, want %d", got, model.TypeKindEnum)
+	}
+}
+
+func TestParseRejectsCyclicTransitiveImports(t *testing.T) {
+	root := t.TempDir()
+	firstDir := filepath.Join(root, "first")
+	secondDir := filepath.Join(root, "second")
+	targetDir := filepath.Join(root, "target")
+	for _, dir := range []string{firstDir, secondDir, targetDir} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("create %s: %v", dir, err)
+		}
+	}
+
+	writeParseFile(t, filepath.Join(firstDir, "domain.skel"), "domain first\n")
+	writeParseFile(t, filepath.Join(firstDir, "types.skel"), "domain first\nimport second\n")
+	writeParseFile(t, filepath.Join(secondDir, "domain.skel"), "domain second\n")
+	writeParseFile(t, filepath.Join(secondDir, "types.skel"), "domain second\nimport first\n")
+	writeParseFile(t, filepath.Join(targetDir, "domain.skel"), "domain target\n")
+	writeParseFile(t, filepath.Join(targetDir, "types.skel"), "domain target\nimport first\n")
+
+	_, err := Parse(Option{
+		SkelIn: targetDir,
+		SkelImports: map[string]string{
+			"first":  firstDir,
+			"second": secondDir,
+		},
+	})
+	if err == nil || !strings.Contains(err.Error(), "cyclic skel import involving") {
+		t.Fatalf("expected cyclic import error, got %v", err)
 	}
 }
 

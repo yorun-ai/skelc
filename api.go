@@ -27,7 +27,8 @@ const DefaultGolangVineVersion = golang.DefaultVineVersion
 type Input struct {
 	// SkelIn is the path to a Skel source file or domain directory.
 	SkelIn string
-	// SkelImports maps imported domain names to Skel source files or directories.
+	// SkelImports maps the complete transitive import closure to Skel source
+	// files or directories. Only SkelIn is a generation target.
 	SkelImports map[string]string
 }
 
@@ -106,7 +107,8 @@ type SkeletonOption struct {
 }
 
 // Parse loads and validates a Skel contract for use by custom generators and
-// tools. Imported domains must be declared in Input.SkelImports.
+// tools. All direct and transitive imported domains must be declared in
+// Input.SkelImports.
 func Parse(input Input) (ParseResult, error) {
 	option, err := normalizeInput(input)
 	if err != nil {

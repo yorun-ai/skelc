@@ -79,6 +79,21 @@ func AnalyzeImport(content *grammar.SkelContent) (*Analysis, []error) {
 	return domain, domain.reporter.result()
 }
 
+// ResolveImports reanalyzes an import-only domain with its complete set of
+// direct dependencies. Callers use this after loading the transitive graph.
+func (p *Analysis) ResolveImports(importedDomains []*Analysis) (*Analysis, []error) {
+	return Analyze(p.content, importedDomains)
+}
+
+// ImportNames returns the domains directly imported by this analysis's source.
+func (p *Analysis) ImportNames() []string {
+	names := make([]string, 0, len(p.content.Imports))
+	for _, importDecl := range p.content.Imports {
+		names = append(names, importDecl.Domain.String())
+	}
+	return names
+}
+
 func newAnalysis(content *grammar.SkelContent) *Analysis {
 	return &Analysis{
 		name: "",

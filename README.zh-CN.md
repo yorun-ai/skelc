@@ -144,7 +144,7 @@ TypeScript 生成也支持 `--pub`，只输出公开 data、enum 和符合条件
 
 ### 引用其他 domain
 
-在 `.skel` 中声明 `import` 后，通过可重复使用的 `--skel-import domain=PATH` 指定外部契约位置。生成 Go module 或 TypeScript 时，再使用对应的 `--go-import`、`--go-module-prefix` 或 `--ts-import` 映射目标语言的 package。完整示例见 [CLI 参考](https://yorun.ai/skelc/cli)。
+在 `.skel` 中声明 `import` 后，通过可重复使用的 `--skel-import domain=PATH` 指定外部契约位置。生成 Go module 或 TypeScript 时，再使用对应的 `--go-import`、`--go-module-prefix` 或 `--ts-import` 映射目标语言的 package。完整示例见 [CLI 参考](https://skel.yorun.ai/zh-CN/docs/cli)。
 
 ### 查询和格式化
 
@@ -219,11 +219,11 @@ version        显示 skelc 与默认 Vine 版本
 
 ## 文档
 
-- [Skel 语法参考](https://yorun.ai/skelc/syntax)
-- [CLI 参考](https://yorun.ai/skelc/cli)
-- [TypeScript 生成说明](https://yorun.ai/skelc/generation/typescript)
+- [Skel 语法参考](https://skel.yorun.ai/zh-CN/docs/syntax)
+- [CLI 参考](https://skel.yorun.ai/zh-CN/docs/cli)
+- [TypeScript 生成说明](https://skel.yorun.ai/zh-CN/docs/generation/typescript)
 - [变更记录](CHANGELOG.md)（英文）
-- [文档站源码](https://github.com/yorun-ai/vine-doc)
+- [Skel 站点源码](https://github.com/yorun-ai/skel-site)
 - [编辑器支持与 VS Code 扩展](https://github.com/yorun-ai/skel-editor-support)（英文）
 
 ## 参与贡献

@@ -2,7 +2,7 @@
 
 ## Working in the Repository
 
-- Read the root `README.md` and the applicable documentation under `yorun-ai/vine-doc`'s `content/skelc` before changing Skel syntax, CLI behavior, or generated output.
+- Read the root `README.md` and the applicable documentation under `yorun-ai/skel-site`'s `docs` before changing Skel syntax, CLI behavior, or generated output.
 - Keep changes within the parser and generator boundaries described below. Update documentation when a change alters those boundaries or user-visible behavior.
 - Preserve existing user changes in the worktree and keep unrelated refactoring out of focused changes.
 
@@ -25,7 +25,7 @@
 ## Language and Compatibility
 
 - Treat the Skel grammar, accepted legacy syntax, diagnostics, CLI flags, exit codes, JSON/JSONL fields, generated filenames, generated APIs, and generated module metadata as public compatibility boundaries.
-- When changing Skel syntax, update the grammar, semantic model, formatter, generators, tests, and the applicable `vine-doc/content/skelc/language/syntax.md` and `vine-doc/content/skelc/reference/cli.md` pages.
+- When changing Skel syntax, update the grammar, semantic model, formatter, generators, tests, and the applicable `skel-site/docs/language/syntax.md` and `skel-site/docs/reference/cli.md` pages.
 - When changing generated code, update every affected language backend and golden or structural tests. Confirm that generated Go code remains compatible with the declared Vine version.
 - Keep deterministic behavior: input discovery, symbols, imports, dependencies, diagnostics, and generated files must have stable ordering.
 - Do not add silent recovery for invalid contracts. Diagnostics should identify the relevant source path and location whenever available.
@@ -39,7 +39,10 @@
 ## Documentation
 
 - Keep `README.md` and `README.zh-CN.md` synchronized, including language-switch links, commands, compatibility notes, and license information.
-- `vine-doc/content/skelc/language/syntax.md` is the detailed Skel language reference; `vine-doc/content/skelc/reference/cli.md` is the detailed CLI reference. Keep their English translations under `vine-doc/i18n/en/docusaurus-plugin-content-docs-skelc/current` synchronized.
+- `skel-site/docs/language/syntax.md` is the detailed English Skel language
+  reference; `skel-site/docs/reference/cli.md` is the detailed English CLI
+  reference. Keep their Simplified Chinese translations under
+  `skel-site/i18n/zh-CN/docusaurus-plugin-content-docs/current` synchronized.
 - Keep examples executable against the current CLI and syntax. Avoid documenting planned commands or unsupported flags.
 
 ## Tests
@@ -55,5 +58,5 @@
 - Run `gofmt` on changed Go files and run `git diff --check`.
 - Run targeted package tests while iterating, then run `GOWORK=off go test ./...` for repository-wide Go changes so an enclosing workspace cannot replace published dependencies.
 - Run `GOWORK=off go vet ./...` after changes involving exported APIs, reflection, filesystem safety, or CLI/runtime wiring.
-- Run `pnpm build` in `vine-doc` after changing skelc user-facing documentation there.
+- Run `pnpm build` in `skel-site` after changing skelc user-facing documentation there.
 - For CLI, syntax, or generator changes, exercise at least one representative `skelc check` or `skelc gen` flow in addition to automated tests.

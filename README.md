@@ -144,7 +144,7 @@ TypeScript generation also accepts `--pub` to emit only public data, enums, and 
 
 ### Reference Other Domains
 
-After declaring an `import` in `.skel`, use repeatable `--skel-import domain=PATH` options to provide the complete transitive dependency graph. skelc analyzes every dependency but generates code only for the `--skel-in` target. When generating a Go module or TypeScript, map the target's direct language-package dependencies with `--go-import`, `--go-module-prefix`, or `--ts-import`. See the [CLI reference](https://yorun.ai/skelc/cli) for complete examples.
+After declaring an `import` in `.skel`, use repeatable `--skel-import domain=PATH` options to provide the complete transitive dependency graph. skelc analyzes every dependency but generates code only for the `--skel-in` target. When generating a Go module or TypeScript, map the target's direct language-package dependencies with `--go-import`, `--go-module-prefix`, or `--ts-import`. See the [CLI reference](https://skel.yorun.ai/docs/cli) for complete examples.
 
 ### Inspect and Format
 
@@ -219,11 +219,11 @@ Run `skelc --help` or `skelc <command> --help` for all options supported by the 
 
 ## Documentation
 
-- [Skel language reference](https://yorun.ai/skelc/syntax)
-- [CLI reference](https://yorun.ai/skelc/cli)
-- [TypeScript generation](https://yorun.ai/skelc/generation/typescript)
+- [Skel language reference](https://skel.yorun.ai/docs/syntax)
+- [CLI reference](https://skel.yorun.ai/docs/cli)
+- [TypeScript generation](https://skel.yorun.ai/docs/generation/typescript)
 - [Changelog](CHANGELOG.md)
-- [Documentation site source](https://github.com/yorun-ai/vine-doc)
+- [Skel site source](https://github.com/yorun-ai/skel-site)
 - [Editor support and VS Code extension](https://github.com/yorun-ai/skel-editor-support)
 
 ## Contributing

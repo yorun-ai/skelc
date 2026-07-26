@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"go.yorun.ai/skelc/internal/skelmeta"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/model"
 )
@@ -30,6 +31,8 @@ type Event struct {
 	Hash                      string
 	SpecName                  string
 	CommentLines              []string
+	Sensitive                 bool
+	MarkerMethodName          string
 	ListenerOnly              bool
 	EmitterOnly               bool
 	EmitterName               string
@@ -87,6 +90,8 @@ func (g *_Gen) castEvent(p *model.Data, listenerOnly bool, emitterOnly bool) *Ev
 		Hash:                      p.Hash,
 		SpecName:                  fmt.Sprintf("_%sSpec", eventName),
 		CommentLines:              goDocLines(eventName, p.Description),
+		Sensitive:                 p.Sensitive,
+		MarkerMethodName:          skelmeta.SensitiveMarkerMethodName,
 		ListenerOnly:              listenerOnly,
 		EmitterOnly:               emitterOnly,
 		EmitterName:               fmt.Sprintf("%sEmitter", eventName),

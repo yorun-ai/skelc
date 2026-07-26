@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"go.yorun.ai/skelc/internal/codegen/common"
+	"go.yorun.ai/skelc/internal/skelmeta"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/internal/util/sliceutil"
 	"go.yorun.ai/skelc/model"
@@ -44,29 +45,33 @@ func (g *_Gen) buildDataGoPayload() *DataGoPayload {
 }
 
 type Data struct {
-	Name            string
-	FullName        string
-	ReceiverType    string
-	ImplName        string
-	ConstructorName string
-	SpecName        string
-	SkelName        string
-	Hash            string
-	Lifecycle       string
-	RegisterFunc    string
-	CommentLines    []string
-	Members         []*DataMember
-	Validate        bool
-	CheckLines      []string
+	Name             string
+	FullName         string
+	ReceiverType     string
+	ImplName         string
+	ConstructorName  string
+	SpecName         string
+	SkelName         string
+	Hash             string
+	Lifecycle        string
+	RegisterFunc     string
+	CommentLines     []string
+	Members          []*DataMember
+	Sensitive        bool
+	MarkerMethodName string
+	Validate         bool
+	CheckLines       []string
 }
 
 func castData(p *model.Data) *Data {
 	data := &Data{
-		Name:            transDataName(p),
-		ImplName:        "_" + transDataName(p),
-		ConstructorName: "_New" + transDataName(p),
-		CommentLines:    goDocLines(transDataName(p), p.Description),
-		Members:         make([]*DataMember, 0, len(p.Members)),
+		Name:             transDataName(p),
+		ImplName:         "_" + transDataName(p),
+		ConstructorName:  "_New" + transDataName(p),
+		CommentLines:     goDocLines(transDataName(p), p.Description),
+		Members:          make([]*DataMember, 0, len(p.Members)),
+		Sensitive:        p.Sensitive,
+		MarkerMethodName: skelmeta.SensitiveMarkerMethodName,
 	}
 	for _, member := range p.Members {
 		castedMember := castDataMember(member)

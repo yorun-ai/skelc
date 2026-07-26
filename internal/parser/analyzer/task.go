@@ -71,10 +71,12 @@ func parseTaskTrigger(reporter *diagnosticReporter, gt *grammar.TaskTrigger) (*m
 	}
 
 	inputMeta, inputValid := parseDecoratorMeta(reporter, gt.Input.Decorators, decoratorContext{
-		allowDesc: true,
+		allowDesc:      true,
+		allowSensitive: true,
 	})
 	valid = inputValid && valid
 	trigger.InputDescription = inputMeta.Description
+	trigger.ArgumentsSensitive = inputMeta.Sensitive
 	argPos := map[string]lexer.Position{}
 	for _, grammarArgument := range gt.Input.Arguments {
 		arg, argumentValid := parseArgument(reporter, grammarArgument)

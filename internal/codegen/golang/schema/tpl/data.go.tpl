@@ -1,11 +1,18 @@
 {{- define "dataSchema" -}}
-&skel.DataSchema{
+&skel.DataSchema{{ template "dataSchemaValue" . }}
+{{- end }}
+
+{{- define "dataSchemaValue" -}}
+{
 	Name: {{ quote .Name }},
 	SkelName: {{ quote .SkelName }},
 	{{- if .Description }}
 	Description: {{ quote .Description }},
 	{{- end }}
 	Hash: {{ quote .Hash }},
+	{{- if .Sensitive }}
+	Sensitive: true,
+	{{- end }}
 	{{- if .TypeParameters }}
 	TypeParameters: []string{
 		{{- range $typeParameter := .TypeParameters }}
@@ -16,16 +23,7 @@
 	{{- if .Members }}
 	Members: []*skel.MemberSchema{
 		{{- range $member := .Members }}
-		{
-			Name: {{ quote $member.Name }},
-			{{- if $member.Description }}
-			Description: {{ quote $member.Description }},
-			{{- end }}
-			{{- if $member.Example }}
-			Example: {{ quote $member.Example }},
-			{{- end }}
-			Type: {{ template "typeSchema" $member.Type }},
-		},
+		{{ template "memberSchema" $member }},
 		{{- end }}
 	},
 	{{- end }}

@@ -13,8 +13,8 @@
 {{ end }}{{ end }}{{ end }}
 {{ define "sensitive" }}{{ with . }}{{ spaces " " .Indent }}@sensitive
 {{ end }}{{ end }}
-{{ define "resourceCheck" }}{{ template "description" (description .Description .Indent) }}{{ spaces " " .Indent }}check {{ .Name }} {{ if or .Arguments .InputDescription }}{
-{{ template "description" (description .InputDescription .InputIndent) }}{{ spaces " " .InputIndent }}input {
+{{ define "resourceCheck" }}{{ template "description" (description .Description .Indent) }}{{ spaces " " .Indent }}check {{ .Name }} {{ if or .Arguments .InputDescription .InputSensitive }}{
+{{ template "description" (description .InputDescription .InputIndent) }}{{ template "sensitive" (sensitive .InputSensitive .InputIndent) }}{{ spaces " " .InputIndent }}input {
 {{ range $arg := .Arguments }}{{ template "description" (description $arg.Description $.ArgumentIndent) }}{{ template "example" (example $arg.Example $.ArgumentIndent) }}{{ template "sensitive" (sensitive $arg.Sensitive $.ArgumentIndent) }}{{ spaces " " $.ArgumentIndent }}{{ $arg.Name }}: {{ template "type" (typeRef $arg.Type) }}
 {{ end }}{{ spaces " " .InputIndent }}}
 {{ spaces " " .Indent }}}{{ else }}{}{{ end }}

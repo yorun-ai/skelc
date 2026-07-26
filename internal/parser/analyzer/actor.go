@@ -65,17 +65,21 @@ func parseActorAuth(reporter *diagnosticReporter, ga *grammar.Actor) (*_ActorAut
 
 func parseActorCredential(reporter *diagnosticReporter, ga *grammar.Actor, authSection *grammar.ActorAuth) (*model.Data, bool) {
 	credentialSection := authSection.Credential
+	meta, metaValid := parseDecoratorMeta(reporter, credentialSection.Decorators, decoratorContext{
+		allowSensitive: true,
+	})
 	name := &grammar.Identifier{
 		Pos:   ga.Name.Pos,
 		Value: ga.Name.Value + "Credential",
 	}
 	credential, valid := parseDataLike(reporter, &grammar.Data{
-		Pos:        credentialSection.Pos,
-		Pub:        ga.Pub,
-		Name:       name,
-		Members:    credentialSection.Members,
-		Decorators: []*grammar.Decorator{},
+		Pos:     credentialSection.Pos,
+		Pub:     ga.Pub,
+		Name:    name,
+		Members: credentialSection.Members,
 	}, model.DataKindData)
+	valid = metaValid && valid
+	credential.Sensitive = meta.Sensitive
 	valid = reporter.check(len(credential.Members) > 0, "%s actor credential must have at least one member", credentialSection.Pos) && valid
 	for _, member := range credential.Members {
 		valid = reporter.check(member.Type.Kind == model.TypeKindScalar && member.Type.Scalar == model.ScalarString && !member.Type.Nullable,
@@ -87,17 +91,21 @@ func parseActorCredential(reporter *diagnosticReporter, ga *grammar.Actor, authS
 
 func parseActorInfo(reporter *diagnosticReporter, ga *grammar.Actor, authSection *grammar.ActorAuth) (*model.Data, bool) {
 	infoSection := authSection.Info
+	meta, metaValid := parseDecoratorMeta(reporter, infoSection.Decorators, decoratorContext{
+		allowSensitive: true,
+	})
 	name := &grammar.Identifier{
 		Pos:   ga.Name.Pos,
 		Value: ga.Name.Value + "Info",
 	}
 	info, valid := parseDataLike(reporter, &grammar.Data{
-		Pos:        infoSection.Pos,
-		Pub:        ga.Pub,
-		Name:       name,
-		Members:    infoSection.Members,
-		Decorators: []*grammar.Decorator{},
+		Pos:     infoSection.Pos,
+		Pub:     ga.Pub,
+		Name:    name,
+		Members: infoSection.Members,
 	}, model.DataKindData)
+	valid = metaValid && valid
+	info.Sensitive = meta.Sensitive
 	info.Pub = ga.Pub
 	return info, valid
 }

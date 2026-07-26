@@ -25,17 +25,19 @@ func (s *_hashState) resourceHash(resource *model.Resource) string {
 
 func (s *_hashState) methodHash(method *model.Method) string {
 	return hashValue(_MethodHashValue{
-		Name:              method.Name,
-		SkelName:          method.SkelName,
-		Description:       method.Description,
-		Example:           method.Example,
-		Auth:              authModeHashValue(method.Auth),
-		Require:           s.buildRequireHashValue(method.Require),
-		InputDescription:  method.InputDescription,
-		OutputDescription: method.OutputDescription,
-		OutputExample:     method.OutputExample,
-		Arguments:         s.buildArgumentHashValues(method.Arguments),
-		ResultType:        s.buildTypeHashValue(method.ResultType),
+		Name:               method.Name,
+		SkelName:           method.SkelName,
+		Description:        method.Description,
+		Example:            method.Example,
+		Auth:               authModeHashValue(method.Auth),
+		Require:            s.buildRequireHashValue(method.Require),
+		InputDescription:   method.InputDescription,
+		ArgumentsSensitive: method.ArgumentsSensitive,
+		OutputDescription:  method.OutputDescription,
+		OutputExample:      method.OutputExample,
+		ResultSensitive:    method.ResultSensitive,
+		Arguments:          s.buildArgumentHashValues(method.Arguments),
+		ResultType:         s.buildTypeHashValue(method.ResultType),
 	})
 }
 

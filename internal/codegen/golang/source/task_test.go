@@ -14,8 +14,9 @@ func TestCastTask(t *testing.T) {
 		Description: "Rebuild the user index",
 		Triggers: []*model.TaskTrigger{
 			{
-				Name:        "atTime",
-				Description: "Scheduled trigger",
+				Name:               "atTime",
+				Description:        "Scheduled trigger",
+				ArgumentsSensitive: true,
 				Arguments: []*model.Argument{
 					{
 						Name:        "startAt",
@@ -79,6 +80,9 @@ func TestCastTask(t *testing.T) {
 	}
 	if task_.Triggers[0].RunName != "RunAtTime" {
 		t.Fatalf("unexpected run name: %s", task_.Triggers[0].RunName)
+	}
+	if !task_.Triggers[0].ArgumentsSensitive {
+		t.Fatal("expected trigger arguments to be sensitive")
 	}
 	if task_.Triggers[0].ArgumentsData == nil || task_.Triggers[0].ArgumentsData.Name != "_RebuildUserIndexTaskAtTimeArguments" {
 		t.Fatalf("unexpected arguments data: %+v", task_.Triggers[0].ArgumentsData)

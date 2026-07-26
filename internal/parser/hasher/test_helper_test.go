@@ -110,6 +110,57 @@ func newHashAllowViaTestDomain(t *testing.T, via string) *model.Domain {
 	}).Model()
 }
 
+func newHashTaskTestDomain(t *testing.T) *model.Domain {
+	return analyzeHashTestDomain(t, &grammar.SkelContent{
+		Domain: domainContent("demo.user"),
+		Entries: []*grammar.SkelEntry{{
+			Task: &grammar.Task{
+				Name: ident("RebuildUserIndexTask"),
+				Triggers: []*grammar.TaskTrigger{{
+					Name: ident("atTime"),
+					Input: &grammar.MethodInput{
+						Arguments: []*grammar.Argument{{
+							Name: ident("startAt"),
+							Type: plainType(grammar.LocalDateTime),
+						}},
+					},
+				}},
+			},
+		}},
+	}).Model()
+}
+
+func newHashDataKindTestDomain(kind model.DataKind) (*model.Domain, *model.Data) {
+	data := &model.Data{
+		Name:     "Secret",
+		SkelName: "demo.user.Secret",
+		Kind:     kind,
+		Members: []*model.DataMember{{
+			Name: "token",
+			Type: plainModelType(model.ScalarString),
+		}},
+	}
+	spec := model.DomainSpec{Name: "demo.user"}
+	switch kind {
+	case model.DataKindConfig:
+		data.Name = "SecretConfig"
+		data.SkelName = "demo.user.SecretConfig"
+		data.Lifecycle = model.ConfigLifecycleEternal
+		spec.Configs = []*model.Data{data}
+	case model.DataKindEvent:
+		data.Name = "SecretEvent"
+		data.SkelName = "demo.user.SecretEvent"
+		spec.Events = []*model.Data{data}
+	default:
+		spec.Data = []*model.Data{data}
+	}
+	return model.NewDomainFromSpec(spec), data
+}
+
+func plainModelType(scalar model.Scalar) *model.Type {
+	return &model.Type{Kind: model.TypeKindScalar, Scalar: scalar}
+}
+
 func analyzeHashTestDomain(t *testing.T, content *grammar.SkelContent) *analyzer.Analysis {
 	t.Helper()
 	analysis, diagnostics := analyzer.Analyze(content, nil)

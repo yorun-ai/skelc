@@ -1,0 +1,15 @@
+{{- define "memberSchema" -}}
+{
+	Name: {{ quote .Name }},
+	{{- if .Description }}
+	Description: {{ quote .Description }},
+	{{- end }}
+	{{- if .Example }}
+	Example: {{ quote .Example }},
+	{{- end }}
+	{{- if .Sensitive }}
+	Sensitive: true,
+	{{- end }}
+	Type: {{ template "typeSchema" .Type }},
+}
+{{- end }}

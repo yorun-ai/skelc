@@ -4,6 +4,7 @@ type _MemberSchema struct {
 	Name        string
 	Description string
 	Example     string
+	Sensitive   bool
 	Type        *_TypeSchema
 }
 

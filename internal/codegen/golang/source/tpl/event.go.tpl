@@ -43,6 +43,10 @@ type {{ $event.Name }} struct { {{ range $member := $event.Members }}
 	{{ $member.Name }} {{ $member.Type.Plain }} `json:"{{ $member.SkelName }}"{{ if $member.Sensitive }} skel:"sensitive"{{ end }}`{{ end }}
 }
 {{- end }}
+{{- if $event.Sensitive }}
+
+func ({{ $event.Name }}) {{ $event.MarkerMethodName }}() {}
+{{- end }}
 
 {{ if not $event.ListenerOnly -}}
 type {{ $event.EmitterName }} interface {

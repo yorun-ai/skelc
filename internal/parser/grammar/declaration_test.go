@@ -31,6 +31,7 @@ pub config DatabaseConfig eternal {
 
 @desc("User created event")
 	pub event UserCreatedEvent {
+    @sensitive
     payload {
         @desc("User ID")
         userId: int
@@ -41,9 +42,11 @@ pub actor PortalAdminActor {
     via client {}
     via openapi {}
     auth {
+        @sensitive
         credential {
             subject: string
         }
+        @sensitive
         info {
             @desc("User ID")
             userId: int
@@ -157,6 +160,9 @@ web UserPortalWeb {
 	if eventEntry.Event.Payload == nil || len(eventEntry.Event.Payload.Members) != 1 || eventEntry.Event.Payload.Members[0].Name.Value != "userId" {
 		t.Fatalf("unexpected event payload: %+v", eventEntry.Event.Payload)
 	}
+	if len(eventEntry.Event.Payload.Decorators) != 1 || eventEntry.Event.Payload.Decorators[0].Name.Value != "sensitive" {
+		t.Fatalf("unexpected event payload decorators: %+v", eventEntry.Event.Payload.Decorators)
+	}
 
 	actorEntry := content.Entries[4]
 	if actorEntry.Actor == nil || actorEntry.Actor.Name.Value != "PortalAdminActor" {
@@ -174,6 +180,12 @@ web UserPortalWeb {
 	auth := actorEntry.Actor.Sections[0].Auth
 	if auth == nil {
 		t.Fatalf("unexpected actor auth: %+v", actorEntry.Actor.Sections[0])
+	}
+	if len(auth.Credential.Decorators) != 1 || auth.Credential.Decorators[0].Name.Value != "sensitive" {
+		t.Fatalf("unexpected actor credential decorators: %+v", auth.Credential.Decorators)
+	}
+	if len(auth.Info.Decorators) != 1 || auth.Info.Decorators[0].Name.Value != "sensitive" {
+		t.Fatalf("unexpected actor info decorators: %+v", auth.Info.Decorators)
 	}
 	if auth.Credential == nil || len(auth.Credential.Members) != 1 || auth.Credential.Members[0].Name.Value != "subject" {
 		t.Fatalf("unexpected actor credential: %+v", actorEntry.Actor.Sections[0])

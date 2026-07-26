@@ -13,18 +13,20 @@ type _ServiceSchema struct {
 }
 
 type _MethodSchema struct {
-	Name              string
-	SkelName          string
-	Description       string
-	Hash              string
-	Example           string
-	AuthMode          _AuthMode
-	Require           *_PermRequire
-	InputDescription  string
-	OutputDescription string
-	OutputExample     string
-	Arguments         []*_MemberSchema
-	ResultType        *_TypeSchema
+	Name               string
+	SkelName           string
+	Description        string
+	Hash               string
+	Example            string
+	AuthMode           _AuthMode
+	Require            *_PermRequire
+	InputDescription   string
+	ArgumentsSensitive bool
+	OutputDescription  string
+	OutputExample      string
+	ResultSensitive    bool
+	Arguments          []*_MemberSchema
+	ResultType         *_TypeSchema
 }
 
 type _AuthMode string

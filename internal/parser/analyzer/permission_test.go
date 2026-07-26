@@ -18,6 +18,7 @@ resource User {
     @desc("lookup check")
     check byId {
         @desc("lookup input")
+        @sensitive
         input {
             @sensitive
             userId: int
@@ -91,6 +92,9 @@ service UserService {
 	}
 	if checkMethod.InputDescription != "lookup input" {
 		t.Fatalf("unexpected resource check input description: %q", checkMethod.InputDescription)
+	}
+	if !checkMethod.ArgumentsSensitive {
+		t.Fatal("expected resource check input to be sensitive as a whole")
 	}
 	if checkMethod.Description != "lookup check" {
 		t.Fatalf("unexpected resource check description: %q", checkMethod.Description)

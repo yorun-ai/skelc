@@ -55,8 +55,9 @@ type Event struct {
 }
 
 type EventPayload struct {
-	Pos     lexer.Position
-	Members []*DataMember `parser:"\"payload\" \"{\" (Newline)* (@@ (Newline)*)* \"}\""`
+	Pos        lexer.Position
+	Decorators []*Decorator  `parser:"(@@ (Newline)*)*"`
+	Members    []*DataMember `parser:"\"payload\" \"{\" (Newline)* (@@ (Newline)*)* \"}\""`
 }
 
 type Service struct {
@@ -143,11 +144,13 @@ func (auth *ActorAuth) Finalize() error {
 	for _, section := range auth.Sections {
 		switch {
 		case section.Credential != nil:
+			section.Credential.Decorators = section.Decorators
 			if auth.Credential != nil {
 				return participle.Errorf(section.Credential.Pos, "duplicated actor auth credential")
 			}
 			auth.Credential = section.Credential
 		case section.Info != nil:
+			section.Info.Decorators = section.Decorators
 			if auth.Info != nil {
 				return participle.Errorf(section.Info.Pos, "duplicated actor auth info")
 			}
@@ -158,18 +161,21 @@ func (auth *ActorAuth) Finalize() error {
 }
 
 type ActorAuthSection struct {
+	Decorators []*Decorator     `parser:"(@@ (Newline)*)* ("`
 	Credential *ActorCredential `parser:"  (?= \"credential\") @@"`
-	Info       *ActorInfo       `parser:"| (?= \"info\") @@"`
+	Info       *ActorInfo       `parser:"| @@)"`
 }
 
 type ActorCredential struct {
-	Pos     lexer.Position
-	Members []*DataMember `parser:"\"credential\" \"{\" (Newline)* (@@ (Newline)*)* \"}\""`
+	Pos        lexer.Position
+	Decorators []*Decorator
+	Members    []*DataMember `parser:"\"credential\" \"{\" (Newline)* (@@ (Newline)*)* \"}\""`
 }
 
 type ActorInfo struct {
-	Pos     lexer.Position
-	Members []*DataMember `parser:"\"info\" \"{\" (Newline)* (@@ (Newline)*)* \"}\""`
+	Pos        lexer.Position
+	Decorators []*Decorator
+	Members    []*DataMember `parser:"\"info\" \"{\" (Newline)* (@@ (Newline)*)* \"}\""`
 }
 
 type ActorPermission struct {

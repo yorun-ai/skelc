@@ -57,6 +57,10 @@ type {{ $s.FullName }} struct { {{ range $sm := $s.Members }}
 	{{ $sm.Name }} {{ $sm.Type.Plain }} `json:"{{ $sm.SkelName }}"{{ if $sm.Sensitive }} skel:"sensitive"{{ end }}`{{ end }}
 }
 {{- end }}
+{{- if $s.Sensitive }}
+
+func ({{ $s.ReceiverType }}) {{ $s.MarkerMethodName }}() {}
+{{- end }}
 {{- if $s.Validate }}
 
 func (v *{{ $s.ReceiverType }}) Validate(path string) error {

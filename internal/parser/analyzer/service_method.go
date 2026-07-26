@@ -71,10 +71,12 @@ func parseMethod(reporter *diagnosticReporter, gm *grammar.Method) (*model.Metho
 
 	if input != nil {
 		inputMeta, inputValid := parseDecoratorMeta(reporter, input.Decorators, decoratorContext{
-			allowDesc: true,
+			allowDesc:      true,
+			allowSensitive: true,
 		})
 		valid = inputValid && valid
 		method.InputDescription = inputMeta.Description
+		method.ArgumentsSensitive = inputMeta.Sensitive
 		argPos := map[string]lexer.Position{}
 		for _, grammarArgument := range input.Arguments {
 			arg, argumentValid := parseArgument(reporter, grammarArgument)
@@ -90,9 +92,15 @@ func parseMethod(reporter *diagnosticReporter, gm *grammar.Method) (*model.Metho
 		}
 	}
 	if output != nil {
-		outputMeta, outputValid := parseAnnotations(reporter, output.Decorators)
+		outputMeta, outputValid := parseDecoratorMeta(reporter, output.Decorators, decoratorContext{
+			allowDesc:      true,
+			allowExample:   true,
+			allowSensitive: true,
+			requireDesc:    true,
+		})
 		valid = outputValid && valid
 		method.OutputDescription = outputMeta.Description
+		method.ResultSensitive = outputMeta.Sensitive
 		if outputMeta.HasExample {
 			method.OutputExample = outputMeta.Example
 		}

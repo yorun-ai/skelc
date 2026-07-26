@@ -57,6 +57,7 @@ func (s *_hashState) dataHash(data *model.Data) string {
 			Description:    data.Description,
 			Kind:           data.Kind,
 			Pub:            data.Pub,
+			Sensitive:      data.Sensitive,
 			Lifecycle:      string(data.Lifecycle),
 			TypeParameters: buildTypeParameterNames(data.TypeParameters),
 			Members:        s.buildMemberHashValues(data.Members),

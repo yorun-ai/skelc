@@ -135,13 +135,16 @@ func parseResourceCheck(reporter *diagnosticReporter, actionName string, gc *gra
 	valid = metaValid && valid
 	args := []*model.Argument{newPermissionCodeArgument()}
 	inputDescription := ""
+	inputSensitive := false
 	hasPermissionCodeArgument := false
 	if gc.Input != nil {
 		inputMeta, inputValid := parseDecoratorMeta(reporter, gc.Input.Decorators, decoratorContext{
-			allowDesc: true,
+			allowDesc:      true,
+			allowSensitive: true,
 		})
 		valid = inputValid && valid
 		inputDescription = inputMeta.Description
+		inputSensitive = inputMeta.Sensitive
 
 		argPos := map[string]lexer.Position{}
 		for index, grammarArgument := range gc.Input.Arguments {
@@ -171,13 +174,14 @@ func parseResourceCheck(reporter *diagnosticReporter, actionName string, gc *gra
 		methodName = "check" + nameutil.ToCamel(gc.Name.Value)
 	}
 	method := &model.Method{
-		Pos:              position(gc.Name.Pos),
-		Name:             methodName,
-		SkelName:         methodName,
-		Description:      meta.Description,
-		Auth:             model.AuthModeAuth,
-		Arguments:        args,
-		InputDescription: inputDescription,
+		Pos:                position(gc.Name.Pos),
+		Name:               methodName,
+		SkelName:           methodName,
+		Description:        meta.Description,
+		Auth:               model.AuthModeAuth,
+		Arguments:          args,
+		InputDescription:   inputDescription,
+		ArgumentsSensitive: inputSensitive,
 	}
 	if len(args) > 0 {
 		method.ArgumentsData = &model.Data{

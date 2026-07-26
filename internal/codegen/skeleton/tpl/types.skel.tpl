@@ -16,7 +16,7 @@ import {{ $import.Name }}{{ with importAlias $import }} as {{ . }}{{ end }}
 {{ range $i, $data := .Data -}}
 {{ if or $.Enums $i }}
 {{ end -}}
-{{ template "description" (description $data.Description 0) }}pub data {{ $data.Name }}{{ with typeParams $data.TypeParameters }}<{{ range $i, $name := . }}{{ if $i }}, {{ end }}{{ $name }}{{ end }}>{{ end }} {
+{{ template "description" (description $data.Description 0) }}{{ template "sensitive" (sensitive $data.Sensitive 0) }}pub data {{ $data.Name }}{{ with typeParams $data.TypeParameters }}<{{ range $i, $name := . }}{{ if $i }}, {{ end }}{{ $name }}{{ end }}>{{ end }} {
 {{- range $member := $data.Members }}
 {{ template "description" (description $member.Description 4) }}{{ template "example" (example $member.Example 4) }}{{ template "sensitive" (sensitive $member.Sensitive 4) }}    {{ $member.Name }}: {{ template "type" (typeRef $member.Type) }}
 {{- end }}
@@ -25,7 +25,7 @@ import {{ $import.Name }}{{ with importAlias $import }} as {{ . }}{{ end }}
 {{ range $i, $config := .Configs -}}
 {{ if or $.Enums $.Data $i }}
 {{ end -}}
-{{ template "description" (description $config.Description 0) }}pub config {{ $config.Name }}{{ with configSuffix $config }} {{ . }}{{ end }} {
+{{ template "description" (description $config.Description 0) }}{{ template "sensitive" (sensitive $config.Sensitive 0) }}pub config {{ $config.Name }}{{ with configSuffix $config }} {{ . }}{{ end }} {
 {{- range $member := $config.Members }}
 {{ template "description" (description $member.Description 4) }}{{ template "example" (example $member.Example 4) }}{{ template "sensitive" (sensitive $member.Sensitive 4) }}    {{ $member.Name }}: {{ template "type" (typeRef $member.Type) }}
 {{- end }}

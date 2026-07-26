@@ -20,6 +20,8 @@ type ServiceMethod struct {
 	ValidateArguments           string
 	ResultType                  *Type
 	ValidateResult              string
+	ArgumentsSensitive          bool
+	ResultSensitive             bool
 	ArgumentsContainsBinaryType bool
 	ResultContainsBinaryType    bool
 }
@@ -37,6 +39,8 @@ func castServiceMethod(ps *model.Service, pm *model.Method) *ServiceMethod {
 		Arguments:                   methodArgs,
 		ResultType:                  resultType,
 		ValidateResult:              buildMethodValidateResult(pm, resultType),
+		ArgumentsSensitive:          pm.ArgumentsSensitive,
+		ResultSensitive:             pm.ResultSensitive,
 		ArgumentsContainsBinaryType: methodArgumentsContainBinaryType(pm),
 		ResultContainsBinaryType:    methodResultContainsBinaryType(pm),
 	}

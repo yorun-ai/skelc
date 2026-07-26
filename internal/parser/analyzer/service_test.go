@@ -24,6 +24,7 @@ func TestParseService(t *testing.T) {
 				Input: &grammar.MethodInput{
 					Decorators: []*grammar.Decorator{
 						{Name: ident("desc"), Value: decoratorValue(`"Request parameters"`)},
+						{Name: ident("sensitive")},
 					},
 					Arguments: []*grammar.Argument{
 						{
@@ -41,6 +42,7 @@ func TestParseService(t *testing.T) {
 					Decorators: []*grammar.Decorator{
 						{Name: ident("desc"), Value: decoratorValue(`"User information"`)},
 						{Name: ident("example"), Value: decoratorValue(`{"id":10001}`)},
+						{Name: ident("sensitive")},
 					},
 					Type: nullableType(refGrammarType("User")),
 				},
@@ -81,6 +83,9 @@ func TestParseService(t *testing.T) {
 	if service.Methods[0].OutputExample != `{"id":10001}` {
 		t.Fatalf("unexpected output example: %q", service.Methods[0].OutputExample)
 	}
+	if !service.Methods[0].ArgumentsSensitive || !service.Methods[0].ResultSensitive {
+		t.Fatal("expected whole input and output sensitive metadata")
+	}
 	if service.Methods[0].Arguments[0].Description != "User ID" || service.Methods[0].Arguments[0].Example != `"10001"` {
 		t.Fatalf("unexpected argument annotations: %+v", service.Methods[0].Arguments[0])
 	}
@@ -90,20 +95,6 @@ func TestParseService(t *testing.T) {
 	if service.Methods[0].ArgumentsData == nil || service.Methods[0].ArgumentsData.Name != "UserServiceGetUserArguments" {
 		t.Fatalf("unexpected arguments data: %+v", service.Methods[0].ArgumentsData)
 	}
-}
-
-func TestParseServiceRejectsSensitiveOutput(t *testing.T) {
-	expectServiceDiagnostic(t, "unexpected decorator @sensitive", &grammar.Service{
-		Name:      ident("UserService"),
-		Audiences: []*grammar.ServiceAudience{serviceAllow("ClientActor")},
-		Methods: []*grammar.Method{{
-			Name: ident("getUser"),
-			Output: &grammar.MethodOutput{
-				Decorators: []*grammar.Decorator{{Name: ident("sensitive")}},
-				Type:       plainType(grammar.String),
-			},
-		}},
-	})
 }
 
 func TestParseServiceSupportsTripleQuotedDescription(t *testing.T) {

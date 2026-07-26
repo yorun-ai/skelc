@@ -19,25 +19,16 @@
 					Description: {{ quote $trigger.Description }},
 					{{- end }}
 					Hash: {{ quote $trigger.Hash }},
-					{{- if $trigger.Example }}
-					Example: {{ quote $trigger.Example }},
-					{{- end }}
 					{{- if $trigger.InputDescription }}
 					InputDescription: {{ quote $trigger.InputDescription }},
+					{{- end }}
+					{{- if $trigger.ArgumentsSensitive }}
+					ArgumentsSensitive: true,
 					{{- end }}
 					{{- if $trigger.Arguments }}
 					Arguments: []*skel.MemberSchema{
 						{{- range $argument := $trigger.Arguments }}
-						{
-							Name: {{ quote $argument.Name }},
-							{{- if $argument.Description }}
-							Description: {{ quote $argument.Description }},
-							{{- end }}
-							{{- if $argument.Example }}
-							Example: {{ quote $argument.Example }},
-							{{- end }}
-							Type: {{ template "typeSchema" $argument.Type }},
-						},
+						{{ template "memberSchema" $argument }},
 						{{- end }}
 					},
 					{{- end }}

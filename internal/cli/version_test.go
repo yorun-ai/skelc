@@ -65,7 +65,7 @@ func TestDefaultGoVineVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 	version := info.GolangCodeGen.DefaultVineVersion
-	if version != "v0.9.3" {
+	if version != "v0.10.0" {
 		t.Fatalf("unexpected default go vine version: %q", version)
 	}
 }

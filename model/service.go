@@ -71,10 +71,14 @@ type Method struct {
 	ArgumentsData *Data
 	// InputDescription documents the method input as a whole.
 	InputDescription string
+	// ArgumentsSensitive reports whether the method input is sensitive as a whole.
+	ArgumentsSensitive bool
 	// OutputDescription documents the method result.
 	OutputDescription string
 	// OutputExample is the method result's example text.
 	OutputExample string
+	// ResultSensitive reports whether the method output is sensitive as a whole.
+	ResultSensitive bool
 	// ResultType is the resolved result type, or nil for a method with no result.
 	ResultType *Type
 }

@@ -10,19 +10,13 @@
 			{{- end }}
 			Hash: {{ quote $event.Hash }},
 			Pub: {{ $event.Pub }},
+			{{- if $event.Sensitive }}
+			Sensitive: true,
+			{{- end }}
 			{{- if $event.Members }}
 			Members: []*skel.MemberSchema{
 				{{- range $member := $event.Members }}
-				{
-					Name: {{ quote $member.Name }},
-					{{- if $member.Description }}
-					Description: {{ quote $member.Description }},
-					{{- end }}
-					{{- if $member.Example }}
-					Example: {{ quote $member.Example }},
-					{{- end }}
-					Type: {{ template "typeSchema" $member.Type }},
-				},
+				{{ template "memberSchema" $member }},
 				{{- end }}
 			},
 			{{- end }}

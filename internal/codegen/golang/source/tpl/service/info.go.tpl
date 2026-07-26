@@ -43,6 +43,8 @@ var (
 		ValidateArguments: {{ if .ValidateArguments }}{{ .ValidateArguments }}{{ else }}nil{{ end }},
 		ResultType: {{ if .ResultType }}reflect.TypeFor[{{ .ResultType.Plain }}](){{ else }}nil{{ end }},
 		ValidateResult: {{ if .ValidateResult }}{{ .ValidateResult }}{{ else }}nil{{ end }},
+		ArgumentsSensitive: {{ if .ArgumentsSensitive }}true{{ else }}false{{ end }},
+		ResultSensitive: {{ if .ResultSensitive }}true{{ else }}false{{ end }},
 		ArgumentsContainsBinaryType: {{ if .ArgumentsContainsBinaryType }}true{{ else }}false{{ end }},
 		ResultContainsBinaryType: {{ if .ResultContainsBinaryType }}true{{ else }}false{{ end }},
 		MethodFuncs: []any{

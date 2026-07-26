@@ -7,6 +7,12 @@ import (
 )
 
 func TestParseActor(t *testing.T) {
+	authSection := grammarActorAuthSection(
+		[]*grammar.DataMember{{Name: ident("subject"), Type: plainType(grammar.String)}},
+		[]*grammar.DataMember{{Name: ident("userId"), Type: plainType(grammar.Int)}},
+	)
+	authSection.Auth.Credential.Decorators = []*grammar.Decorator{{Name: ident("sensitive")}}
+	authSection.Auth.Info.Decorators = []*grammar.Decorator{{Name: ident("sensitive")}}
 	actor := parseActorTest(t, &grammar.Actor{
 		Decorators: []*grammar.Decorator{
 			{Name: ident("desc"), Value: decoratorValue(`"Portal admin"`)},
@@ -17,12 +23,7 @@ func TestParseActor(t *testing.T) {
 			{Name: ident("client")},
 			{Name: ident("openapi")},
 		},
-		Sections: []*grammar.ActorSection{
-			grammarActorAuthSection(
-				[]*grammar.DataMember{{Name: ident("subject"), Type: plainType(grammar.String)}},
-				[]*grammar.DataMember{{Name: ident("userId"), Type: plainType(grammar.Int)}},
-			),
-		},
+		Sections: []*grammar.ActorSection{authSection},
 	})
 	if actor.Name != "PortalAdminActor" {
 		t.Fatalf("unexpected actor name: %s", actor.Name)
@@ -48,6 +49,9 @@ func TestParseActor(t *testing.T) {
 	if len(actor.AuthCredential.Members) != 1 || actor.AuthCredential.Members[0].Name != "subject" {
 		t.Fatalf("unexpected actor credential members: %+v", actor.AuthCredential.Members)
 	}
+	if !actor.AuthCredential.Sensitive {
+		t.Fatal("expected actor credential to be sensitive as a whole")
+	}
 	if actor.AuthInfo == nil || actor.AuthInfo.Name != "PortalAdminActorInfo" {
 		t.Fatalf("unexpected actor info: %+v", actor.AuthInfo)
 	}
@@ -56,6 +60,9 @@ func TestParseActor(t *testing.T) {
 	}
 	if len(actor.AuthInfo.Members) != 1 || actor.AuthInfo.Members[0].Name != "userId" {
 		t.Fatalf("unexpected actor info members: %+v", actor.AuthInfo.Members)
+	}
+	if !actor.AuthInfo.Sensitive {
+		t.Fatal("expected actor info to be sensitive as a whole")
 	}
 }
 

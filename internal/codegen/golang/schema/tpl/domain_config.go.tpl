@@ -10,22 +10,16 @@
 			{{- end }}
 			Hash: {{ quote $config.Hash }},
 			Pub: {{ $config.Pub }},
+			{{- if $config.Sensitive }}
+			Sensitive: true,
+			{{- end }}
 			{{- if $config.Lifecycle }}
 			Lifecycle: {{ quote $config.Lifecycle }},
 			{{- end }}
 			{{- if $config.Members }}
 			Members: []*skel.MemberSchema{
 				{{- range $member := $config.Members }}
-				{
-					Name: {{ quote $member.Name }},
-					{{- if $member.Description }}
-					Description: {{ quote $member.Description }},
-					{{- end }}
-					{{- if $member.Example }}
-					Example: {{ quote $member.Example }},
-					{{- end }}
-					Type: {{ template "typeSchema" $member.Type }},
-				},
+				{{ template "memberSchema" $member }},
 				{{- end }}
 			},
 			{{- end }}

@@ -20,6 +20,7 @@ type _ResourceCheckView struct {
 	Name             string
 	Description      string
 	InputDescription string
+	InputSensitive   bool
 	Arguments        []*model.Argument
 	Indent           int
 	InputIndent      int
@@ -78,6 +79,7 @@ func resourceCheckView(check *model.ResourceCheck, indent int) *_ResourceCheckVi
 		Name:             check.Name,
 		Description:      check.Method.Description,
 		InputDescription: check.Method.InputDescription,
+		InputSensitive:   check.Method.ArgumentsSensitive,
 		Arguments:        renderResourceCheckArguments(check),
 		Indent:           indent,
 		InputIndent:      indent + 4,

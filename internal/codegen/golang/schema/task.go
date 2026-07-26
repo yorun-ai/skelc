@@ -10,9 +10,10 @@ func (g *_Gen) buildTaskSchema(task *model.Task) *_TaskSchema {
 	for _, trigger := range task.Triggers {
 		schema.Triggers = append(schema.Triggers, &_TriggerSchema{
 			Name: trigger.Name, SkelName: trigger.SkelName, Hash: trigger.Hash,
-			Description: trigger.Description, Example: trigger.Example,
-			InputDescription: trigger.InputDescription,
-			Arguments:        g.buildArgumentSchemas(trigger.Arguments),
+			Description:        trigger.Description,
+			InputDescription:   trigger.InputDescription,
+			ArgumentsSensitive: trigger.ArgumentsSensitive,
+			Arguments:          g.buildArgumentSchemas(trigger.Arguments),
 		})
 	}
 	return schema

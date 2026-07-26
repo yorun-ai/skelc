@@ -45,16 +45,17 @@ type Task struct {
 }
 
 type TaskTrigger struct {
-	Name           string
-	LaunchName     string
-	RunName        string
-	SkelName       string
-	SpecName       string
-	CommentLines   []string
-	LaunchComments []string
-	RunComments    []string
-	Arguments      []*MethodArgument
-	ArgumentsData  *Data
+	Name               string
+	LaunchName         string
+	RunName            string
+	SkelName           string
+	SpecName           string
+	CommentLines       []string
+	LaunchComments     []string
+	RunComments        []string
+	ArgumentsSensitive bool
+	Arguments          []*MethodArgument
+	ArgumentsData      *Data
 }
 
 func (g *_Gen) genTaskGo() {
@@ -118,15 +119,16 @@ func castTaskTrigger(task_ *model.Task, p *model.TaskTrigger) *TaskTrigger {
 	}
 
 	trigger := &TaskTrigger{
-		Name:           nameutil.ToCamel(p.Name),
-		LaunchName:     fmt.Sprintf("Launch%s", nameutil.ToCamel(p.Name)),
-		RunName:        fmt.Sprintf("Run%s", nameutil.ToCamel(p.Name)),
-		SkelName:       p.Name,
-		SpecName:       fmt.Sprintf("_%s%sTriggerSpec", task_.Name, nameutil.ToCamel(p.Name)),
-		CommentLines:   goMethodDocLines(nameutil.ToCamel(p.Name), p.Description, "", arguments, nil, "", ""),
-		LaunchComments: goMethodDocLines(fmt.Sprintf("Launch%s", nameutil.ToCamel(p.Name)), p.Description, "", arguments, nil, "", ""),
-		RunComments:    goMethodDocLines(fmt.Sprintf("Run%s", nameutil.ToCamel(p.Name)), p.Description, "", arguments, nil, "", ""),
-		Arguments:      arguments,
+		Name:               nameutil.ToCamel(p.Name),
+		LaunchName:         fmt.Sprintf("Launch%s", nameutil.ToCamel(p.Name)),
+		RunName:            fmt.Sprintf("Run%s", nameutil.ToCamel(p.Name)),
+		SkelName:           p.Name,
+		SpecName:           fmt.Sprintf("_%s%sTriggerSpec", task_.Name, nameutil.ToCamel(p.Name)),
+		CommentLines:       goMethodDocLines(nameutil.ToCamel(p.Name), p.Description, "", arguments, nil, "", ""),
+		LaunchComments:     goMethodDocLines(fmt.Sprintf("Launch%s", nameutil.ToCamel(p.Name)), p.Description, "", arguments, nil, "", ""),
+		RunComments:        goMethodDocLines(fmt.Sprintf("Run%s", nameutil.ToCamel(p.Name)), p.Description, "", arguments, nil, "", ""),
+		ArgumentsSensitive: p.ArgumentsSensitive,
+		Arguments:          arguments,
 	}
 	if p.ArgumentsData != nil {
 		trigger.ArgumentsData = castData(p.ArgumentsData)

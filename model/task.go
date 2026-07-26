@@ -28,10 +28,10 @@ type TaskTrigger struct {
 	Hash string
 	// Description is the trigger's documentation text.
 	Description string
-	// Example is the trigger's example text.
-	Example string
 	// InputDescription documents the trigger input as a whole.
 	InputDescription string
+	// ArgumentsSensitive reports whether the trigger input is sensitive as a whole.
+	ArgumentsSensitive bool
 	// Arguments lists trigger arguments in source order.
 	Arguments []*Argument
 	// ArgumentsData is the generated data model representing trigger arguments.

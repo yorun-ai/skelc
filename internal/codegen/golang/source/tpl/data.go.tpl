@@ -8,7 +8,8 @@ package {{ $.PackageName }}{{ template "imports" . }}
 {{ if not $s.Members -}}
 type {{ $s.FullName }} struct{}
 {{- else -}}
-type {{ $s.FullName }} struct { {{ range $sm := $s.Members }}
+type {{ $s.FullName }} struct {
+	{{- range $sm := $s.Members }}
 	{{- if $sm.CommentLines }}
 	{{- range $line := $sm.CommentLines }}
 	// {{ $line }}
@@ -16,6 +17,10 @@ type {{ $s.FullName }} struct { {{ range $sm := $s.Members }}
 	{{- end }}
 	{{ $sm.Name }} {{ $sm.Type.Plain }} `json:"{{ $sm.SkelName }}"{{ if $sm.Sensitive }} skel:"sensitive"{{ end }}`{{ end }}
 }
+{{- end }}
+{{- if $s.Sensitive }}
+
+func ({{ $s.ReceiverType }}) {{ $s.MarkerMethodName }}() {}
 {{- end }}
 {{- if $s.Validate }}
 

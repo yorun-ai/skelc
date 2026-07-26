@@ -21,6 +21,7 @@ func TestParseTask(t *testing.T) {
 				Input: &grammar.MethodInput{
 					Decorators: []*grammar.Decorator{
 						{Name: ident("desc"), Value: decoratorValue(`"Trigger parameters"`)},
+						{Name: ident("sensitive")},
 					},
 					Arguments: []*grammar.Argument{
 						{
@@ -46,6 +47,9 @@ func TestParseTask(t *testing.T) {
 	}
 	if task.Triggers[0].InputDescription != "Trigger parameters" {
 		t.Fatalf("unexpected input description: %q", task.Triggers[0].InputDescription)
+	}
+	if !task.Triggers[0].ArgumentsSensitive {
+		t.Fatal("expected trigger input to be sensitive")
 	}
 	if task.Triggers[0].ArgumentsData == nil || task.Triggers[0].ArgumentsData.Name != "RebuildUserIndexTaskAtTimeArguments" {
 		t.Fatalf("unexpected arguments data: %+v", task.Triggers[0].ArgumentsData)

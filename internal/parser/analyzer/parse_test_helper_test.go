@@ -82,6 +82,13 @@ func parseEventTest(t *testing.T, value *grammar.Event) *model.Data {
 	return parsed
 }
 
+func expectEventDiagnostic(t *testing.T, expected string, value *grammar.Event) {
+	t.Helper()
+	reporter := newDiagnosticReporter()
+	parseEvent(reporter, value)
+	assertDiagnosticsContain(t, reporter.result(), expected)
+}
+
 func parseServiceTest(t *testing.T, value *grammar.Service) *model.Service {
 	t.Helper()
 	reporter := newDiagnosticReporter()

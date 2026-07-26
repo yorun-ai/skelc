@@ -18,6 +18,7 @@ func (g *_Gen) buildDataSchema(data *model.Data) *_DataSchema {
 	schema := &_DataSchema{
 		Name: data.Name, SkelName: data.SkelName, Hash: data.Hash,
 		Description:    data.Description,
+		Sensitive:      data.Sensitive,
 		TypeParameters: make([]string, 0, len(data.TypeParameters)),
 		Members:        g.buildMemberSchemas(data.Members),
 	}
@@ -31,6 +32,7 @@ func (g *_Gen) buildConfigSchema(config *model.Data) *_ConfigSchema {
 	return &_ConfigSchema{
 		Name: config.Name, SkelName: config.SkelName, Hash: config.Hash,
 		Description: config.Description, Pub: config.Pub,
+		Sensitive: config.Sensitive,
 		Lifecycle: configSchemaLifecycle(config.Lifecycle),
 		Members:   g.buildMemberSchemas(config.Members),
 	}
@@ -50,6 +52,7 @@ func configSchemaLifecycle(lifecycle model.ConfigLifecycle) string {
 func (g *_Gen) buildEventSchema(event *model.Data) *_EventSchema {
 	return &_EventSchema{
 		Name: event.Name, SkelName: event.SkelName, Hash: event.Hash,
-		Description: event.Description, Pub: event.Pub, Members: g.buildMemberSchemas(event.Members),
+		Description: event.Description, Pub: event.Pub,
+		Sensitive: event.Sensitive, Members: g.buildMemberSchemas(event.Members),
 	}
 }

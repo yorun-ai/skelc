@@ -1,5 +1,9 @@
 {{- define "methodSchema" -}}
-&skel.MethodSchema{
+&skel.MethodSchema{{ template "methodSchemaValue" . }}
+{{- end }}
+
+{{- define "methodSchemaValue" -}}
+{
 	Name: {{ quote .Name }},
 	SkelName: {{ quote .SkelName }},
 	{{- if .Description }}
@@ -16,25 +20,22 @@
 	{{- if .InputDescription }}
 	InputDescription: {{ quote .InputDescription }},
 	{{- end }}
+	{{- if .ArgumentsSensitive }}
+	ArgumentsSensitive: true,
+	{{- end }}
 	{{- if .OutputDescription }}
 	OutputDescription: {{ quote .OutputDescription }},
 	{{- end }}
 	{{- if .OutputExample }}
 	OutputExample: {{ quote .OutputExample }},
 	{{- end }}
+	{{- if .ResultSensitive }}
+	ResultSensitive: true,
+	{{- end }}
 	{{- if .Arguments }}
 	Arguments: []*skel.MemberSchema{
 		{{- range $argument := .Arguments }}
-		{
-			Name: {{ quote $argument.Name }},
-			{{- if $argument.Description }}
-			Description: {{ quote $argument.Description }},
-			{{- end }}
-			{{- if $argument.Example }}
-			Example: {{ quote $argument.Example }},
-			{{- end }}
-			Type: {{ template "typeSchema" $argument.Type }},
-		},
+		{{ template "memberSchema" $argument }},
 		{{- end }}
 	},
 	{{- end }}

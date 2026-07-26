@@ -22,18 +22,20 @@ func (g *_Gen) buildServiceSchema(service *model.Service) *_ServiceSchema {
 
 func (g *_Gen) buildMethodSchema(method *model.Method) *_MethodSchema {
 	return &_MethodSchema{
-		Name:              method.Name,
-		SkelName:          method.SkelName,
-		Hash:              method.Hash,
-		Description:       method.Description,
-		Example:           method.Example,
-		AuthMode:          authMode(method.Auth),
-		Require:           g.buildPermRequireSchema(method.Require),
-		InputDescription:  method.InputDescription,
-		OutputDescription: method.OutputDescription,
-		OutputExample:     method.OutputExample,
-		Arguments:         g.buildArgumentSchemas(method.Arguments),
-		ResultType:        g.buildTypeSchema(method.ResultType),
+		Name:               method.Name,
+		SkelName:           method.SkelName,
+		Hash:               method.Hash,
+		Description:        method.Description,
+		Example:            method.Example,
+		AuthMode:           authMode(method.Auth),
+		Require:            g.buildPermRequireSchema(method.Require),
+		InputDescription:   method.InputDescription,
+		ArgumentsSensitive: method.ArgumentsSensitive,
+		OutputDescription:  method.OutputDescription,
+		OutputExample:      method.OutputExample,
+		ResultSensitive:    method.ResultSensitive,
+		Arguments:          g.buildArgumentSchemas(method.Arguments),
+		ResultType:         g.buildTypeSchema(method.ResultType),
 	}
 }
 

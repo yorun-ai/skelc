@@ -53,6 +53,7 @@ jobs:
           set -euo pipefail
 
           version="${RELEASE_TAG#v}"
+          ldflags="-s -w -X go.yorun.ai/skelc/internal/cli.ldModuleVersion=$RELEASE_TAG"
           mkdir -p dist
 
           for target in \
@@ -67,17 +68,20 @@ jobs:
             stage="dist/$archive"
 
             mkdir -p "$stage"
-            install_root="$RUNNER_TEMP/skelc_${goos}_${goarch}"
             GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 \
-              GOPATH="$install_root" GOMODCACHE="$RUNNER_TEMP/go-mod" \
-              go install -trimpath -ldflags "-s -w" \
-                "go.yorun.ai/skelc/cmd/skelc@$RELEASE_TAG"
-            installed="$(find "$install_root/bin" -type f -name skelc -print -quit)"
-            test -n "$installed"
-            cp "$installed" "$stage/skelc"
+              GOMODCACHE="$RUNNER_TEMP/go-mod" \
+              go build -trimpath -ldflags "$ldflags" \
+                -o "$stage/skelc" ./cmd/skelc
+            go version -m "$stage/skelc" | awk '
+              $1 == "mod" && $2 == "go.yorun.ai/skelc" { found = 1 }
+              END { exit !found }
+            '
             cp LICENSE README.md "$stage/"
             tar -C dist -czf "dist/$archive.tar.gz" "$archive"
           done
+
+          dist/skelc_${version}_linux_amd64/skelc version --output-format json |
+            grep -F "\"version\":\"$RELEASE_TAG\""
 
       - name: Create checksums
         run: |

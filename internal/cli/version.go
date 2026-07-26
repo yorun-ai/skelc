@@ -20,7 +20,10 @@ const (
 	devVersion = "v0.0.0-dev"
 )
 
-var readBuildInfo = debug.ReadBuildInfo
+var (
+	readBuildInfo   = debug.ReadBuildInfo
+	ldModuleVersion string
+)
 
 func newVersionCommand() *ucli.Command {
 	return &ucli.Command{
@@ -93,7 +96,11 @@ func debugBuildInfo() (_DebugBuildInfo, error) {
 	if !ok {
 		return _DebugBuildInfo{}, fmt.Errorf("read Go build info failed")
 	}
-	version, err := moduleVersion(info.Main.Version)
+	rawVersion := info.Main.Version
+	if ldModuleVersion != "" {
+		rawVersion = ldModuleVersion
+	}
+	version, err := moduleVersion(rawVersion)
 	if err != nil {
 		return _DebugBuildInfo{}, err
 	}

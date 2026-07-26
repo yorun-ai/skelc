@@ -6,7 +6,7 @@ Thank you for contributing to skelc. This guide describes the development workfl
 
 - For substantial Skel syntax, generated API, CLI, or architecture changes, open an issue or discussion before investing in an implementation.
 - Read [AGENTS.md](AGENTS.md) for repository-wide coding, compatibility, documentation, and testing rules.
-- Read the [Skel language reference](https://github.com/yorun-ai/vine-doc/blob/main/content/skelc/language/syntax.md) and the [CLI reference](https://github.com/yorun-ai/vine-doc/blob/main/content/skelc/reference/cli.md) when changing behavior covered by either document.
+- Read the [Skel language reference](https://github.com/yorun-ai/skel-site/blob/main/docs/language/syntax.md) and the [CLI reference](https://github.com/yorun-ai/skel-site/blob/main/docs/reference/cli.md) when changing behavior covered by either document.
 - Keep each pull request focused on one coherent change. Separate unrelated refactoring, formatting, and behavior changes.
 
 ## Prerequisites
@@ -79,7 +79,7 @@ For Skel syntax changes:
 - update formatting behavior where applicable
 - verify source-aware diagnostics
 - update every affected generator
-- update the applicable language and CLI references in `vine-doc/content/skelc`
+- update the applicable language and CLI references in `skel-site/docs`
 
 For generated output changes, modify the templates and generator implementation under the relevant `internal/codegen/{golang,skeleton,typescript}` package, inspect representative generated output, and test its deterministic shape. Generated Go modules must declare a compatible Vine version.
 
@@ -89,13 +89,17 @@ The generator tracks owned files in `.skelc-manifest.json`. Use temporary direct
 
 Keep [README.md](README.md) and [README.zh-CN.md](README.zh-CN.md) synchronized. Ensure commands and Skel examples remain valid against the current implementation.
 
-The detailed references are maintained in
-[`yorun-ai/vine-doc`](https://github.com/yorun-ai/vine-doc) repository:
+The detailed references are maintained in the
+[`yorun-ai/skel-site`](https://github.com/yorun-ai/skel-site) repository.
+English source documents live at:
 
-- Skel language: `content/skelc/language/syntax.md`
-- CLI behavior: `content/skelc/reference/cli.md`
+- Skel language: `docs/language/syntax.md`
+- CLI behavior: `docs/reference/cli.md`
 
-After documentation changes, build both locales from `vine-doc`:
+Keep the corresponding Simplified Chinese translations under
+`i18n/zh-CN/docusaurus-plugin-content-docs/current` synchronized.
+
+After documentation changes, build both locales from `skel-site`:
 
 ```bash
 pnpm install

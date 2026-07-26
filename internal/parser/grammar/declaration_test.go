@@ -319,6 +319,37 @@ actor ClientActor {
 	}
 }
 
+func TestParseResourceCheckUsesInputBlock(t *testing.T) {
+	content := parseSkelForTest(t, `
+domain demo.user
+
+resource User {
+    @desc("Lookup")
+    check byId {
+        @desc("Lookup input")
+        input {
+            @sensitive
+            id: int
+        }
+    }
+    action read
+}
+`)
+	check := content.Entries[0].Resource.Checks[0]
+	if check.Name.Value != "byId" || check.Input == nil || len(check.Input.Arguments) != 1 {
+		t.Fatalf("unexpected resource check: %+v", check)
+	}
+	if len(check.Decorators) != 1 || len(check.Input.Decorators) != 1 || len(check.Input.Arguments[0].Decorators) != 1 {
+		t.Fatalf("resource check decorators were not preserved: %+v", check)
+	}
+
+	parser := buildSkelParserForTest(t)
+	_, err := parser.ParseString("legacy.skel", "domain demo.user\nresource User { check byId(id: int) action read }")
+	if err == nil {
+		t.Fatal("expected legacy resource check argument syntax to be rejected")
+	}
+}
+
 func serviceAudiencesForTest(service *Service) []*ServiceAudience {
 	audiences := make([]*ServiceAudience, 0)
 	for _, section := range service.Sections {

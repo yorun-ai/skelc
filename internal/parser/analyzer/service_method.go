@@ -16,6 +16,7 @@ func buildArgumentMembers(args []*model.Argument) []*model.DataMember {
 			Name:        arg.Name,
 			Description: arg.Description,
 			Example:     arg.Example,
+			Sensitive:   arg.Sensitive,
 			Type:        arg.Type,
 		}
 	})
@@ -123,7 +124,12 @@ func methodOutput(gm *grammar.Method) *grammar.MethodOutput {
 
 func parseArgument(reporter *diagnosticReporter, ga *grammar.Argument) (*model.Argument, bool) {
 	valid := checkCase(reporter, "Argument", caseTypeLowerCamel, ga.Name)
-	meta, metaValid := parseAnnotations(reporter, ga.Decorators)
+	meta, metaValid := parseDecoratorMeta(reporter, ga.Decorators, decoratorContext{
+		allowDesc:      true,
+		allowExample:   true,
+		allowSensitive: true,
+		requireDesc:    true,
+	})
 	valid = metaValid && valid
 	argType, typeValid := parseType(reporter, ga.Type)
 	valid = typeValid && valid
@@ -131,6 +137,7 @@ func parseArgument(reporter *diagnosticReporter, ga *grammar.Argument) (*model.A
 		Pos:         position(ga.Name.Pos),
 		Name:        ga.Name.Value,
 		Description: meta.Description,
+		Sensitive:   meta.Sensitive,
 		Type:        argType,
 	}
 	if meta.HasExample {

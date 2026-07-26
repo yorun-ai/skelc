@@ -172,6 +172,7 @@ func argumentsDataForTest(owner string, args []*model.Argument) *model.Data {
 			Name:        arg.Name,
 			Description: arg.Description,
 			Example:     arg.Example,
+			Sensitive:   arg.Sensitive,
 			Type:        arg.Type,
 		})
 	}

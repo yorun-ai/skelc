@@ -129,33 +129,55 @@ func parseResourceAction(reporter *diagnosticReporter, ga *grammar.ResourceActio
 
 func parseResourceCheck(reporter *diagnosticReporter, actionName string, gc *grammar.ResourceCheck) (*model.ResourceCheck, bool) {
 	valid := checkCase(reporter, "ResourceCheck", caseTypeLowerCamel, gc.Name)
-	args := make([]*model.Argument, 0, len(gc.Arguments)+1)
+	meta, metaValid := parseDecoratorMeta(reporter, gc.Decorators, decoratorContext{
+		allowDesc: true,
+	})
+	valid = metaValid && valid
+	args := []*model.Argument{newPermissionCodeArgument()}
+	inputDescription := ""
 	hasPermissionCodeArgument := false
-	for index, grammarArgument := range gc.Arguments {
-		arg, argumentValid := parseArgument(reporter, grammarArgument)
-		valid = argumentValid && valid
-		if isPermissionCodeType(arg.Type) {
-			valid = reporter.check(index == 0 && arg.Name == "code",
-				`%s resource check PermissionCode argument must be the first argument named "code"`, grammarArgument.Name.Pos) && valid
-			hasPermissionCodeArgument = true
-		} else {
-			valid = reporter.check(arg.Name != "code", `%s resource check argument name "code" is reserved`, grammarArgument.Name.Pos) && valid
+	if gc.Input != nil {
+		inputMeta, inputValid := parseDecoratorMeta(reporter, gc.Input.Decorators, decoratorContext{
+			allowDesc: true,
+		})
+		valid = inputValid && valid
+		inputDescription = inputMeta.Description
+
+		argPos := map[string]lexer.Position{}
+		for index, grammarArgument := range gc.Input.Arguments {
+			arg, argumentValid := parseArgument(reporter, grammarArgument)
+			valid = argumentValid && valid
+			if isPermissionCodeType(arg.Type) {
+				valid = reporter.check(index == 0 && arg.Name == "code",
+					`%s resource check PermissionCode argument must be the first argument named "code"`, grammarArgument.Name.Pos) && valid
+				hasPermissionCodeArgument = true
+			} else {
+				valid = reporter.check(arg.Name != "code", `%s resource check argument name "code" is reserved`, grammarArgument.Name.Pos) && valid
+			}
+			if duplicatedPosition, duplicated := argPos[arg.Name]; duplicated {
+				reporter.reportf("%s duplicated Argument %s found, also present at %s", arg.Pos, arg.Name, duplicatedPosition)
+				valid = false
+				continue
+			}
+			argPos[arg.Name] = grammarArgument.Name.Pos
+			args = append(args, arg)
 		}
-		args = append(args, arg)
 	}
-	if !hasPermissionCodeArgument {
-		args = append([]*model.Argument{newPermissionCodeArgument()}, args...)
+	if hasPermissionCodeArgument {
+		args = args[1:]
 	}
 	methodName := "check" + nameutil.ToCamel(actionName) + nameutil.ToCamel(gc.Name.Value)
 	if actionName == "" {
 		methodName = "check" + nameutil.ToCamel(gc.Name.Value)
 	}
 	method := &model.Method{
-		Pos:       position(gc.Name.Pos),
-		Name:      methodName,
-		SkelName:  methodName,
-		Auth:      model.AuthModeAuth,
-		Arguments: args,
+		Pos:              position(gc.Name.Pos),
+		Name:             methodName,
+		SkelName:         methodName,
+		Description:      meta.Description,
+		Auth:             model.AuthModeAuth,
+		Arguments:        args,
+		InputDescription: inputDescription,
 	}
 	if len(args) > 0 {
 		method.ArgumentsData = &model.Data{

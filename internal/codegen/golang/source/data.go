@@ -99,6 +99,7 @@ type DataMember struct {
 	CommentLines []string
 	Type         *Type
 	SkelName     string
+	Sensitive    bool
 }
 
 func castDataMember(p *model.DataMember) *DataMember {
@@ -108,6 +109,7 @@ func castDataMember(p *model.DataMember) *DataMember {
 		CommentLines: goDocLines(nameutil.ToCamel(p.Name), common.MergeDescriptionAndExample(p.Description, p.Example)),
 		Type:         memberType,
 		SkelName:     p.Name,
+		Sensitive:    p.Sensitive,
 	}
 }
 

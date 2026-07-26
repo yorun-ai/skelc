@@ -11,4 +11,12 @@
 {{ end }}{{ $indent }})
 {{ end }}{{ else }}{{ $indent }}@example({{ .Quoted }})
 {{ end }}{{ end }}{{ end }}
+{{ define "sensitive" }}{{ with . }}{{ spaces " " .Indent }}@sensitive
+{{ end }}{{ end }}
+{{ define "resourceCheck" }}{{ template "description" (description .Description .Indent) }}{{ spaces " " .Indent }}check {{ .Name }} {{ if or .Arguments .InputDescription }}{
+{{ template "description" (description .InputDescription .InputIndent) }}{{ spaces " " .InputIndent }}input {
+{{ range $arg := .Arguments }}{{ template "description" (description $arg.Description $.ArgumentIndent) }}{{ template "example" (example $arg.Example $.ArgumentIndent) }}{{ template "sensitive" (sensitive $arg.Sensitive $.ArgumentIndent) }}{{ spaces " " $.ArgumentIndent }}{{ $arg.Name }}: {{ template "type" (typeRef $arg.Type) }}
+{{ end }}{{ spaces " " .InputIndent }}}
+{{ spaces " " .Indent }}}{{ else }}{}{{ end }}
+{{ end }}
 {{ define "type" }}{{ if eq .Kind "list" }}list<{{ template "type" .Value }}>{{ else if eq .Kind "map" }}map<{{ template "type" .Key }}, {{ template "type" .Value }}>{{ else }}{{ with .Qualifier }}{{ . }}.{{ end }}{{ .Name }}{{ with .Arguments }}<{{ range $i, $argument := . }}{{ if $i }}, {{ end }}{{ template "type" $argument }}{{ end }}>{{ end }}{{ end }}{{ if .Nullable }}?{{ end }}{{ end }}

@@ -65,6 +65,7 @@ pub data User {
     User ID
     Multiline field description
     """)
+    @sensitive
     id: string
 }
 
@@ -110,6 +111,7 @@ pub service UserService {
             User ID
             Multiline parameter description
             """)
+            @sensitive
             id: string
         }
         @desc("The returned user entity")
@@ -139,6 +141,7 @@ email:"a@b.com",
     User ID
     Multiline field description
     """)
+    @sensitive
     id: string
 }`) {
 		t.Fatalf("expected member desc indentation, got:\n%s", typesContent)
@@ -180,6 +183,7 @@ email:"a@b.com",
             User ID
             Multiline parameter description
             """)
+            @sensitive
             id: string
         }
         @desc("The returned user entity")
@@ -209,17 +213,32 @@ func TestGenResourceHidesPermissionCodeArgument(t *testing.T) {
 
 @desc("user")
 pub resource User {
-    check byExists(userId: int)
+    @desc("lookup check")
+    check byExists {
+        @desc("lookup input")
+        input {
+            @desc("user id")
+            @example(1)
+            @sensitive
+            userId: int
+        }
+    }
 
     @desc("read user")
     action read
     @desc("update user")
     action update {
-        check bySelf(userId: int)
+        @desc("self check")
+        check bySelf {
+            input {
+                @sensitive
+                userId: int
+            }
+        }
     }
     @desc("manage user")
     action manage {
-        check byNotSelf(userId: int)
+        check enabled {}
     }
 }
 `, nil)
@@ -231,16 +250,19 @@ pub resource User {
 	if strings.Contains(typesContent, "PermissionCode") || strings.Contains(typesContent, "code:") {
 		t.Fatalf("resource check generated skel should hide internal code argument, got:\n%s", typesContent)
 	}
-	if !strings.Contains(typesContent, "    check byExists(userId: int)\n\n    @desc(\"read user\")") {
+	if !strings.Contains(typesContent, "    @desc(\"lookup check\")\n    check byExists {\n        @desc(\"lookup input\")\n        input {\n            @desc(\"user id\")\n            @example(1)\n            @sensitive\n            userId: int\n        }\n    }\n\n    @desc(\"read user\")") {
 		t.Fatalf("expected blank line between resource checks and actions, got:\n%s", typesContent)
 	}
-	if !strings.Contains(typesContent, "        check bySelf(userId: int)") {
-		t.Fatalf("expected action check arguments without code, got:\n%s", typesContent)
+	if !strings.Contains(typesContent, "        @desc(\"self check\")\n        check bySelf {\n            input {\n                @sensitive\n                userId: int\n            }\n        }") {
+		t.Fatalf("expected action check arguments without code and with decorators, got:\n%s", typesContent)
 	}
 	if !strings.Contains(typesContent, "    }\n\n    @desc(\"manage user\")") {
 		t.Fatalf("expected blank line between resource actions, got:\n%s", typesContent)
 	}
-	if strings.Contains(typesContent, "        check bySelf(userId: int)\n\n    }") {
+	if !strings.Contains(typesContent, "        check enabled {}") {
+		t.Fatalf("expected empty resource check to use an empty block, got:\n%s", typesContent)
+	}
+	if strings.Contains(typesContent, "        check bySelf {\n            input {\n                @sensitive\n                userId: int\n            }\n        }\n\n    }") {
 		t.Fatalf("did not expect blank line before resource action closing brace, got:\n%s", typesContent)
 	}
 }

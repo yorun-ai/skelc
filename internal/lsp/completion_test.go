@@ -38,6 +38,7 @@ func TestServerCompletesKeywordsTypesAndImportedSymbols(t *testing.T) {
 	require.NoError(t, err)
 	items = result.(protocol.CompletionItemSlice)
 	assert.True(t, hasCompletion(items, "service"))
+	assert.True(t, hasCompletion(items, "@sensitive"))
 	assert.True(t, hasCompletion(items, "string"))
 	assert.True(t, hasCompletion(items, "Order"))
 	assert.True(t, hasCompletion(items, "Status"))

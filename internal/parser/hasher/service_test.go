@@ -51,3 +51,20 @@ func TestFillHashesIncludesAllowVia(t *testing.T) {
 		t.Fatal("expected domain hash to change when for via changes")
 	}
 }
+
+func TestFillHashesIncludesSensitiveMetadata(t *testing.T) {
+	oldDomain := newHashTestDomain(t, "User service")
+	newDomain := newHashTestDomain(t, "User service")
+	newDomain.Data()[0].Members[0].Sensitive = true
+	newDomain.Services()[0].Methods[0].Arguments[0].Sensitive = true
+
+	FillHashes(oldDomain)
+	FillHashes(newDomain)
+
+	if oldDomain.Data()[0].Hash == newDomain.Data()[0].Hash {
+		t.Fatal("expected data hash to change when sensitive metadata changes")
+	}
+	if oldDomain.Services()[0].Methods[0].Hash == newDomain.Services()[0].Methods[0].Hash {
+		t.Fatal("expected method hash to change when sensitive metadata changes")
+	}
+}

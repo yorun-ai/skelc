@@ -115,8 +115,12 @@ func argumentSymbols(source string, arguments []*grammar.Argument) []_Symbol {
 }
 
 func resourceCheckSymbol(source string, check *grammar.ResourceCheck) _Symbol {
-	children := argumentSymbols(source, check.Arguments)
-	return newSymbol(source, check.Name, "check", "", protocol.SymbolKindFunction, children)
+	var arguments []*grammar.Argument
+	if check.Input != nil {
+		arguments = check.Input.Arguments
+	}
+	children := argumentSymbols(source, arguments)
+	return newSymbol(source, check.Name, "check", descriptionFromDecorators(check.Decorators), protocol.SymbolKindFunction, children)
 }
 
 func newSymbol(source string, name *grammar.Identifier, detail, description string, kind protocol.SymbolKind, children []_Symbol) _Symbol {

@@ -30,6 +30,7 @@ func TestParseService(t *testing.T) {
 							Decorators: []*grammar.Decorator{
 								{Name: ident("desc"), Value: decoratorValue(`"User ID"`)},
 								{Name: ident("example"), Value: decoratorValue(`"10001"`)},
+								{Name: ident("sensitive")},
 							},
 							Name: ident("userId"),
 							Type: plainType(grammar.Int),
@@ -83,9 +84,26 @@ func TestParseService(t *testing.T) {
 	if service.Methods[0].Arguments[0].Description != "User ID" || service.Methods[0].Arguments[0].Example != `"10001"` {
 		t.Fatalf("unexpected argument annotations: %+v", service.Methods[0].Arguments[0])
 	}
+	if !service.Methods[0].Arguments[0].Sensitive || !service.Methods[0].ArgumentsData.Members[0].Sensitive {
+		t.Fatal("expected sensitive metadata on argument and generated argument data")
+	}
 	if service.Methods[0].ArgumentsData == nil || service.Methods[0].ArgumentsData.Name != "UserServiceGetUserArguments" {
 		t.Fatalf("unexpected arguments data: %+v", service.Methods[0].ArgumentsData)
 	}
+}
+
+func TestParseServiceRejectsSensitiveOutput(t *testing.T) {
+	expectServiceDiagnostic(t, "unexpected decorator @sensitive", &grammar.Service{
+		Name:      ident("UserService"),
+		Audiences: []*grammar.ServiceAudience{serviceAllow("ClientActor")},
+		Methods: []*grammar.Method{{
+			Name: ident("getUser"),
+			Output: &grammar.MethodOutput{
+				Decorators: []*grammar.Decorator{{Name: ident("sensitive")}},
+				Type:       plainType(grammar.String),
+			},
+		}},
+	})
 }
 
 func TestParseServiceSupportsTripleQuotedDescription(t *testing.T) {

@@ -89,6 +89,8 @@ type Argument struct {
 	Description string
 	// Example is the argument's example value as source text.
 	Example string
+	// Sensitive reports whether generated Go values mark this argument for redaction.
+	Sensitive bool
 	// Type is the argument's resolved semantic type.
 	Type *Type
 }

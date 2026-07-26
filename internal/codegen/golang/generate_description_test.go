@@ -27,6 +27,7 @@ func TestGeneratorRendersDescriptionComments(t *testing.T) {
 				Name:        "avatarUrl",
 				Description: "Avatar URL",
 				Example:     `"https://xxx.com/a.png"`,
+				Sensitive:   true,
 				Type:        nullableTypeForTest(stringTypeForTest()),
 			},
 			{
@@ -64,6 +65,7 @@ func TestGeneratorRendersDescriptionComments(t *testing.T) {
 								Name:        "userId",
 								Description: "User ID",
 								Example:     `"10001"`,
+								Sensitive:   true,
 								Type:        stringTypeForTest(),
 							},
 						},
@@ -85,6 +87,7 @@ func TestGeneratorRendersDescriptionComments(t *testing.T) {
 								Name:        "startAt",
 								Description: "Start time",
 								Example:     `"2026-05-04T12:00:00"`,
+								Sensitive:   true,
 								Type:        localDateTimeTypeForTest(),
 							},
 						},
@@ -97,7 +100,7 @@ func TestGeneratorRendersDescriptionComments(t *testing.T) {
 				Name:        "UserCreatedEvent",
 				Description: "User created event",
 				Members: []*model.DataMember{
-					{Name: "userId", Description: "User ID", Type: stringTypeForTest()},
+					{Name: "userId", Description: "User ID", Sensitive: true, Type: stringTypeForTest()},
 				},
 			},
 		},
@@ -137,6 +140,9 @@ func TestGeneratorRendersDescriptionComments(t *testing.T) {
 	}
 	if !strings.Contains(string(goServiceContent), "//   @param userId - User ID (e.g. \"10001\")") {
 		t.Fatalf("expected go method argument comment, got:\n%s", string(goServiceContent))
+	}
+	if !strings.Contains(string(goServiceContent), `json:"userId" arg:"0" skel:"sensitive"`) {
+		t.Fatalf("expected sensitive service argument tag, got:\n%s", string(goServiceContent))
 	}
 	if !strings.Contains(string(goServiceContent), "//   @returns UserProfile - User information (e.g. { id:10001, avatarUrl:\"https://xxx.com/a.png\" })") {
 		t.Fatalf("expected go method return comment, got:\n%s", string(goServiceContent))
@@ -190,6 +196,9 @@ func TestGeneratorRendersDescriptionComments(t *testing.T) {
 	if !strings.Contains(string(goDataContent), `// AvatarUrl Avatar URL (e.g. "https://xxx.com/a.png")`) {
 		t.Fatalf("expected go data member merged comment, got:\n%s", string(goDataContent))
 	}
+	if !strings.Contains(string(goDataContent), `json:"avatarUrl" skel:"sensitive"`) {
+		t.Fatalf("expected sensitive data member tag, got:\n%s", string(goDataContent))
+	}
 
 	goActorContent, err := os.ReadFile(filepath.Join(goOutDir, "actor.go"))
 	if err != nil {
@@ -234,6 +243,9 @@ func TestGeneratorRendersDescriptionComments(t *testing.T) {
 	if !strings.Contains(string(goTaskContent), "//   @param startAt - Start time (e.g. \"2026-05-04T12:00:00\")") {
 		t.Fatalf("expected go task param comment, got:\n%s", string(goTaskContent))
 	}
+	if !strings.Contains(string(goTaskContent), `json:"startAt" skel:"sensitive"`) {
+		t.Fatalf("expected sensitive task argument tag, got:\n%s", string(goTaskContent))
+	}
 	if !strings.Contains(string(goTaskContent), "type RebuildUserIndexTaskLauncher interface {\n\t// LaunchAtTime Scheduled trigger.") {
 		t.Fatalf("expected go task launcher method comment, got:\n%s", string(goTaskContent))
 	}
@@ -253,6 +265,9 @@ func TestGeneratorRendersDescriptionComments(t *testing.T) {
 	goEventContent, err := os.ReadFile(filepath.Join(goOutDir, "event.go"))
 	if err != nil {
 		t.Fatalf("read go event file: %v", err)
+	}
+	if !strings.Contains(string(goEventContent), `json:"userId" skel:"sensitive"`) {
+		t.Fatalf("expected sensitive event member tag, got:\n%s", string(goEventContent))
 	}
 	if !strings.Contains(string(goEventContent), `EmitterMethodName:`) ||
 		!strings.Contains(string(goEventContent), `"EmitUserCreated",`) {

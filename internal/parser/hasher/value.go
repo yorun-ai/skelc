@@ -18,6 +18,7 @@ type _MemberHashValue struct {
 	Name        string          `json:"name"`
 	Description string          `json:"description,omitempty"`
 	Example     string          `json:"example,omitempty"`
+	Sensitive   bool            `json:"sensitive,omitempty"`
 	Type        *_TypeHashValue `json:"type,omitempty"`
 }
 

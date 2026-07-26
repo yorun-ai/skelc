@@ -41,6 +41,7 @@ func (s *_hashState) buildMemberHashValues(items []*model.DataMember) []*_Member
 			Name:        item.Name,
 			Description: item.Description,
 			Example:     item.Example,
+			Sensitive:   item.Sensitive,
 			Type:        s.buildTypeHashValue(item.Type),
 		})
 	}
@@ -54,6 +55,7 @@ func (s *_hashState) buildArgumentHashValues(items []*model.Argument) []*_Member
 			Name:        item.Name,
 			Description: item.Description,
 			Example:     item.Example,
+			Sensitive:   item.Sensitive,
 			Type:        s.buildTypeHashValue(item.Type),
 		})
 	}

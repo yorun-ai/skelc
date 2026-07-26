@@ -28,6 +28,7 @@ func TestParseData(t *testing.T) {
 				Decorators: []*grammar.Decorator{
 					{Name: ident("desc"), Value: decoratorValue(`"Next-page cursor"`)},
 					{Name: ident("example"), Value: decoratorValue(`"cursor-1"`)},
+					{Name: ident("sensitive")},
 				},
 				Name: ident("nextToken"),
 				Type: nullableType(plainType(grammar.String)),
@@ -59,9 +60,40 @@ func TestParseData(t *testing.T) {
 	if data.Members[1].Example != `"cursor-1"` {
 		t.Fatalf("unexpected second member example: %q", data.Members[1].Example)
 	}
+	if !data.Members[1].Sensitive {
+		t.Fatal("expected sensitive nextToken member")
+	}
 	if !data.Members[1].Type.Nullable {
 		t.Fatal("expected nullable nextToken member")
 	}
+}
+
+func TestParseDataRejectsInvalidSensitiveDecorator(t *testing.T) {
+	t.Run("argument", func(t *testing.T) {
+		expectDataDiagnostic(t, "decorator @sensitive does not accept an argument", &grammar.Data{
+			Name: ident("User"),
+			Members: []*grammar.DataMember{{
+				Decorators: []*grammar.Decorator{
+					{Name: ident("sensitive"), Value: decoratorValue(`true`)},
+				},
+				Name: ident("password"),
+				Type: plainType(grammar.String),
+			}},
+		})
+	})
+	t.Run("duplicated", func(t *testing.T) {
+		expectDataDiagnostic(t, "duplicated decorator @sensitive", &grammar.Data{
+			Name: ident("User"),
+			Members: []*grammar.DataMember{{
+				Decorators: []*grammar.Decorator{
+					{Name: ident("sensitive")},
+					{Name: ident("sensitive")},
+				},
+				Name: ident("password"),
+				Type: plainType(grammar.String),
+			}},
+		})
+	})
 }
 
 func TestParseDataReturnsErrorForDuplicatedMember(t *testing.T) {

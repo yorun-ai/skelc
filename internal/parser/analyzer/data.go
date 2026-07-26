@@ -124,9 +124,10 @@ func parseTypeParameter(reporter *diagnosticReporter, gtp *grammar.TypeParameter
 func parseDataMember(reporter *diagnosticReporter, gsm *grammar.DataMember) (*model.DataMember, bool) {
 	valid := checkCase(reporter, "DataMember", caseTypeLowerCamel, gsm.Name)
 	meta, metaValid := parseDecoratorMeta(reporter, gsm.Decorators, decoratorContext{
-		allowDesc:    true,
-		allowExample: true,
-		requireDesc:  true,
+		allowDesc:      true,
+		allowExample:   true,
+		allowSensitive: true,
+		requireDesc:    true,
 	})
 	valid = metaValid && valid
 	memberType, typeValid := parseType(reporter, gsm.Type)
@@ -136,6 +137,7 @@ func parseDataMember(reporter *diagnosticReporter, gsm *grammar.DataMember) (*mo
 		Name:        gsm.Name.Value,
 		Description: meta.Description,
 		Example:     meta.Example,
+		Sensitive:   meta.Sensitive,
 		Type:        memberType,
 	}, valid
 }

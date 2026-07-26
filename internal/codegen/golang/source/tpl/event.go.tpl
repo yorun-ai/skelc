@@ -40,7 +40,7 @@ type {{ $event.Name }} struct { {{ range $member := $event.Members }}
 	// {{ $line }}
 	{{- end }}
 	{{- end }}
-	{{ $member.Name }} {{ $member.Type.Plain }} `json:"{{ $member.SkelName }}"`{{ end }}
+	{{ $member.Name }} {{ $member.Type.Plain }} `json:"{{ $member.SkelName }}"{{ if $member.Sensitive }} skel:"sensitive"{{ end }}`{{ end }}
 }
 {{- end }}
 

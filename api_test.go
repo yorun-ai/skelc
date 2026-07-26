@@ -138,7 +138,11 @@ pub actor BaseActor {
 }
 
 pub resource ItemResource {
-    check byItem(item: Item)
+    check byItem {
+        input {
+            item: Item
+        }
+    }
     action read
 }
 

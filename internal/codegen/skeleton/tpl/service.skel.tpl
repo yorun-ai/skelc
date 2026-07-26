@@ -37,7 +37,7 @@ import {{ $import.Name }}{{ with importAlias $import }} as {{ . }}{{ end }}
 {{- if $method.Arguments }}
 {{ template "description" (description $method.InputDescription 8) }}        input {
 {{- range $argument := $method.Arguments }}
-{{ template "description" (description $argument.Description 12) }}{{ template "example" (example $argument.Example 12) }}            {{ $argument.Name }}: {{ template "type" (typeRef $argument.Type) }}
+{{ template "description" (description $argument.Description 12) }}{{ template "example" (example $argument.Example 12) }}{{ template "sensitive" (sensitive $argument.Sensitive 12) }}            {{ $argument.Name }}: {{ template "type" (typeRef $argument.Type) }}
 {{- end }}
         }
 {{- end }}

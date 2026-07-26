@@ -10,7 +10,7 @@ import {{ $import.Name }}{{ with importAlias $import }} as {{ . }}{{ end }}
 {{ template "description" (description $event.Description 0) }}pub event {{ $event.Name }} {
     payload {
 {{- range $member := $event.Members }}
-{{ template "description" (description $member.Description 8) }}{{ template "example" (example $member.Example 8) }}        {{ $member.Name }}: {{ template "type" (typeRef $member.Type) }}
+{{ template "description" (description $member.Description 8) }}{{ template "example" (example $member.Example 8) }}{{ template "sensitive" (sensitive $member.Sensitive 8) }}        {{ $member.Name }}: {{ template "type" (typeRef $member.Type) }}
 {{- end }}
     }
 }

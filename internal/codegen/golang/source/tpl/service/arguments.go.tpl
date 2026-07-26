@@ -3,7 +3,7 @@
 {{ range .Methods }}{{ if .ArgumentsData }}
 type {{ .ArgumentsData.Name }} struct {
 {{- range $index, $argument := .ArgumentsData.Members }}
-	{{ $argument.Name }} {{ $argument.Type.Plain }} `json:"{{ $argument.SkelName }}" arg:"{{ $index }}"`
+	{{ $argument.Name }} {{ $argument.Type.Plain }} `json:"{{ $argument.SkelName }}" arg:"{{ $index }}"{{ if $argument.Sensitive }} skel:"sensitive"{{ end }}`
 {{- end }}
 }
 {{ end }}{{- end -}}

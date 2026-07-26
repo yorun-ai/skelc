@@ -70,7 +70,7 @@ type {{ $trigger.ArgumentsData.Name }} struct {
 	// {{ $line }}
 	{{- end }}
 	{{- end }}
-		{{ .Name }} {{ .Type.Plain }} `json:"{{ .SkelName }}"`
+		{{ .Name }} {{ .Type.Plain }} `json:"{{ .SkelName }}"{{ if .Sensitive }} skel:"sensitive"{{ end }}`
 {{- end }}
 }
 {{ end }}

@@ -8,6 +8,7 @@ import (
 )
 
 var completionKeywords = []string{
+	"@desc", "@example", "@sensitive",
 	"actor", "action", "all", "any", "as", "auth", "check", "config", "credential", "data",
 	"domain", "enum", "event", "for", "import", "info", "input", "method", "noauth", "output",
 	"payload", "permission", "pub", "require", "resource", "service", "task", "trigger", "via", "web",

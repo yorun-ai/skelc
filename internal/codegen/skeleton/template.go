@@ -31,16 +31,17 @@ func (g *_Gen) renderSkel(templateName string, payload *_SkelPayload) (string, e
 
 func skelTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
-		"description":  descriptionView,
-		"example":      exampleView,
-		"importAlias":  importAlias,
-		"emptyMethod":  emptyMethod,
-		"authMarker":   authMarker,
-		"methodAuth":   methodAuthMarker,
-		"typeParams":   typeParameterNames,
-		"typeRef":      typeView,
-		"checkArgs":    renderResourceCheckArguments,
-		"configSuffix": configLifecycle,
-		"spaces":       strings.Repeat,
+		"description":   descriptionView,
+		"example":       exampleView,
+		"sensitive":     sensitiveView,
+		"importAlias":   importAlias,
+		"emptyMethod":   emptyMethod,
+		"authMarker":    authMarker,
+		"methodAuth":    methodAuthMarker,
+		"typeParams":    typeParameterNames,
+		"typeRef":       typeView,
+		"resourceCheck": resourceCheckView,
+		"configSuffix":  configLifecycle,
+		"spaces":        strings.Repeat,
 	}
 }

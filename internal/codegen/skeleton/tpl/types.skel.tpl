@@ -18,7 +18,7 @@ import {{ $import.Name }}{{ with importAlias $import }} as {{ . }}{{ end }}
 {{ end -}}
 {{ template "description" (description $data.Description 0) }}pub data {{ $data.Name }}{{ with typeParams $data.TypeParameters }}<{{ range $i, $name := . }}{{ if $i }}, {{ end }}{{ $name }}{{ end }}>{{ end }} {
 {{- range $member := $data.Members }}
-{{ template "description" (description $member.Description 4) }}{{ template "example" (example $member.Example 4) }}    {{ $member.Name }}: {{ template "type" (typeRef $member.Type) }}
+{{ template "description" (description $member.Description 4) }}{{ template "example" (example $member.Example 4) }}{{ template "sensitive" (sensitive $member.Sensitive 4) }}    {{ $member.Name }}: {{ template "type" (typeRef $member.Type) }}
 {{- end }}
 }
 {{ end -}}
@@ -27,7 +27,7 @@ import {{ $import.Name }}{{ with importAlias $import }} as {{ . }}{{ end }}
 {{ end -}}
 {{ template "description" (description $config.Description 0) }}pub config {{ $config.Name }}{{ with configSuffix $config }} {{ . }}{{ end }} {
 {{- range $member := $config.Members }}
-{{ template "description" (description $member.Description 4) }}{{ template "example" (example $member.Example 4) }}    {{ $member.Name }}: {{ template "type" (typeRef $member.Type) }}
+{{ template "description" (description $member.Description 4) }}{{ template "example" (example $member.Example 4) }}{{ template "sensitive" (sensitive $member.Sensitive 4) }}    {{ $member.Name }}: {{ template "type" (typeRef $member.Type) }}
 {{- end }}
 }
 {{ end -}}
@@ -35,14 +35,14 @@ import {{ $import.Name }}{{ with importAlias $import }} as {{ . }}{{ end }}
 {{ if or $.Enums $.Data $.Configs $i }}
 {{ end -}}
 {{ template "description" (description $resource.Description 0) }}{{ if $resource.Pub }}pub {{ end }}resource {{ $resource.Name }} {
-{{ range $check := $resource.Checks }}    check {{ $check.Name }}({{ range $i, $arg := checkArgs $check }}{{ if $i }}, {{ end }}{{ $arg.Name }}: {{ template "type" (typeRef $arg.Type) }}{{ end }})
+{{ range $check := $resource.Checks }}{{ template "resourceCheck" (resourceCheck $check 4) }}
 {{ end }}
 {{ if and $resource.Checks $resource.Actions }}
 {{ end -}}
 {{ range $i, $action := $resource.Actions }}{{ if $i }}
 {{ end }}
 {{ template "description" (description $action.Description 4) }}    action {{ $action.Name }}{{ if $action.Checks }} {
-{{ range $check := $action.Checks }}        check {{ $check.Name }}({{ range $i, $arg := checkArgs $check }}{{ if $i }}, {{ end }}{{ $arg.Name }}: {{ template "type" (typeRef $arg.Type) }}{{ end }})
+{{ range $check := $action.Checks }}{{ template "resourceCheck" (resourceCheck $check 8) }}
 {{- end }}
     }{{ end }}
 {{- end }}

@@ -39,6 +39,12 @@ func newHashTestDomain(t *testing.T, serviceDescription string) *model.Domain {
 					Methods: []*grammar.Method{
 						{
 							Name: ident("getUser"),
+							Input: &grammar.MethodInput{
+								Arguments: []*grammar.Argument{{
+									Name: ident("userId"),
+									Type: plainType(grammar.String),
+								}},
+							},
 							Output: &grammar.MethodOutput{
 								Type: refGrammarType("UserProfile"),
 							},

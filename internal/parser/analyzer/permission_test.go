@@ -15,11 +15,22 @@ func TestPermissionRequireSupportsNestedExpressions(t *testing.T) {
 domain demo
 
 resource User {
-    check byId(userId: int)
+    @desc("lookup check")
+    check byId {
+        @desc("lookup input")
+        input {
+            @sensitive
+            userId: int
+        }
+    }
 
     action read
     action update {
-        check self(userId: int)
+        check self {
+            input {
+                userId: int
+            }
+        }
     }
     action manage
 }
@@ -75,6 +86,15 @@ service UserService {
 	if checkMethod.Arguments[0].Name != "code" || checkMethod.Arguments[0].Type.Kind != model.TypeKindSkelPermissionCode {
 		t.Fatalf("unexpected resource check code argument: %+v", checkMethod.Arguments[0])
 	}
+	if !checkMethod.Arguments[1].Sensitive || !checkMethod.ArgumentsData.Members[1].Sensitive {
+		t.Fatalf("resource check argument should preserve @sensitive: %+v", checkMethod.Arguments[1])
+	}
+	if checkMethod.InputDescription != "lookup input" {
+		t.Fatalf("unexpected resource check input description: %q", checkMethod.InputDescription)
+	}
+	if checkMethod.Description != "lookup check" {
+		t.Fatalf("unexpected resource check description: %q", checkMethod.Description)
+	}
 
 	require := domain.Services()[0].Methods[0].Require
 	if require.Expr.Mode != model.PermissionRequireModeAny {
@@ -129,9 +149,17 @@ func TestResourceActionCheckCannotDuplicateResourceCheck(t *testing.T) {
 domain demo
 
 resource User {
-    check byId(id: int)
+    check byId {
+        input {
+            id: int
+        }
+    }
     action delete {
-        check byId(id: int)
+        check byId {
+            input {
+                id: int
+            }
+        }
     }
 }
 `))
@@ -154,7 +182,11 @@ data User {
 
 resource User {
     action update {
-        check byIds(ids: list<int>)
+        check byIds {
+            input {
+                ids: list<int>
+            }
+        }
     }
 }
 
@@ -192,7 +224,11 @@ data Order {
 
 resource Order {
     action update {
-        check byItemIds(ids: list<int>)
+        check byItemIds {
+            input {
+                ids: list<int>
+            }
+        }
     }
 }
 
@@ -218,7 +254,11 @@ data User {
 
 resource User {
     action update {
-        check byUsers(users: list<User>)
+        check byUsers {
+            input {
+                users: list<User>
+            }
+        }
     }
 }
 

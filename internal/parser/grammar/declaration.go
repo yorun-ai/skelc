@@ -190,30 +190,34 @@ type Resource struct {
 func (resource *Resource) Finalize() {
 	for _, section := range resource.Sections {
 		if section.Check != nil {
+			section.Check.Decorators = append(section.Decorators, section.Check.Decorators...)
 			resource.Checks = append(resource.Checks, section.Check)
 		}
 		if section.Action != nil {
+			section.Action.Decorators = append(section.Decorators, section.Action.Decorators...)
 			resource.Actions = append(resource.Actions, section.Action)
 		}
 	}
 }
 
 type ResourceSection struct {
-	Check  *ResourceCheck  `parser:"  (?= \"check\") @@"`
-	Action *ResourceAction `parser:"| @@"`
+	Decorators []*Decorator    `parser:"(@@ (Newline)*)* ("`
+	Check      *ResourceCheck  `parser:"  (?= \"check\") @@"`
+	Action     *ResourceAction `parser:"| @@)"`
 }
 
 type ResourceAction struct {
 	Pos        lexer.Position
-	Decorators []*Decorator     `parser:"(@@ (Newline)*)*"`
+	Decorators []*Decorator
 	Name       *Identifier      `parser:"\"action\" @@"`
 	Checks     []*ResourceCheck `parser:"(\"{\" (Newline)* (@@ (Newline)*)* \"}\")?"`
 }
 
 type ResourceCheck struct {
-	Pos       lexer.Position
-	Name      *Identifier `parser:"\"check\" @@"`
-	Arguments []*Argument `parser:"\"(\" (@@ (\",\")?)* \")\""`
+	Pos        lexer.Position
+	Decorators []*Decorator `parser:"(@@ (Newline)*)*"`
+	Name       *Identifier  `parser:"\"check\" @@"`
+	Input      *MethodInput `parser:"\"{\" (Newline)* (@@ (Newline)*)? \"}\""`
 }
 
 type Task struct {

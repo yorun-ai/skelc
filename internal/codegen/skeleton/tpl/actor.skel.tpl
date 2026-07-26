@@ -16,14 +16,14 @@ import {{ $import.Name }}{{ with importAlias $import }} as {{ . }}{{ end }}
 {{- with $actor.AuthCredential }}
         credential {
 {{- range $member := .Members }}
-{{ template "description" (description $member.Description 12) }}{{ template "example" (example $member.Example 12) }}            {{ $member.Name }}: {{ template "type" (typeRef $member.Type) }}
+{{ template "description" (description $member.Description 12) }}{{ template "example" (example $member.Example 12) }}{{ template "sensitive" (sensitive $member.Sensitive 12) }}            {{ $member.Name }}: {{ template "type" (typeRef $member.Type) }}
 {{- end }}
         }
 {{- end }}
 {{- with $actor.AuthInfo }}
         info {
 {{- range $member := .Members }}
-{{ template "description" (description $member.Description 12) }}{{ template "example" (example $member.Example 12) }}            {{ $member.Name }}: {{ template "type" (typeRef $member.Type) }}
+{{ template "description" (description $member.Description 12) }}{{ template "example" (example $member.Example 12) }}{{ template "sensitive" (sensitive $member.Sensitive 12) }}            {{ $member.Name }}: {{ template "type" (typeRef $member.Type) }}
 {{- end }}
         }
 {{- end }}

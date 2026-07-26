@@ -27,8 +27,12 @@ type {{ $s.Name }} struct {
 	// {{ $line }}
 	{{- end }}
 	{{- end }}
-	{{ $sm.Name }} {{ $sm.Type.Plain }} `json:"{{ $sm.SkelName }}"`
+	{{ $sm.Name }} {{ $sm.Type.Plain }} `json:"{{ $sm.SkelName }}"{{ if $sm.Sensitive }} skel:"sensitive"{{ end }}`
 {{- end }}
 }
+{{- if $s.Sensitive }}
+
+func ({{ $s.Name }}) {{ $s.MarkerMethodName }}() {}
+{{- end }}
 
 {{ end }}

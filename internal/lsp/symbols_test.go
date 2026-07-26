@@ -35,3 +35,34 @@ data User {
 	require.NotNil(t, workspaceSymbols[0].ContainerName)
 	assert.Equal(t, "User", *workspaceSymbols[0].ContainerName)
 }
+
+func TestServerReturnsResourceCheckInputSymbols(t *testing.T) {
+	server := newServer()
+	documentURI := uri.File("/workspace/resource.skel")
+	server.putDocument(documentURI, `domain demo
+resource User {
+    @desc("Find a user by ID")
+    check byId {
+        input {
+            @sensitive
+            id: int
+        }
+    }
+    action read
+}
+`, 1, true)
+
+	documentResult, err := server.DocumentSymbol(t.Context(), &protocol.DocumentSymbolParams{
+		TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
+	})
+	require.NoError(t, err)
+	documentSymbols := documentResult.(protocol.DocumentSymbolSlice)
+	require.Len(t, documentSymbols, 1)
+	require.Len(t, documentSymbols[0].Children, 2)
+	check := documentSymbols[0].Children[0]
+	assert.Equal(t, "byId", check.Name)
+	require.NotNil(t, check.Detail)
+	assert.Equal(t, "check", *check.Detail)
+	require.Len(t, check.Children, 1)
+	assert.Equal(t, "id", check.Children[0].Name)
+}

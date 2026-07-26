@@ -52,13 +52,15 @@ func TestGeneratorRendersPubGoView(t *testing.T) {
 		},
 	}
 	publicCredential := &model.Data{
-		Name: "PublicOnlyActorCredential",
+		Name:      "PublicOnlyActorCredential",
+		Sensitive: true,
 		Members: []*model.DataMember{
 			{Name: "subject", Type: stringTypeForTest()},
 		},
 	}
 	publicInfo := &model.Data{
-		Name: "PublicOnlyActorInfo",
+		Name:      "PublicOnlyActorInfo",
+		Sensitive: true,
 		Members: []*model.DataMember{
 			{Name: "userId", Type: stringTypeForTest()},
 		},
@@ -180,6 +182,10 @@ func TestGeneratorRendersPubGoView(t *testing.T) {
 	}
 	if !strings.Contains(string(actorContent), "type PublicOnlyActorCredential struct") || !strings.Contains(string(actorContent), "type PublicOnlyActorInfo struct") {
 		t.Fatalf("expected actor credential/info data in actor.go, got:\n%s", string(actorContent))
+	}
+	if !strings.Contains(string(actorContent), "func (PublicOnlyActorCredential) SkelSensitive() {}") ||
+		!strings.Contains(string(actorContent), "func (PublicOnlyActorInfo) SkelSensitive() {}") {
+		t.Fatalf("expected sensitive actor credential/info marker methods, got:\n%s", string(actorContent))
 	}
 	if strings.Contains(string(actorContent), "type PublicOnlyActorAuthServiceClient interface") {
 		t.Fatalf("did not expect actor auth service client, got:\n%s", string(actorContent))

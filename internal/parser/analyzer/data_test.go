@@ -11,6 +11,7 @@ func TestParseData(t *testing.T) {
 	data := parseDataTest(t, &grammar.Data{
 		Decorators: []*grammar.Decorator{
 			{Name: ident("desc"), Value: decoratorValue(`"Pagination information"`)},
+			{Name: ident("sensitive")},
 		},
 		Name: ident("Page"),
 		TypeParameters: []*grammar.TypeParameter{
@@ -28,6 +29,7 @@ func TestParseData(t *testing.T) {
 				Decorators: []*grammar.Decorator{
 					{Name: ident("desc"), Value: decoratorValue(`"Next-page cursor"`)},
 					{Name: ident("example"), Value: decoratorValue(`"cursor-1"`)},
+					{Name: ident("sensitive")},
 				},
 				Name: ident("nextToken"),
 				Type: nullableType(plainType(grammar.String)),
@@ -40,6 +42,9 @@ func TestParseData(t *testing.T) {
 	}
 	if data.Description != "Pagination information" {
 		t.Fatalf("unexpected data description: %q", data.Description)
+	}
+	if !data.Sensitive {
+		t.Fatal("expected data to be sensitive as a whole")
 	}
 	if !data.IsGeneric() {
 		t.Fatal("data should be generic")
@@ -59,9 +64,50 @@ func TestParseData(t *testing.T) {
 	if data.Members[1].Example != `"cursor-1"` {
 		t.Fatalf("unexpected second member example: %q", data.Members[1].Example)
 	}
+	if !data.Members[1].Sensitive {
+		t.Fatal("expected sensitive nextToken member")
+	}
 	if !data.Members[1].Type.Nullable {
 		t.Fatal("expected nullable nextToken member")
 	}
+}
+
+func TestParseDataRejectsReservedSensitiveMarkerMethod(t *testing.T) {
+	expectDataDiagnostic(t, "reserved for the generated sensitive marker method", &grammar.Data{
+		Name: ident("Credential"),
+		Members: []*grammar.DataMember{{
+			Name: ident("skelSensitive"),
+			Type: plainType(grammar.String),
+		}},
+	})
+}
+
+func TestParseDataRejectsInvalidSensitiveDecorator(t *testing.T) {
+	t.Run("argument", func(t *testing.T) {
+		expectDataDiagnostic(t, "decorator @sensitive does not accept an argument", &grammar.Data{
+			Name: ident("User"),
+			Members: []*grammar.DataMember{{
+				Decorators: []*grammar.Decorator{
+					{Name: ident("sensitive"), Value: decoratorValue(`true`)},
+				},
+				Name: ident("password"),
+				Type: plainType(grammar.String),
+			}},
+		})
+	})
+	t.Run("duplicated", func(t *testing.T) {
+		expectDataDiagnostic(t, "duplicated decorator @sensitive", &grammar.Data{
+			Name: ident("User"),
+			Members: []*grammar.DataMember{{
+				Decorators: []*grammar.Decorator{
+					{Name: ident("sensitive")},
+					{Name: ident("sensitive")},
+				},
+				Name: ident("password"),
+				Type: plainType(grammar.String),
+			}},
+		})
+	})
 }
 
 func TestParseDataReturnsErrorForDuplicatedMember(t *testing.T) {
@@ -184,6 +230,7 @@ func TestParseEvent(t *testing.T) {
 		Pub:  true,
 		Name: ident("UserCreatedEvent"),
 		Payload: &grammar.EventPayload{
+			Decorators: []*grammar.Decorator{{Name: ident("sensitive")}},
 			Members: []*grammar.DataMember{
 				{
 					Decorators: []*grammar.Decorator{
@@ -201,6 +248,17 @@ func TestParseEvent(t *testing.T) {
 	if !event.Pub {
 		t.Fatal("expected pub event")
 	}
+	if !event.Sensitive {
+		t.Fatal("expected event payload to be sensitive as a whole")
+	}
+}
+
+func TestParseEventRejectsSensitiveDeclaration(t *testing.T) {
+	expectEventDiagnostic(t, "unexpected decorator @sensitive", &grammar.Event{
+		Decorators: []*grammar.Decorator{{Name: ident("sensitive")}},
+		Name:       ident("UserCreatedEvent"),
+		Payload:    &grammar.EventPayload{},
+	})
 }
 
 func TestParseDataAllowsPub(t *testing.T) {
@@ -215,11 +273,15 @@ func TestParseDataAllowsPub(t *testing.T) {
 
 func TestParseConfigAllowsPub(t *testing.T) {
 	config := parseConfigTest(t, &grammar.Data{
-		Pub:       true,
-		Name:      ident("DatabaseConfig"),
-		Qualifier: ident("instant"),
+		Decorators: []*grammar.Decorator{{Name: ident("sensitive")}},
+		Pub:        true,
+		Name:       ident("DatabaseConfig"),
+		Qualifier:  ident("instant"),
 	})
 	if !config.Pub {
 		t.Fatal("expected pub config")
+	}
+	if !config.Sensitive {
+		t.Fatal("expected config to be sensitive as a whole")
 	}
 }

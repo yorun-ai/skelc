@@ -18,6 +18,7 @@ type _DataSchema struct {
 	SkelName       string
 	Description    string
 	Hash           string
+	Sensitive      bool
 	TypeParameters []string
 	Members        []*_MemberSchema
 }
@@ -28,6 +29,7 @@ type _ConfigSchema struct {
 	Description string
 	Hash        string
 	Pub         bool
+	Sensitive   bool
 	Lifecycle   string
 	Members     []*_MemberSchema
 }
@@ -38,5 +40,6 @@ type _EventSchema struct {
 	Description string
 	Hash        string
 	Pub         bool
+	Sensitive   bool
 	Members     []*_MemberSchema
 }

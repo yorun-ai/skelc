@@ -16,6 +16,7 @@ func buildArgumentMembers(args []*model.Argument) []*model.DataMember {
 			Name:        arg.Name,
 			Description: arg.Description,
 			Example:     arg.Example,
+			Sensitive:   arg.Sensitive,
 			Type:        arg.Type,
 		}
 	})
@@ -70,10 +71,12 @@ func parseMethod(reporter *diagnosticReporter, gm *grammar.Method) (*model.Metho
 
 	if input != nil {
 		inputMeta, inputValid := parseDecoratorMeta(reporter, input.Decorators, decoratorContext{
-			allowDesc: true,
+			allowDesc:      true,
+			allowSensitive: true,
 		})
 		valid = inputValid && valid
 		method.InputDescription = inputMeta.Description
+		method.ArgumentsSensitive = inputMeta.Sensitive
 		argPos := map[string]lexer.Position{}
 		for _, grammarArgument := range input.Arguments {
 			arg, argumentValid := parseArgument(reporter, grammarArgument)
@@ -89,9 +92,15 @@ func parseMethod(reporter *diagnosticReporter, gm *grammar.Method) (*model.Metho
 		}
 	}
 	if output != nil {
-		outputMeta, outputValid := parseAnnotations(reporter, output.Decorators)
+		outputMeta, outputValid := parseDecoratorMeta(reporter, output.Decorators, decoratorContext{
+			allowDesc:      true,
+			allowExample:   true,
+			allowSensitive: true,
+			requireDesc:    true,
+		})
 		valid = outputValid && valid
 		method.OutputDescription = outputMeta.Description
+		method.ResultSensitive = outputMeta.Sensitive
 		if outputMeta.HasExample {
 			method.OutputExample = outputMeta.Example
 		}
@@ -123,7 +132,12 @@ func methodOutput(gm *grammar.Method) *grammar.MethodOutput {
 
 func parseArgument(reporter *diagnosticReporter, ga *grammar.Argument) (*model.Argument, bool) {
 	valid := checkCase(reporter, "Argument", caseTypeLowerCamel, ga.Name)
-	meta, metaValid := parseAnnotations(reporter, ga.Decorators)
+	meta, metaValid := parseDecoratorMeta(reporter, ga.Decorators, decoratorContext{
+		allowDesc:      true,
+		allowExample:   true,
+		allowSensitive: true,
+		requireDesc:    true,
+	})
 	valid = metaValid && valid
 	argType, typeValid := parseType(reporter, ga.Type)
 	valid = typeValid && valid
@@ -131,6 +145,7 @@ func parseArgument(reporter *diagnosticReporter, ga *grammar.Argument) (*model.A
 		Pos:         position(ga.Name.Pos),
 		Name:        ga.Name.Value,
 		Description: meta.Description,
+		Sensitive:   meta.Sensitive,
 		Type:        argType,
 	}
 	if meta.HasExample {

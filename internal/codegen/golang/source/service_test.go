@@ -31,8 +31,10 @@ func TestCastService(t *testing.T) {
 		Description: "User service",
 		Methods: []*model.Method{
 			{
-				Name:        "getUser",
-				Description: "Get a user by ID",
+				Name:               "getUser",
+				Description:        "Get a user by ID",
+				ArgumentsSensitive: true,
+				ResultSensitive:    true,
 				Arguments: []*model.Argument{
 					{
 						Name:        "userId",
@@ -84,6 +86,9 @@ func TestCastService(t *testing.T) {
 	}
 	if service.Methods[0].ArgumentsData == nil || service.Methods[0].ArgumentsData.Name != "_UserServiceGetUserArguments" {
 		t.Fatalf("unexpected arguments data: %+v", service.Methods[0].ArgumentsData)
+	}
+	if !service.Methods[0].ArgumentsSensitive || !service.Methods[0].ResultSensitive {
+		t.Fatal("expected whole input and output sensitive flags")
 	}
 	if service.Methods[0].Arguments[0].MemberName != "UserId" {
 		t.Fatalf("unexpected argument member name: %s", service.Methods[0].Arguments[0].MemberName)

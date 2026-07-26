@@ -16,6 +16,17 @@ type _TypeView struct {
 	Nullable  bool
 }
 
+type _ResourceCheckView struct {
+	Name             string
+	Description      string
+	InputDescription string
+	InputSensitive   bool
+	Arguments        []*model.Argument
+	Indent           int
+	InputIndent      int
+	ArgumentIndent   int
+}
+
 func typeView(type_ *model.Type) *_TypeView {
 	if type_ == nil {
 		return nil
@@ -61,6 +72,19 @@ func renderResourceCheckArguments(check *model.ResourceCheck) []*model.Argument 
 		arguments = append(arguments, argument)
 	}
 	return arguments
+}
+
+func resourceCheckView(check *model.ResourceCheck, indent int) *_ResourceCheckView {
+	return &_ResourceCheckView{
+		Name:             check.Name,
+		Description:      check.Method.Description,
+		InputDescription: check.Method.InputDescription,
+		InputSensitive:   check.Method.ArgumentsSensitive,
+		Arguments:        renderResourceCheckArguments(check),
+		Indent:           indent,
+		InputIndent:      indent + 4,
+		ArgumentIndent:   indent + 8,
+	}
 }
 
 func defaultImportAlias(domainName string) string {

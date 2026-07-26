@@ -39,6 +39,13 @@ func exampleView(example string, indent int) *_DecoratorView {
 	return &_DecoratorView{Indent: indent, Quoted: example}
 }
 
+func sensitiveView(sensitive bool, indent int) *_DecoratorView {
+	if !sensitive {
+		return nil
+	}
+	return &_DecoratorView{Indent: indent}
+}
+
 func emptyMethod(method *model.Method, service *model.Service) bool {
 	return methodAuthMarker(method) == "" && len(method.Arguments) == 0 && method.ResultType == nil
 }

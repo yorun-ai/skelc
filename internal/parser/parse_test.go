@@ -362,7 +362,11 @@ actor DemoActor {
 			name: "resource check",
 			declaration: `
 resource DemoResource {
-    check byValue(value: TItem)
+    check byValue {
+        input {
+            value: TItem
+        }
+    }
     action read
 }
 `,

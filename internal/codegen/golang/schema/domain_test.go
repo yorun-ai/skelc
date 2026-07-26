@@ -78,6 +78,69 @@ func TestBuildDomainSchemaCopiesHashes(t *testing.T) {
 	}
 }
 
+func TestBuildDomainSchemaIncludesSensitiveMetadata(t *testing.T) {
+	sensitiveData := &model.Data{
+		Name:      "Credential",
+		Sensitive: true,
+		Members: []*model.DataMember{{
+			Name:      "token",
+			Sensitive: true,
+			Type:      stringTypeForTest(),
+		}},
+	}
+	pkg := buildModelDomainForTest(t, model.DomainSpec{
+		Name: "demo.user",
+		Data: []*model.Data{sensitiveData},
+		Services: []*model.Service{{
+			Name: "CredentialService",
+			Methods: []*model.Method{{
+				Name:               "exchange",
+				ArgumentsSensitive: true,
+				ResultSensitive:    true,
+				Arguments: []*model.Argument{{
+					Name:      "token",
+					Sensitive: true,
+					Type:      stringTypeForTest(),
+				}},
+				ResultType: dataTypeForTest(sensitiveData),
+			}},
+		}},
+		Tasks: []*model.Task{{
+			Name: "RotateCredentialTask",
+			Triggers: []*model.TaskTrigger{{
+				Name:               "manually",
+				ArgumentsSensitive: true,
+				Arguments: []*model.Argument{{
+					Name:      "token",
+					Sensitive: true,
+					Type:      stringTypeForTest(),
+				}},
+			}},
+		}},
+	})
+
+	gen := newGen(Option{
+		Domain:      pkg,
+		View:        mustView(t, view.ModeFull, pkg),
+		Mode:        view.ModeFull,
+		PackageName: "skeled",
+		Out:         filepath.Join(t.TempDir(), "skeled"),
+	})
+	schema := gen.buildDomainSchema()
+
+	if !schema.Data[0].Sensitive || !schema.Data[0].Members[0].Sensitive {
+		t.Fatalf("unexpected sensitive data schema: %+v", schema.Data[0])
+	}
+	method := schema.Services[0].Methods[0]
+	if !method.ArgumentsSensitive || !method.ResultSensitive || !method.Arguments[0].Sensitive {
+		t.Fatalf("unexpected sensitive method schema: %+v", method)
+	}
+	trigger := schema.Tasks[0].Triggers[0]
+	if !trigger.ArgumentsSensitive || !trigger.Arguments[0].Sensitive {
+		t.Fatalf("unexpected sensitive trigger schema: %+v", trigger)
+	}
+}
+
 func TestBuildDomainSchemaSplitFullFlagAndContent(t *testing.T) {
 	pubData := &model.Data{
 		Pub:  true,

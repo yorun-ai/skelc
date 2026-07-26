@@ -11,6 +11,7 @@ func TestCastData(t *testing.T) {
 	data := castData(&model.Data{
 		Name:        "Page",
 		Description: "Paginated result",
+		Sensitive:   true,
 		TypeParameters: []*model.TypeParameter{
 			{Name: "TItem"},
 		},
@@ -39,6 +40,9 @@ func TestCastData(t *testing.T) {
 	if data.FullName != "Page[TItem any]" {
 		t.Fatalf("unexpected full name: %s", data.FullName)
 	}
+	if !data.Sensitive {
+		t.Fatal("expected sensitive data marker")
+	}
 	if len(data.CommentLines) == 0 || data.CommentLines[0] != "Page Paginated result" {
 		t.Fatalf("unexpected data comment lines: %+v", data.CommentLines)
 	}
@@ -56,6 +60,7 @@ func TestCastData(t *testing.T) {
 func TestBuildDataImports(t *testing.T) {
 	imports := buildDataImports([]*Data{
 		{
+			Sensitive: true,
 			Members: []*DataMember{
 				{Type: &Type{Imports: []*Import{{Path: skelImport}}}},
 				{Type: &Type{Imports: []*Import{{Path: skelImport}}}},
@@ -65,6 +70,12 @@ func TestBuildDataImports(t *testing.T) {
 
 	if got, want := importPaths(imports), []string{skelImport}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected import paths: got=%v want=%v", got, want)
+	}
+}
+
+func TestSensitiveMarkerMethodNeedsNoImport(t *testing.T) {
+	if imports := buildDataImports([]*Data{{Sensitive: true}}); len(imports) != 0 {
+		t.Fatalf("unexpected imports for sensitive marker method: %v", importPaths(imports))
 	}
 }
 

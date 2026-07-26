@@ -18,6 +18,7 @@ type _MemberHashValue struct {
 	Name        string          `json:"name"`
 	Description string          `json:"description,omitempty"`
 	Example     string          `json:"example,omitempty"`
+	Sensitive   bool            `json:"sensitive,omitempty"`
 	Type        *_TypeHashValue `json:"type,omitempty"`
 }
 
@@ -47,6 +48,7 @@ type _DataHashValue struct {
 	Description    string              `json:"description,omitempty"`
 	Kind           model.DataKind      `json:"kind,omitempty"`
 	Pub            bool                `json:"pub,omitempty"`
+	Sensitive      bool                `json:"sensitive,omitempty"`
 	Lifecycle      string              `json:"lifecycle,omitempty"`
 	TypeParameters []string            `json:"typeParameters,omitempty"`
 	Members        []*_MemberHashValue `json:"members,omitempty"`
@@ -137,17 +139,19 @@ type _RequireCheckArgument struct {
 }
 
 type _MethodHashValue struct {
-	Name              string              `json:"name"`
-	SkelName          string              `json:"skelName"`
-	Description       string              `json:"description,omitempty"`
-	Example           string              `json:"example,omitempty"`
-	Auth              string              `json:"auth,omitempty"`
-	Require           *_RequireHashValue  `json:"require,omitempty"`
-	InputDescription  string              `json:"inputDescription,omitempty"`
-	OutputDescription string              `json:"outputDescription,omitempty"`
-	OutputExample     string              `json:"outputExample,omitempty"`
-	Arguments         []*_MemberHashValue `json:"arguments,omitempty"`
-	ResultType        *_TypeHashValue     `json:"resultType,omitempty"`
+	Name               string              `json:"name"`
+	SkelName           string              `json:"skelName"`
+	Description        string              `json:"description,omitempty"`
+	Example            string              `json:"example,omitempty"`
+	Auth               string              `json:"auth,omitempty"`
+	Require            *_RequireHashValue  `json:"require,omitempty"`
+	InputDescription   string              `json:"inputDescription,omitempty"`
+	ArgumentsSensitive bool                `json:"argumentsSensitive,omitempty"`
+	OutputDescription  string              `json:"outputDescription,omitempty"`
+	OutputExample      string              `json:"outputExample,omitempty"`
+	ResultSensitive    bool                `json:"resultSensitive,omitempty"`
+	Arguments          []*_MemberHashValue `json:"arguments,omitempty"`
+	ResultType         *_TypeHashValue     `json:"resultType,omitempty"`
 }
 
 type _TaskHashValue struct {
@@ -158,12 +162,12 @@ type _TaskHashValue struct {
 }
 
 type _TriggerHashValue struct {
-	Name             string              `json:"name"`
-	SkelName         string              `json:"skelName"`
-	Description      string              `json:"description,omitempty"`
-	Example          string              `json:"example,omitempty"`
-	InputDescription string              `json:"inputDescription,omitempty"`
-	Arguments        []*_MemberHashValue `json:"arguments,omitempty"`
+	Name               string              `json:"name"`
+	SkelName           string              `json:"skelName"`
+	Description        string              `json:"description,omitempty"`
+	InputDescription   string              `json:"inputDescription,omitempty"`
+	ArgumentsSensitive bool                `json:"argumentsSensitive,omitempty"`
+	Arguments          []*_MemberHashValue `json:"arguments,omitempty"`
 }
 
 type _DomainHashValue struct {

@@ -31,6 +31,7 @@ pub config DatabaseConfig eternal {
 
 @desc("User created event")
 	pub event UserCreatedEvent {
+    @sensitive
     payload {
         @desc("User ID")
         userId: int
@@ -41,9 +42,11 @@ pub actor PortalAdminActor {
     via client {}
     via openapi {}
     auth {
+        @sensitive
         credential {
             subject: string
         }
+        @sensitive
         info {
             @desc("User ID")
             userId: int
@@ -157,6 +160,9 @@ web UserPortalWeb {
 	if eventEntry.Event.Payload == nil || len(eventEntry.Event.Payload.Members) != 1 || eventEntry.Event.Payload.Members[0].Name.Value != "userId" {
 		t.Fatalf("unexpected event payload: %+v", eventEntry.Event.Payload)
 	}
+	if len(eventEntry.Event.Payload.Decorators) != 1 || eventEntry.Event.Payload.Decorators[0].Name.Value != "sensitive" {
+		t.Fatalf("unexpected event payload decorators: %+v", eventEntry.Event.Payload.Decorators)
+	}
 
 	actorEntry := content.Entries[4]
 	if actorEntry.Actor == nil || actorEntry.Actor.Name.Value != "PortalAdminActor" {
@@ -174,6 +180,12 @@ web UserPortalWeb {
 	auth := actorEntry.Actor.Sections[0].Auth
 	if auth == nil {
 		t.Fatalf("unexpected actor auth: %+v", actorEntry.Actor.Sections[0])
+	}
+	if len(auth.Credential.Decorators) != 1 || auth.Credential.Decorators[0].Name.Value != "sensitive" {
+		t.Fatalf("unexpected actor credential decorators: %+v", auth.Credential.Decorators)
+	}
+	if len(auth.Info.Decorators) != 1 || auth.Info.Decorators[0].Name.Value != "sensitive" {
+		t.Fatalf("unexpected actor info decorators: %+v", auth.Info.Decorators)
 	}
 	if auth.Credential == nil || len(auth.Credential.Members) != 1 || auth.Credential.Members[0].Name.Value != "subject" {
 		t.Fatalf("unexpected actor credential: %+v", actorEntry.Actor.Sections[0])
@@ -316,6 +328,37 @@ actor ClientActor {
 `))
 	if err == nil {
 		t.Fatal("expected parse error when actor permission block is not empty")
+	}
+}
+
+func TestParseResourceCheckUsesInputBlock(t *testing.T) {
+	content := parseSkelForTest(t, `
+domain demo.user
+
+resource User {
+    @desc("Lookup")
+    check byId {
+        @desc("Lookup input")
+        input {
+            @sensitive
+            id: int
+        }
+    }
+    action read
+}
+`)
+	check := content.Entries[0].Resource.Checks[0]
+	if check.Name.Value != "byId" || check.Input == nil || len(check.Input.Arguments) != 1 {
+		t.Fatalf("unexpected resource check: %+v", check)
+	}
+	if len(check.Decorators) != 1 || len(check.Input.Decorators) != 1 || len(check.Input.Arguments[0].Decorators) != 1 {
+		t.Fatalf("resource check decorators were not preserved: %+v", check)
+	}
+
+	parser := buildSkelParserForTest(t)
+	_, err := parser.ParseString("legacy.skel", "domain demo.user\nresource User { check byId(id: int) action read }")
+	if err == nil {
+		t.Fatal("expected legacy resource check argument syntax to be rejected")
 	}
 }
 

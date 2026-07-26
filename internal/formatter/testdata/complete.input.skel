@@ -40,11 +40,20 @@ permission { }
 }
 
 pub resource User{
-check byId(id:uuid,tenantId:string)
+check byId{
+input{
+id:uuid
+tenantId:string
+}
+}
 action read
 @desc("Update")
 action update{
-check owner(id:uuid)
+check owner{
+input{
+id:uuid
+}
+}
 }
 }
 

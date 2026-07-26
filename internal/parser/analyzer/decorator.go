@@ -9,14 +9,16 @@ type decoratorMeta struct {
 	Description string
 	Example     string
 	HasExample  bool
+	Sensitive   bool
 	examplePos  lexer.Position
 }
 
 type decoratorContext struct {
-	allowDesc    bool
-	allowExample bool
-	ignoreOthers bool
-	requireDesc  bool
+	allowDesc      bool
+	allowExample   bool
+	allowSensitive bool
+	ignoreOthers   bool
+	requireDesc    bool
 }
 
 func parseDecoratorMeta(reporter *diagnosticReporter, decorators []*grammar.Decorator, ctx decoratorContext) (decoratorMeta, bool) {
@@ -51,9 +53,18 @@ func parseDecoratorMeta(reporter *diagnosticReporter, decorators []*grammar.Deco
 			meta.Example = decorator.Value.Raw
 			meta.HasExample = true
 			meta.examplePos = decorator.Name.Pos
+		case "sensitive":
+			accepted := reporter.check(ctx.allowSensitive, "%s unexpected decorator %s", decorator.Name.Pos, "@"+decorator.Name.Value)
+			accepted = reporter.checkNot(meta.Sensitive, "%s duplicated decorator @sensitive", decorator.Name.Pos) && accepted
+			accepted = reporter.check(decorator.Value == nil,
+				"%s decorator @sensitive does not accept an argument", decorator.Name.Pos) && accepted
+			valid = accepted && valid
+			if accepted {
+				meta.Sensitive = true
+			}
 		default:
 			valid = reporter.check(ctx.ignoreOthers,
-				"%s unexpected decorator %s, only @desc/@example supported here", decorator.Name.Pos, "@"+decorator.Name.Value) && valid
+				"%s unexpected decorator %s", decorator.Name.Pos, "@"+decorator.Name.Value) && valid
 		}
 	}
 	valid = reporter.checkNot(ctx.requireDesc && meta.HasExample && meta.Description == "",

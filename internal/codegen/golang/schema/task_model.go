@@ -9,11 +9,11 @@ type _TaskSchema struct {
 }
 
 type _TriggerSchema struct {
-	Name             string
-	SkelName         string
-	Description      string
-	Hash             string
-	Example          string
-	InputDescription string
-	Arguments        []*_MemberSchema
+	Name               string
+	SkelName           string
+	Description        string
+	Hash               string
+	InputDescription   string
+	ArgumentsSensitive bool
+	Arguments          []*_MemberSchema
 }

@@ -9,12 +9,12 @@ import (
 
 func (s *_hashState) triggerHash(trigger *model.TaskTrigger) string {
 	return hashValue(_TriggerHashValue{
-		Name:             trigger.Name,
-		SkelName:         trigger.SkelName,
-		Description:      trigger.Description,
-		Example:          trigger.Example,
-		InputDescription: trigger.InputDescription,
-		Arguments:        s.buildArgumentHashValues(trigger.Arguments),
+		Name:               trigger.Name,
+		SkelName:           trigger.SkelName,
+		Description:        trigger.Description,
+		InputDescription:   trigger.InputDescription,
+		ArgumentsSensitive: trigger.ArgumentsSensitive,
+		Arguments:          s.buildArgumentHashValues(trigger.Arguments),
 	})
 }
 

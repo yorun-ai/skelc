@@ -5,6 +5,7 @@ import (
 
 	"github.com/alecthomas/participle/v2/lexer"
 	"go.yorun.ai/skelc/internal/parser/grammar"
+	"go.yorun.ai/skelc/internal/skelmeta"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -21,7 +22,7 @@ func parseEvent(reporter *diagnosticReporter, ge *grammar.Event) (*model.Data, b
 	if ge.Payload != nil {
 		members = ge.Payload.Members
 	}
-	return parseDataLike(reporter, &grammar.Data{
+	event, valid := parseDataLike(reporter, &grammar.Data{
 		Pos:            ge.Pos,
 		Decorators:     ge.Decorators,
 		Pub:            ge.Pub,
@@ -30,6 +31,14 @@ func parseEvent(reporter *diagnosticReporter, ge *grammar.Event) (*model.Data, b
 		Members:        members,
 		TypeParameters: ge.TypeParameters,
 	}, model.DataKindEvent)
+	if ge.Payload == nil {
+		return event, valid
+	}
+	payloadMeta, payloadValid := parseDecoratorMeta(reporter, ge.Payload.Decorators, decoratorContext{
+		allowSensitive: true,
+	})
+	event.Sensitive = payloadMeta.Sensitive
+	return event, payloadValid && valid
 }
 
 func parseDataLike(reporter *diagnosticReporter, gs *grammar.Data, kind model.DataKind) (*model.Data, bool) {
@@ -76,10 +85,12 @@ func parseDataLike(reporter *diagnosticReporter, gs *grammar.Data, kind model.Da
 		parsedData.Lifecycle = model.ConfigLifecycle(gs.Qualifier.Value)
 	}
 	meta, metaValid := parseDecoratorMeta(reporter, gs.Decorators, decoratorContext{
-		allowDesc: true,
+		allowDesc:      true,
+		allowSensitive: kind != model.DataKindEvent,
 	})
 	valid = metaValid && valid
 	parsedData.Description = meta.Description
+	parsedData.Sensitive = meta.Sensitive
 	typeParamPos := map[string]lexer.Position{}
 	memberPos := map[string]lexer.Position{}
 
@@ -99,6 +110,9 @@ func parseDataLike(reporter *diagnosticReporter, gs *grammar.Data, kind model.Da
 	for _, grammarMember := range gs.Members {
 		member, memberValid := parseDataMember(reporter, grammarMember)
 		valid = memberValid && valid
+		valid = reporter.check(member.Name != skelmeta.SensitiveMarkerFieldName(),
+			"%s DataMember %s is reserved for the generated sensitive marker method",
+			member.Pos, skelmeta.SensitiveMarkerFieldName()) && valid
 		duplicatedPosition, duplicated := memberPos[member.Name]
 		if duplicated {
 			reporter.reportf("%s duplicated DataMember %s found, also present at %s", member.Pos, member.Name, duplicatedPosition)
@@ -124,9 +138,10 @@ func parseTypeParameter(reporter *diagnosticReporter, gtp *grammar.TypeParameter
 func parseDataMember(reporter *diagnosticReporter, gsm *grammar.DataMember) (*model.DataMember, bool) {
 	valid := checkCase(reporter, "DataMember", caseTypeLowerCamel, gsm.Name)
 	meta, metaValid := parseDecoratorMeta(reporter, gsm.Decorators, decoratorContext{
-		allowDesc:    true,
-		allowExample: true,
-		requireDesc:  true,
+		allowDesc:      true,
+		allowExample:   true,
+		allowSensitive: true,
+		requireDesc:    true,
 	})
 	valid = metaValid && valid
 	memberType, typeValid := parseType(reporter, gsm.Type)
@@ -136,6 +151,7 @@ func parseDataMember(reporter *diagnosticReporter, gsm *grammar.DataMember) (*mo
 		Name:        gsm.Name.Value,
 		Description: meta.Description,
 		Example:     meta.Example,
+		Sensitive:   meta.Sensitive,
 		Type:        memberType,
 	}, valid
 }

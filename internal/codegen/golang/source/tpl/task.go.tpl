@@ -48,6 +48,7 @@ var (
 		LauncherMethodName: "{{ .LaunchName }}",
 		RunnerMethodName: "{{ .RunName }}",
 		ArgumentsType: {{ if .ArgumentsData }}reflect.TypeFor[{{ .ArgumentsData.Name }}](){{ else }}nil{{ end }},
+		ArgumentsSensitive: {{ .ArgumentsSensitive }},
 	}{{ end }}
 )
 {{- if $task.HasTriggerArgs }}
@@ -70,7 +71,7 @@ type {{ $trigger.ArgumentsData.Name }} struct {
 	// {{ $line }}
 	{{- end }}
 	{{- end }}
-		{{ .Name }} {{ .Type.Plain }} `json:"{{ .SkelName }}"`
+		{{ .Name }} {{ .Type.Plain }} `json:"{{ .SkelName }}"{{ if .Sensitive }} skel:"sensitive"{{ end }}`
 {{- end }}
 }
 {{ end }}

@@ -65,8 +65,9 @@ func TestResourceGoRegistersCheckServices(t *testing.T) {
 			ArgumentsData: &model.Data{
 				Name: "UserCheckServiceCheckByIdArguments",
 				Members: []*model.DataMember{{
-					Name: "id",
-					Type: intTypeForTest(),
+					Name:      "id",
+					Sensitive: true,
+					Type:      intTypeForTest(),
 				}},
 			},
 		}},
@@ -95,6 +96,9 @@ func TestResourceGoRegistersCheckServices(t *testing.T) {
 	}
 	if !strings.Contains(string(content), "rpc.Register(_UserCheckServiceSpec)") {
 		t.Fatalf("expected resource.go to register check service, got:\n%s", string(content))
+	}
+	if !strings.Contains(string(content), `json:"id" arg:"0" skel:"sensitive"`) {
+		t.Fatalf("expected resource check argument to preserve sensitive tag, got:\n%s", string(content))
 	}
 }
 

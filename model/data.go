@@ -42,6 +42,8 @@ type Data struct {
 	Lifecycle ConfigLifecycle
 	// Pub reports whether the declaration belongs to the public contract.
 	Pub bool
+	// Sensitive reports whether values of this data type are sensitive as a whole.
+	Sensitive bool
 	// TypeParameters lists generic type parameters in declaration order.
 	TypeParameters []*TypeParameter
 	// Members lists the declaration's fields in source order.
@@ -62,6 +64,8 @@ type DataMember struct {
 	Description string
 	// Example is the member's example value as source text.
 	Example string
+	// Sensitive reports whether generated Go values mark this member for redaction.
+	Sensitive bool
 	// Type is the member's resolved semantic type.
 	Type *Type
 }

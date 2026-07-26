@@ -18,16 +18,7 @@
 					{{- if $check.Arguments }}
 					Arguments: []*skel.MemberSchema{
 						{{- range $argument := $check.Arguments }}
-						{
-							Name: {{ quote $argument.Name }},
-							{{- if $argument.Description }}
-							Description: {{ quote $argument.Description }},
-							{{- end }}
-							{{- if $argument.Example }}
-							Example: {{ quote $argument.Example }},
-							{{- end }}
-							Type: {{ template "typeSchema" $argument.Type }},
-						},
+						{{ template "memberSchema" $argument }},
 						{{- end }}
 					},
 					{{- end }}
@@ -52,16 +43,7 @@
 							{{- if $check.Arguments }}
 							Arguments: []*skel.MemberSchema{
 								{{- range $argument := $check.Arguments }}
-								{
-									Name: {{ quote $argument.Name }},
-									{{- if $argument.Description }}
-									Description: {{ quote $argument.Description }},
-									{{- end }}
-									{{- if $argument.Example }}
-									Example: {{ quote $argument.Example }},
-									{{- end }}
-									Type: {{ template "typeSchema" $argument.Type }},
-								},
+								{{ template "memberSchema" $argument }},
 								{{- end }}
 							},
 							{{- end }}

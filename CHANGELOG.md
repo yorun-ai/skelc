@@ -8,6 +8,9 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ### Added
 
+- `@deprecated("reason")` metadata for declarations and their deprecatable
+  elements, including generated Vine schemas, Go docs, TypeScript JSDoc,
+  public Skel output, and LSP presentation
 - UUID map keys in contracts, generated Go maps, TypeScript records, and public Skel output
 - LSP document formatting, keyword and type completion, and declaration hover details
 - Hierarchical document symbols, workspace symbol search, and top-level declaration rename
@@ -16,7 +19,8 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ### Changed
 
-- Generated Go modules now target `go.yorun.ai/vine v0.10.0` by default
+- Generated Go code now requires at least `go.yorun.ai/vine v0.10.1`, which is
+  also the default dependency version for generated Go modules
 - Parsing and compilation now analyze the complete transitive Skel import graph while generating code only for the target domain
 - Compiler validation aborts now carry structured error codes, source positions, and wrapped causes through centralized API and CLI recovery boundaries
 - Analyzer validation now reports errors explicitly instead of using panic/recover control flow; `check` and LSP collect up to 50 independent diagnostics per domain while suppressing errors that only depend on invalid declarations

@@ -5,11 +5,16 @@ import "go.yorun.ai/skelc/model"
 func (g *_Gen) buildEnumSchema(enum *model.Enum) *_EnumSchema {
 	schema := &_EnumSchema{
 		Name: enum.Name, SkelName: enum.SkelName, Hash: enum.Hash,
-		Description: enum.Description,
-		Items:       make([]*_EnumItemSchema, 0, len(enum.Items)),
+		Description:      enum.Description,
+		Deprecated:       enum.Deprecated,
+		DeprecatedReason: enum.DeprecatedReason,
+		Items:            make([]*_EnumItemSchema, 0, len(enum.Items)),
 	}
 	for _, item := range enum.Items {
-		schema.Items = append(schema.Items, &_EnumItemSchema{Name: item.Name, Description: item.Description})
+		schema.Items = append(schema.Items, &_EnumItemSchema{
+			Name: item.Name, Description: item.Description,
+			Deprecated: item.Deprecated, DeprecatedReason: item.DeprecatedReason,
+		})
 	}
 	return schema
 }
@@ -17,10 +22,12 @@ func (g *_Gen) buildEnumSchema(enum *model.Enum) *_EnumSchema {
 func (g *_Gen) buildDataSchema(data *model.Data) *_DataSchema {
 	schema := &_DataSchema{
 		Name: data.Name, SkelName: data.SkelName, Hash: data.Hash,
-		Description:    data.Description,
-		Sensitive:      data.Sensitive,
-		TypeParameters: make([]string, 0, len(data.TypeParameters)),
-		Members:        g.buildMemberSchemas(data.Members),
+		Description:      data.Description,
+		Deprecated:       data.Deprecated,
+		DeprecatedReason: data.DeprecatedReason,
+		Sensitive:        data.Sensitive,
+		TypeParameters:   make([]string, 0, len(data.TypeParameters)),
+		Members:          g.buildMemberSchemas(data.Members),
 	}
 	for _, typeParameter := range data.TypeParameters {
 		schema.TypeParameters = append(schema.TypeParameters, typeParameter.Name)
@@ -31,10 +38,13 @@ func (g *_Gen) buildDataSchema(data *model.Data) *_DataSchema {
 func (g *_Gen) buildConfigSchema(config *model.Data) *_ConfigSchema {
 	return &_ConfigSchema{
 		Name: config.Name, SkelName: config.SkelName, Hash: config.Hash,
-		Description: config.Description, Pub: config.Pub,
-		Sensitive: config.Sensitive,
-		Lifecycle: configSchemaLifecycle(config.Lifecycle),
-		Members:   g.buildMemberSchemas(config.Members),
+		Description:      config.Description,
+		Deprecated:       config.Deprecated,
+		DeprecatedReason: config.DeprecatedReason,
+		Pub:              config.Pub,
+		Sensitive:        config.Sensitive,
+		Lifecycle:        configSchemaLifecycle(config.Lifecycle),
+		Members:          g.buildMemberSchemas(config.Members),
 	}
 }
 
@@ -52,7 +62,8 @@ func configSchemaLifecycle(lifecycle model.ConfigLifecycle) string {
 func (g *_Gen) buildEventSchema(event *model.Data) *_EventSchema {
 	return &_EventSchema{
 		Name: event.Name, SkelName: event.SkelName, Hash: event.Hash,
-		Description: event.Description, Pub: event.Pub,
+		Description: event.Description, Deprecated: event.Deprecated,
+		DeprecatedReason: event.DeprecatedReason, Pub: event.Pub,
 		Sensitive: event.Sensitive, Members: g.buildMemberSchemas(event.Members),
 	}
 }

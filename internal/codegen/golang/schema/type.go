@@ -12,6 +12,7 @@ func (g *_Gen) buildMemberSchemas(members []*model.DataMember) []*_MemberSchema 
 	for _, member := range members {
 		schemas = append(schemas, &_MemberSchema{
 			Name: member.Name, Description: member.Description,
+			Deprecated: member.Deprecated, DeprecatedReason: member.DeprecatedReason,
 			Example: member.Example, Sensitive: member.Sensitive, Type: g.buildTypeSchema(member.Type),
 		})
 	}
@@ -23,6 +24,7 @@ func (g *_Gen) buildArgumentSchemas(arguments []*model.Argument) []*_MemberSchem
 	for _, argument := range arguments {
 		metas = append(metas, &_MemberSchema{
 			Name: argument.Name, Description: argument.Description,
+			Deprecated: argument.Deprecated, DeprecatedReason: argument.DeprecatedReason,
 			Example: argument.Example, Sensitive: argument.Sensitive, Type: g.buildTypeSchema(argument.Type),
 		})
 	}

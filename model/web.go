@@ -12,6 +12,10 @@ type Web struct {
 	Hash string
 	// Description is the web entry point's documentation text.
 	Description string
+	// Deprecated reports whether the web entry point should no longer be used.
+	Deprecated bool
+	// DeprecatedReason explains why the web entry point is deprecated and what to use instead.
+	DeprecatedReason string
 	// Audiences lists actors allowed to access the entry point.
 	Audiences []*ActorAudience
 }

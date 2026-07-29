@@ -45,7 +45,8 @@ func prepareResourceCheckMethod(domainName string, serviceName string, check *mo
 func parseResource(reporter *diagnosticReporter, ge *grammar.Resource, pub bool) (*model.Resource, bool) {
 	valid := checkCase(reporter, "Resource", caseTypeCamel, ge.Name)
 	meta, metaValid := parseDecoratorMeta(reporter, ge.Decorators, decoratorContext{
-		allowDesc: true,
+		allowDesc:       true,
+		allowDeprecated: true,
 	})
 	valid = metaValid && valid
 	valid = reporter.checkNot(meta.HasExample, "%s resource does not support decorator @example", ge.Name.Pos) && valid
@@ -82,19 +83,22 @@ func parseResource(reporter *diagnosticReporter, ge *grammar.Resource, pub bool)
 	valid = reporter.check(len(actions) > 0, "%s resource %s must have at least one action", ge.Name.Pos, ge.Name.Value) && valid
 
 	return &model.Resource{
-		Pos:         position(ge.Name.Pos),
-		Name:        ge.Name.Value,
-		Description: meta.Description,
-		Pub:         pub,
-		Checks:      checks,
-		Actions:     actions,
+		Pos:              position(ge.Name.Pos),
+		Name:             ge.Name.Value,
+		Description:      meta.Description,
+		Deprecated:       meta.Deprecated,
+		DeprecatedReason: meta.DeprecatedReason,
+		Pub:              pub,
+		Checks:           checks,
+		Actions:          actions,
 	}, valid
 }
 
 func parseResourceAction(reporter *diagnosticReporter, ga *grammar.ResourceAction, resourceCheckPos map[string]lexer.Position) (*model.ResourceAction, bool) {
 	valid := checkCase(reporter, "ResourceAction", caseTypeLowerCamel, ga.Name)
 	meta, metaValid := parseDecoratorMeta(reporter, ga.Decorators, decoratorContext{
-		allowDesc: true,
+		allowDesc:       true,
+		allowDeprecated: true,
 	})
 	valid = metaValid && valid
 	valid = reporter.checkNot(meta.HasExample, "%s resource action does not support decorator @example", ga.Name.Pos) && valid
@@ -120,17 +124,20 @@ func parseResourceAction(reporter *diagnosticReporter, ga *grammar.ResourceActio
 	}
 
 	return &model.ResourceAction{
-		Pos:         position(ga.Name.Pos),
-		Name:        ga.Name.Value,
-		Description: meta.Description,
-		Checks:      checks,
+		Pos:              position(ga.Name.Pos),
+		Name:             ga.Name.Value,
+		Description:      meta.Description,
+		Deprecated:       meta.Deprecated,
+		DeprecatedReason: meta.DeprecatedReason,
+		Checks:           checks,
 	}, valid
 }
 
 func parseResourceCheck(reporter *diagnosticReporter, actionName string, gc *grammar.ResourceCheck) (*model.ResourceCheck, bool) {
 	valid := checkCase(reporter, "ResourceCheck", caseTypeLowerCamel, gc.Name)
 	meta, metaValid := parseDecoratorMeta(reporter, gc.Decorators, decoratorContext{
-		allowDesc: true,
+		allowDesc:       true,
+		allowDeprecated: true,
 	})
 	valid = metaValid && valid
 	args := []*model.Argument{newPermissionCodeArgument()}
@@ -178,6 +185,8 @@ func parseResourceCheck(reporter *diagnosticReporter, actionName string, gc *gra
 		Name:               methodName,
 		SkelName:           methodName,
 		Description:        meta.Description,
+		Deprecated:         meta.Deprecated,
+		DeprecatedReason:   meta.DeprecatedReason,
 		Auth:               model.AuthModeAuth,
 		Arguments:          args,
 		InputDescription:   inputDescription,
@@ -190,8 +199,10 @@ func parseResourceCheck(reporter *diagnosticReporter, actionName string, gc *gra
 		}
 	}
 	return &model.ResourceCheck{
-		Name:   gc.Name.Value,
-		Method: method,
+		Name:             gc.Name.Value,
+		Deprecated:       meta.Deprecated,
+		DeprecatedReason: meta.DeprecatedReason,
+		Method:           method,
 	}, valid
 }
 

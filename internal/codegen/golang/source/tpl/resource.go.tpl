@@ -10,10 +10,20 @@ func init() { {{ range $service := $.Services }}
 {{ if $resource.Actions -}}
 const (
 {{- range $action := $resource.Actions }}
+	{{- if $action.CommentLines }}
+	{{- range $line := $action.CommentLines }}
+	// {{ $line }}
+	{{- end }}
+	{{- end }}
 	{{ $action.PermissionName }} skel.PermissionCode = "{{ $action.PermissionCode }}"
 {{- end }}
 )
 
+{{- if $resource.CommentLines }}
+{{- range $line := $resource.CommentLines }}
+// {{ $line }}
+{{- end }}
+{{- end }}
 func {{ $resource.PermissionCodesName }}() []skel.PermissionCode {
 	return []skel.PermissionCode{
 		{{- range $action := $resource.Actions }}

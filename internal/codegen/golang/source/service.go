@@ -56,12 +56,13 @@ func (g *_Gen) buildServiceGoPayload() *ServiceGoPayload {
 }
 
 type Service struct {
-	Name         string
-	SkelName     string
-	Hash         string
-	CommentLines []string
-	ClientOnly   bool
-	ServerOnly   bool
+	Name                   string
+	SkelName               string
+	Hash                   string
+	CommentLines           []string
+	DeprecatedCommentLines []string
+	ClientOnly             bool
+	ServerOnly             bool
 
 	SpecName string
 
@@ -116,10 +117,19 @@ func (g *_Gen) castService(p *model.Service, clientOnly bool, serverOnly bool) *
 		ERClientName:            names.ERClientName,
 		ERClientImplName:        names.ERClientImplName,
 		ERClientCtorName:        names.ERClientCtorName,
-		CommentLines:            goDocLines(names.ServerName, p.Description),
+		CommentLines: deprecatedGoDocLines(
+			goDocLines(names.ServerName, p.Description),
+			names.ServerName,
+			p.DeprecatedReason,
+		),
+		DeprecatedCommentLines: deprecatedGoDocParagraph(p.DeprecatedReason),
 	}
 	if clientOnly {
-		service.CommentLines = goDocLines(names.ClientName, p.Description)
+		service.CommentLines = deprecatedGoDocLines(
+			goDocLines(names.ClientName, p.Description),
+			names.ClientName,
+			p.DeprecatedReason,
+		)
 	}
 	service.Methods = make([]*ServiceMethod, 0, len(p.Methods))
 	for _, method := range p.Methods {
@@ -159,8 +169,13 @@ func castActorAuthService(p *model.Service) *Service {
 		ERClientName:            names.ERClientName,
 		ERClientImplName:        names.ERClientImplName,
 		ERClientCtorName:        names.ERClientCtorName,
-		CommentLines:            goDocLines(names.ServerName, p.Description),
-		Methods:                 make([]*ServiceMethod, 0, len(p.Methods)),
+		CommentLines: deprecatedGoDocLines(
+			goDocLines(names.ServerName, p.Description),
+			names.ServerName,
+			p.DeprecatedReason,
+		),
+		DeprecatedCommentLines: deprecatedGoDocParagraph(p.DeprecatedReason),
+		Methods:                make([]*ServiceMethod, 0, len(p.Methods)),
 	}
 	for _, method := range p.Methods {
 		castedMethod := castServiceMethod(p, method)

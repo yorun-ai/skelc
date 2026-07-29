@@ -12,6 +12,8 @@ func (s *_hashState) triggerHash(trigger *model.TaskTrigger) string {
 		Name:               trigger.Name,
 		SkelName:           trigger.SkelName,
 		Description:        trigger.Description,
+		Deprecated:         trigger.Deprecated,
+		DeprecatedReason:   trigger.DeprecatedReason,
 		InputDescription:   trigger.InputDescription,
 		ArgumentsSensitive: trigger.ArgumentsSensitive,
 		Arguments:          s.buildArgumentHashValues(trigger.Arguments),
@@ -24,9 +26,11 @@ func (s *_hashState) taskHash(task *model.Task) string {
 			trigger.Hash = s.triggerHash(trigger)
 		}
 		return hashValue(_TaskHashValue{
-			Name:        task.Name,
-			SkelName:    task.SkelName,
-			Description: task.Description,
+			Name:             task.Name,
+			SkelName:         task.SkelName,
+			Description:      task.Description,
+			Deprecated:       task.Deprecated,
+			DeprecatedReason: task.DeprecatedReason,
 			Triggers: buildNamedValues(task.Triggers,
 				func(trigger *model.TaskTrigger) string { return trigger.SkelName },
 				func(trigger *model.TaskTrigger) string { return trigger.Hash }),

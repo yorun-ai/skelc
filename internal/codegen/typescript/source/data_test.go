@@ -54,6 +54,27 @@ func TestCastData(t *testing.T) {
 	}
 }
 
+func TestCastDataRendersDeprecatedDocs(t *testing.T) {
+	data := castData(&model.Data{
+		Name:             "User",
+		Deprecated:       true,
+		DeprecatedReason: "Use Profile instead",
+		Members: []*model.DataMember{{
+			Name:             "legacyId",
+			Type:             intTypeForTest(),
+			Deprecated:       true,
+			DeprecatedReason: "Use id instead",
+		}},
+	})
+	output := renderTemplate(t, dataTsTemplate, &DataTsPayload{Data: []*Data{data}})
+	if !strings.Contains(output, "* @deprecated Use Profile instead") {
+		t.Fatalf("expected deprecated data docs, got:\n%s", output)
+	}
+	if !strings.Contains(output, "* @deprecated Use id instead") {
+		t.Fatalf("expected deprecated member docs, got:\n%s", output)
+	}
+}
+
 func TestCastDataMapsDurationToString(t *testing.T) {
 	data := castData(&model.Data{
 		Name: "TimeoutConfig",

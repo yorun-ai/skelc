@@ -1,5 +1,11 @@
 {{- define "serviceClient" -}}{{ if not .ServerOnly }}
 // {{ .Name }} / Client
+{{- if .DeprecatedCommentLines }}
+//
+{{- range .DeprecatedCommentLines }}
+// {{ . }}
+{{- end }}
+{{- end }}
 
 type {{ .ClientName }} interface { {{- range .Methods }}
 	{{- if .CommentLines }}

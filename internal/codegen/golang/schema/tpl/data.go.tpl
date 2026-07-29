@@ -9,6 +9,7 @@
 	{{- if .Description }}
 	Description: {{ quote .Description }},
 	{{- end }}
+	{{ template "deprecatedFields" . }}
 	Hash: {{ quote .Hash }},
 	{{- if .Sensitive }}
 	Sensitive: true,

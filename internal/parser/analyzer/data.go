@@ -85,12 +85,15 @@ func parseDataLike(reporter *diagnosticReporter, gs *grammar.Data, kind model.Da
 		parsedData.Lifecycle = model.ConfigLifecycle(gs.Qualifier.Value)
 	}
 	meta, metaValid := parseDecoratorMeta(reporter, gs.Decorators, decoratorContext{
-		allowDesc:      true,
-		allowSensitive: kind != model.DataKindEvent,
+		allowDesc:       true,
+		allowSensitive:  kind != model.DataKindEvent,
+		allowDeprecated: true,
 	})
 	valid = metaValid && valid
 	parsedData.Description = meta.Description
 	parsedData.Sensitive = meta.Sensitive
+	parsedData.Deprecated = meta.Deprecated
+	parsedData.DeprecatedReason = meta.DeprecatedReason
 	typeParamPos := map[string]lexer.Position{}
 	memberPos := map[string]lexer.Position{}
 
@@ -138,20 +141,23 @@ func parseTypeParameter(reporter *diagnosticReporter, gtp *grammar.TypeParameter
 func parseDataMember(reporter *diagnosticReporter, gsm *grammar.DataMember) (*model.DataMember, bool) {
 	valid := checkCase(reporter, "DataMember", caseTypeLowerCamel, gsm.Name)
 	meta, metaValid := parseDecoratorMeta(reporter, gsm.Decorators, decoratorContext{
-		allowDesc:      true,
-		allowExample:   true,
-		allowSensitive: true,
-		requireDesc:    true,
+		allowDesc:       true,
+		allowExample:    true,
+		allowSensitive:  true,
+		allowDeprecated: true,
+		requireDesc:     true,
 	})
 	valid = metaValid && valid
 	memberType, typeValid := parseType(reporter, gsm.Type)
 	valid = typeValid && valid
 	return &model.DataMember{
-		Pos:         position(gsm.Name.Pos),
-		Name:        gsm.Name.Value,
-		Description: meta.Description,
-		Example:     meta.Example,
-		Sensitive:   meta.Sensitive,
-		Type:        memberType,
+		Pos:              position(gsm.Name.Pos),
+		Name:             gsm.Name.Value,
+		Description:      meta.Description,
+		Deprecated:       meta.Deprecated,
+		DeprecatedReason: meta.DeprecatedReason,
+		Example:          meta.Example,
+		Sensitive:        meta.Sensitive,
+		Type:             memberType,
 	}, valid
 }

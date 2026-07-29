@@ -89,7 +89,7 @@ func (g *_Gen) castEvent(p *model.Data, listenerOnly bool, emitterOnly bool) *Ev
 		SkelName:                  p.SkelName,
 		Hash:                      p.Hash,
 		SpecName:                  fmt.Sprintf("_%sSpec", eventName),
-		CommentLines:              goDocLines(eventName, p.Description),
+		CommentLines:              deprecatedGoDocLines(goDocLines(eventName, p.Description), eventName, p.DeprecatedReason),
 		Sensitive:                 p.Sensitive,
 		MarkerMethodName:          skelmeta.SensitiveMarkerMethodName,
 		ListenerOnly:              listenerOnly,

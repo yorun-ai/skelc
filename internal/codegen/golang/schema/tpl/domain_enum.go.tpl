@@ -8,6 +8,7 @@
 			{{- if $enum.Description }}
 			Description: {{ quote $enum.Description }},
 			{{- end }}
+			{{ template "deprecatedFields" $enum }}
 			Hash: {{ quote $enum.Hash }},
 			{{- if $enum.Items }}
 			Items: []*skel.EnumItemSchema{
@@ -17,6 +18,7 @@
 					{{- if $item.Description }}
 					Description: {{ quote $item.Description }},
 					{{- end }}
+					{{ template "deprecatedFields" $item }}
 				},
 				{{- end }}
 			},

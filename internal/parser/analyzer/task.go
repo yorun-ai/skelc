@@ -12,17 +12,20 @@ import (
 func parseTask(reporter *diagnosticReporter, gt *grammar.Task) (*model.Task, bool) {
 	valid := checkCaseAdvanced(reporter, "Task", "", "Task", caseTypeCamel, gt.Name)
 	meta, metaValid := parseDecoratorMeta(reporter, gt.Decorators, decoratorContext{
-		allowDesc: true,
+		allowDesc:       true,
+		allowDeprecated: true,
 	})
 	valid = metaValid && valid
 	valid = reporter.checkNot(meta.HasExample, "%s task does not support decorator @example", gt.Name.Pos) && valid
 	triggers, triggersValid := parseTaskTriggers(reporter, gt.Name, gt.Triggers)
 	valid = triggersValid && valid
 	return &model.Task{
-		Pos:         position(gt.Name.Pos),
-		Name:        gt.Name.Value,
-		Description: meta.Description,
-		Triggers:    triggers,
+		Pos:              position(gt.Name.Pos),
+		Name:             gt.Name.Value,
+		Description:      meta.Description,
+		Deprecated:       meta.Deprecated,
+		DeprecatedReason: meta.DeprecatedReason,
+		Triggers:         triggers,
 	}, valid
 }
 
@@ -55,16 +58,19 @@ func parseTaskTriggers(reporter *diagnosticReporter, owner *grammar.Identifier, 
 func parseTaskTrigger(reporter *diagnosticReporter, gt *grammar.TaskTrigger) (*model.TaskTrigger, bool) {
 	valid := checkCase(reporter, "TaskTrigger", caseTypeLowerCamel, gt.Name)
 	meta, metaValid := parseDecoratorMeta(reporter, gt.Decorators, decoratorContext{
-		allowDesc: true,
+		allowDesc:       true,
+		allowDeprecated: true,
 	})
 	valid = metaValid && valid
 
 	trigger := &model.TaskTrigger{
-		Pos:         position(gt.Name.Pos),
-		Name:        gt.Name.Value,
-		SkelName:    gt.Name.Value,
-		Description: meta.Description,
-		Arguments:   []*model.Argument{},
+		Pos:              position(gt.Name.Pos),
+		Name:             gt.Name.Value,
+		SkelName:         gt.Name.Value,
+		Description:      meta.Description,
+		Deprecated:       meta.Deprecated,
+		DeprecatedReason: meta.DeprecatedReason,
+		Arguments:        []*model.Argument{},
 	}
 	if gt.Input == nil {
 		return trigger, valid

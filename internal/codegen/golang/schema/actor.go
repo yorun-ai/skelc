@@ -9,7 +9,8 @@ import (
 func (g *_Gen) buildActorSchema(actor *model.Actor) *_ActorSchema {
 	schema := &_ActorSchema{
 		Name: actor.Name, SkelName: actor.SkelName, Hash: actor.Hash,
-		Description: actor.Description, Vias: make([]_ActorVia, 0, len(actor.Vias)),
+		Description: actor.Description, Deprecated: actor.Deprecated,
+		DeprecatedReason: actor.DeprecatedReason, Vias: make([]_ActorVia, 0, len(actor.Vias)),
 		AuthEnabled: actor.AuthEnabled, PermEnabled: actor.PermEnabled,
 	}
 	for _, via := range actor.Vias {
@@ -33,7 +34,8 @@ func (g *_Gen) buildActorSchema(actor *model.Actor) *_ActorSchema {
 func (g *_Gen) buildWebSchema(web *model.Web) *_WebSchema {
 	return &_WebSchema{
 		Name: web.Name, SkelName: web.SkelName, Hash: web.Hash,
-		Description: web.Description, Audiences: g.buildActorAudienceSchemas(web.Audiences),
+		Description: web.Description, Deprecated: web.Deprecated,
+		DeprecatedReason: web.DeprecatedReason, Audiences: g.buildActorAudienceSchemas(web.Audiences),
 	}
 }
 

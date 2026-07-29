@@ -14,6 +14,8 @@ func (s *_hashState) resourceHash(resource *model.Resource) string {
 			Name:             resource.Name,
 			SkelName:         resource.SkelName,
 			Description:      resource.Description,
+			Deprecated:       resource.Deprecated,
+			DeprecatedReason: resource.DeprecatedReason,
 			Pub:              resource.Pub,
 			Checks:           s.buildResourceCheckHashValues(resource.Checks),
 			Actions:          s.buildResourceActionHashValues(resource.Actions),
@@ -28,6 +30,8 @@ func (s *_hashState) methodHash(method *model.Method) string {
 		Name:               method.Name,
 		SkelName:           method.SkelName,
 		Description:        method.Description,
+		Deprecated:         method.Deprecated,
+		DeprecatedReason:   method.DeprecatedReason,
 		Example:            method.Example,
 		Auth:               authModeHashValue(method.Auth),
 		Require:            s.buildRequireHashValue(method.Require),
@@ -47,13 +51,15 @@ func (s *_hashState) serviceHash(service *model.Service) string {
 			method.Hash = s.methodHash(method)
 		}
 		return hashValue(_ServiceHashValue{
-			Name:        service.Name,
-			SkelName:    service.SkelName,
-			Description: service.Description,
-			Pub:         service.Pub,
-			Actors:      s.buildActorAudienceHashValues(service.Audiences),
-			Auth:        authModeHashValue(service.Auth),
-			Require:     s.buildRequireHashValue(service.Require),
+			Name:             service.Name,
+			SkelName:         service.SkelName,
+			Description:      service.Description,
+			Deprecated:       service.Deprecated,
+			DeprecatedReason: service.DeprecatedReason,
+			Pub:              service.Pub,
+			Actors:           s.buildActorAudienceHashValues(service.Audiences),
+			Auth:             authModeHashValue(service.Auth),
+			Require:          s.buildRequireHashValue(service.Require),
 			Methods: buildNamedValues(service.Methods,
 				func(method *model.Method) string { return method.SkelName },
 				func(method *model.Method) string { return method.Hash }),
@@ -65,10 +71,12 @@ func (s *_hashState) buildResourceCheckHashValues(checks []*model.ResourceCheck)
 	values := make([]*_ResourceCheck, 0, len(checks))
 	for _, check := range checks {
 		values = append(values, &_ResourceCheck{
-			Name:       check.Name,
-			Method:     check.Method.SkelName,
-			MethodHash: s.methodHash(check.Method),
-			Arguments:  s.buildArgumentHashValues(check.Method.Arguments),
+			Name:             check.Name,
+			Deprecated:       check.Deprecated,
+			DeprecatedReason: check.DeprecatedReason,
+			Method:           check.Method.SkelName,
+			MethodHash:       s.methodHash(check.Method),
+			Arguments:        s.buildArgumentHashValues(check.Method.Arguments),
 		})
 	}
 	return values
@@ -78,10 +86,12 @@ func (s *_hashState) buildResourceActionHashValues(actions []*model.ResourceActi
 	values := make([]*_ResourceAction, 0, len(actions))
 	for _, action := range actions {
 		value := &_ResourceAction{
-			Name:           action.Name,
-			PermissionCode: action.PermissionCode,
-			Description:    action.Description,
-			Checks:         s.buildResourceCheckHashValues(action.Checks),
+			Name:             action.Name,
+			PermissionCode:   action.PermissionCode,
+			Description:      action.Description,
+			Deprecated:       action.Deprecated,
+			DeprecatedReason: action.DeprecatedReason,
+			Checks:           s.buildResourceCheckHashValues(action.Checks),
 		}
 		values = append(values, value)
 	}

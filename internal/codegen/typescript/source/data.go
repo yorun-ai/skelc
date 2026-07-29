@@ -101,7 +101,7 @@ type Data struct {
 func castData(p *model.Data) *Data {
 	data := &Data{
 		Name:         transDataName(p),
-		CommentLines: tsCommentLines(p.Description, ""),
+		CommentLines: deprecatedTsDocLines(tsCommentLines(p.Description, ""), p.Deprecated, p.DeprecatedReason),
 		Members:      make([]*DataMember, 0, len(p.Members)),
 	}
 	for _, member := range p.Members {
@@ -143,7 +143,7 @@ func castDataMember(p *model.DataMember) *DataMember {
 	memberType := castType(p.Type)
 	return &DataMember{
 		Name:         p.Name,
-		CommentLines: tsCommentLines(p.Description, p.Example),
+		CommentLines: deprecatedTsDocLines(tsCommentLines(p.Description, p.Example), p.Deprecated, p.DeprecatedReason),
 		Type:         memberType,
 	}
 }

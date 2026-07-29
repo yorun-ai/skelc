@@ -8,6 +8,7 @@
 			{{- if $task.Description }}
 			Description: {{ quote $task.Description }},
 			{{- end }}
+			{{ template "deprecatedFields" $task }}
 			Hash: {{ quote $task.Hash }},
 			{{- if $task.Triggers }}
 			Triggers: []*skel.TriggerSchema{
@@ -18,6 +19,7 @@
 					{{- if $trigger.Description }}
 					Description: {{ quote $trigger.Description }},
 					{{- end }}
+					{{ template "deprecatedFields" $trigger }}
 					Hash: {{ quote $trigger.Hash }},
 					{{- if $trigger.InputDescription }}
 					InputDescription: {{ quote $trigger.InputDescription }},

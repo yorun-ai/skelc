@@ -14,6 +14,10 @@ type Enum struct {
 	Domain string
 	// Description is the enum's documentation text.
 	Description string
+	// Deprecated reports whether the enum should no longer be used.
+	Deprecated bool
+	// DeprecatedReason explains why the enum is deprecated and what to use instead.
+	DeprecatedReason string
 	// Pub reports whether the enum belongs to the public contract.
 	Pub bool
 	// UnspecifiedItem is the required fallback item.
@@ -30,4 +34,8 @@ type EnumItem struct {
 	Name string
 	// Description is the item's documentation text.
 	Description string
+	// Deprecated reports whether the item should no longer be used.
+	Deprecated bool
+	// DeprecatedReason explains why the item is deprecated and what to use instead.
+	DeprecatedReason string
 }

@@ -72,6 +72,7 @@ type _DebugBuildInfo struct {
 }
 
 type _VersionGolangCodeGen struct {
+	MinimumVineVersion string `json:"minimumVineVersion"`
 	DefaultVineVersion string `json:"defaultVineVersion"`
 }
 
@@ -86,6 +87,7 @@ func versionInfo() (_VersionInfo, error) {
 		Platform:  buildInfo.Platform,
 		GoVersion: buildInfo.GoVersion,
 		GolangCodeGen: _VersionGolangCodeGen{
+			MinimumVineVersion: golang.MinimumVineVersion,
 			DefaultVineVersion: golang.DefaultVineVersion,
 		},
 	}, nil
@@ -133,6 +135,7 @@ func (info _VersionInfo) TextString() string {
 		"  Platform   " + info.Platform + "\n" +
 		"  GoVersion  " + info.GoVersion + "\n" +
 		"Golang CodeGen:\n" +
+		"  MinimumVineVersion  " + info.GolangCodeGen.MinimumVineVersion + "\n" +
 		"  DefaultVineVersion  " + info.GolangCodeGen.DefaultVineVersion
 }
 

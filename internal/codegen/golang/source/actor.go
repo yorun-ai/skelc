@@ -98,7 +98,7 @@ func castActor(p *model.Actor) *Actor {
 		Name:         p.Name,
 		SkelName:     p.SkelName,
 		Hash:         p.Hash,
-		CommentLines: goDocLines(p.Name, p.Description),
+		CommentLines: deprecatedGoDocLines(goDocLines(p.Name, p.Description), p.Name, p.DeprecatedReason),
 		Vias:         make([]string, 0, len(p.Vias)),
 	}
 	if p.AuthEnabled {

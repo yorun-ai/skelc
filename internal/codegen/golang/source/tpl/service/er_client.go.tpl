@@ -1,5 +1,11 @@
 {{- define "serviceERClient" -}}{{ if not .ServerOnly }}
 // {{ .Name }} / ERClient
+{{- if .DeprecatedCommentLines }}
+//
+{{- range .DeprecatedCommentLines }}
+// {{ . }}
+{{- end }}
+{{- end }}
 
 type {{ .ERClientName }} interface { {{- range .Methods }}
 	{{- if .CommentLines }}

@@ -71,7 +71,7 @@ func castService(p *model.Service) *Service {
 		Name:         names.Name,
 		SkelName:     p.SkelName,
 		SpecName:     names.SpecName,
-		CommentLines: tsDocLines(p.Description),
+		CommentLines: deprecatedTsDocLines(tsDocLines(p.Description), p.Deprecated, p.DeprecatedReason),
 		FactoryName:  names.FactoryName,
 		Methods:      make([]*ServiceMethod, 0, len(p.Methods)),
 	}
@@ -109,7 +109,7 @@ func castServiceMethod(p *model.Method) *ServiceMethod {
 	method := &ServiceMethod{
 		Name:         nameutil.ToLowerCamel(p.Name),
 		SkelName:     p.Name,
-		SummaryLines: tsSummaryLines(p.Description, p.Example),
+		SummaryLines: deprecatedTsDocLines(tsSummaryLines(p.Description, p.Example), p.Deprecated, p.DeprecatedReason),
 		ParamDocs:    make([]*MethodParamDoc, 0, len(p.Arguments)+2),
 		Arguments:    make([]*MethodArgument, 0, len(p.Arguments)),
 		HasParams:    len(p.Arguments) > 0,
@@ -137,10 +137,11 @@ func castServiceMethod(p *model.Method) *ServiceMethod {
 }
 
 type MethodArgument struct {
-	Name        string
-	SkelName    string
-	Description string
-	Type        *Type
+	Name            string
+	SkelName        string
+	Description     string
+	Type            *Type
+	DeprecatedLines []string
 }
 
 type MethodParamDoc struct {
@@ -156,10 +157,11 @@ type MethodReturnDoc struct {
 func castMethodArgument(p *model.Argument) *MethodArgument {
 	argType := castType(p.Type)
 	return &MethodArgument{
-		Name:        nameutil.ToLowerCamel(p.Name),
-		SkelName:    p.Name,
-		Description: tsTagDoc(common.MergeDescriptionAndExample(p.Description, p.Example)),
-		Type:        argType,
+		Name:            nameutil.ToLowerCamel(p.Name),
+		SkelName:        p.Name,
+		Description:     tsTagDoc(common.MergeDescriptionAndExample(p.Description, p.Example)),
+		Type:            argType,
+		DeprecatedLines: deprecatedTsDocLines(nil, p.Deprecated, p.DeprecatedReason),
 	}
 }
 
@@ -240,4 +242,16 @@ func tsTagDoc(description string) string {
 		return ""
 	}
 	return strings.Join(lines, " ")
+}
+
+func deprecatedTsDocLines(lines []string, deprecated bool, reason string) []string {
+	if !deprecated {
+		return lines
+	}
+	reasonLines := tsDocLines(strings.TrimSpace(reason))
+	if len(reasonLines) == 0 {
+		return lines
+	}
+	reasonLines[0] = "@deprecated " + reasonLines[0]
+	return append(lines, reasonLines...)
 }

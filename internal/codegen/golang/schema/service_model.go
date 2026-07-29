@@ -1,21 +1,25 @@
 package schema
 
 type _ServiceSchema struct {
-	Name        string
-	SkelName    string
-	Description string
-	Hash        string
-	Pub         bool
-	AuthMode    _AuthMode
-	Audiences   []*_ActorAudienceSchema
-	Require     *_PermRequire
-	Methods     []*_MethodSchema
+	Name             string
+	SkelName         string
+	Description      string
+	Deprecated       bool
+	DeprecatedReason string
+	Hash             string
+	Pub              bool
+	AuthMode         _AuthMode
+	Audiences        []*_ActorAudienceSchema
+	Require          *_PermRequire
+	Methods          []*_MethodSchema
 }
 
 type _MethodSchema struct {
 	Name               string
 	SkelName           string
 	Description        string
+	Deprecated         bool
+	DeprecatedReason   string
 	Hash               string
 	Example            string
 	AuthMode           _AuthMode

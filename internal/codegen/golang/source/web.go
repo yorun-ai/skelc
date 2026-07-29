@@ -63,7 +63,7 @@ func (g *_Gen) castWeb(p *model.Web) *Web {
 		Name:              name,
 		SkelName:          p.SkelName,
 		Hash:              p.Hash,
-		CommentLines:      goDocLines(serverName, p.Description),
+		CommentLines:      deprecatedGoDocLines(goDocLines(serverName, p.Description), serverName, p.DeprecatedReason),
 		SpecName:          fmt.Sprintf("_%sSpec", name),
 		ServerName:        serverName,
 		DefaultServerName: fmt.Sprintf("Default%s", serverName),

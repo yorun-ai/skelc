@@ -33,9 +33,13 @@ func documentSymbols(symbols []_Symbol) protocol.DocumentSymbolSlice {
 	result := make(protocol.DocumentSymbolSlice, 0, len(symbols))
 	for _, symbol := range symbols {
 		detail := symbol.Detail
+		var tags []protocol.SymbolTag
+		if symbol.Deprecated {
+			tags = []protocol.SymbolTag{protocol.SymbolTagDeprecated}
+		}
 		result = append(result, protocol.DocumentSymbol{
 			Name: symbol.Name, Detail: &detail, Kind: symbol.Kind, Range: symbol.Range,
-			SelectionRange: selectionRange(symbol), Children: documentSymbols(symbol.Children),
+			Tags: tags, SelectionRange: selectionRange(symbol), Children: documentSymbols(symbol.Children),
 		})
 	}
 	return result
@@ -50,8 +54,12 @@ func selectionRange(symbol _Symbol) protocol.Range {
 func appendWorkspaceSymbols(result *protocol.SymbolInformationSlice, documentURI uri.URI, symbols []_Symbol, container, query string) {
 	for _, symbol := range symbols {
 		if query == "" || strings.Contains(strings.ToLower(symbol.Name), query) {
+			var tags []protocol.SymbolTag
+			if symbol.Deprecated {
+				tags = []protocol.SymbolTag{protocol.SymbolTagDeprecated}
+			}
 			information := protocol.SymbolInformation{
-				BaseSymbolInformation: protocol.BaseSymbolInformation{Name: symbol.Name, Kind: symbol.Kind},
+				BaseSymbolInformation: protocol.BaseSymbolInformation{Name: symbol.Name, Kind: symbol.Kind, Tags: tags},
 				Location:              protocol.Location{URI: documentURI, Range: selectionRange(symbol)},
 			}
 			if container != "" {

@@ -26,6 +26,10 @@ type Actor struct {
 	Hash string
 	// Description is the actor's documentation text.
 	Description string
+	// Deprecated reports whether the actor should no longer be used.
+	Deprecated bool
+	// DeprecatedReason explains why the actor is deprecated and what to use instead.
+	DeprecatedReason string
 	// Pub reports whether the actor belongs to the public contract.
 	Pub bool
 	// Vias lists the transports declared by the actor.

@@ -1,11 +1,13 @@
 package schema
 
 type _MemberSchema struct {
-	Name        string
-	Description string
-	Example     string
-	Sensitive   bool
-	Type        *_TypeSchema
+	Name             string
+	Description      string
+	Deprecated       bool
+	DeprecatedReason string
+	Example          string
+	Sensitive        bool
+	Type             *_TypeSchema
 }
 
 type _TypeKind string

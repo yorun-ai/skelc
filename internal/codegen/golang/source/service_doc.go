@@ -2,6 +2,7 @@ package source
 
 import (
 	"fmt"
+	"strings"
 
 	"go.yorun.ai/skelc/internal/codegen/common"
 )
@@ -18,7 +19,30 @@ func goDocLines(name string, description string) []string {
 	return docLines
 }
 
-func goMethodDocLines(name string, description string, example string, arguments []*MethodArgument, resultType *Type, outputDescription string, outputExample string) []string {
+func deprecatedGoDocLines(lines []string, name string, reason string) []string {
+	deprecatedLines := deprecatedGoDocParagraph(reason)
+	if len(deprecatedLines) == 0 {
+		return lines
+	}
+	if len(lines) == 0 {
+		lines = []string{name}
+	}
+	lines = append(lines, "")
+	return append(lines, deprecatedLines...)
+}
+
+func deprecatedGoDocParagraph(reason string) []string {
+	reasonLines := common.SplitDocLines(strings.TrimSpace(reason))
+	if len(reasonLines) == 0 {
+		return nil
+	}
+	reasonLines[0] = "Deprecated: " + reasonLines[0]
+	last := len(reasonLines) - 1
+	reasonLines[last] = common.EnsureSentence(reasonLines[last])
+	return reasonLines
+}
+
+func goMethodDocLines(name string, description string, example string, arguments []*MethodArgument, resultType *Type, outputDescription string, outputExample string, deprecatedReason string) []string {
 	docLines := goDocLines(name, common.MergeDescriptionAndExample(description, example))
 	if len(docLines) == 0 {
 		docLines = []string{name}
@@ -37,10 +61,8 @@ func goMethodDocLines(name string, description string, example string, arguments
 	}
 
 	outputLines := common.SplitDocLines(common.MergeDescriptionAndExample(outputDescription, outputExample))
-	if len(outputLines) == 0 || resultType == nil {
-		return docLines
+	if len(outputLines) > 0 && resultType != nil {
+		docLines = append(docLines, fmt.Sprintf("@returns %s - %s", resultType.Plain, outputLines[0]))
 	}
-
-	docLines = append(docLines, fmt.Sprintf("@returns %s - %s", resultType.Plain, outputLines[0]))
-	return docLines
+	return deprecatedGoDocLines(docLines, name, deprecatedReason)
 }

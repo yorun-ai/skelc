@@ -31,12 +31,14 @@ type ResourceGoPayload struct {
 type Resource struct {
 	Name                string
 	PermissionCodesName string
+	CommentLines        []string
 	Actions             []*ResourceAction
 }
 
 type ResourceAction struct {
 	PermissionName string
 	PermissionCode string
+	CommentLines   []string
 }
 
 func (g *_Gen) genResourceGo() {
@@ -82,12 +84,22 @@ func castResource(resource *model.Resource) *Resource {
 	casted := &Resource{
 		Name:                nameutil.ToCamel(resource.Name),
 		PermissionCodesName: fmt.Sprintf("%sPermissionCodes", nameutil.ToCamel(resource.Name)),
-		Actions:             make([]*ResourceAction, 0, len(resource.Actions)),
+		CommentLines: deprecatedGoDocLines(
+			goDocLines(fmt.Sprintf("%sPermissionCodes", nameutil.ToCamel(resource.Name)), resource.Description),
+			fmt.Sprintf("%sPermissionCodes", nameutil.ToCamel(resource.Name)),
+			resource.DeprecatedReason,
+		),
+		Actions: make([]*ResourceAction, 0, len(resource.Actions)),
 	}
 	for _, action := range resource.Actions {
 		casted.Actions = append(casted.Actions, &ResourceAction{
 			PermissionName: fmt.Sprintf("%s%sPermission", casted.Name, nameutil.ToCamel(action.Name)),
 			PermissionCode: action.PermissionCode,
+			CommentLines: deprecatedGoDocLines(
+				goDocLines(fmt.Sprintf("%s%sPermission", casted.Name, nameutil.ToCamel(action.Name)), action.Description),
+				fmt.Sprintf("%s%sPermission", casted.Name, nameutil.ToCamel(action.Name)),
+				action.DeprecatedReason,
+			),
 		})
 	}
 	return casted

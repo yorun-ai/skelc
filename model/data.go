@@ -36,6 +36,10 @@ type Data struct {
 	Domain string
 	// Description is the declaration's documentation text.
 	Description string
+	// Deprecated reports whether the declaration should no longer be used.
+	Deprecated bool
+	// DeprecatedReason explains why the declaration is deprecated and what to use instead.
+	DeprecatedReason string
 	// Kind identifies whether this value represents data, config, or an event.
 	Kind DataKind
 	// Lifecycle is set for config declarations.
@@ -62,6 +66,10 @@ type DataMember struct {
 	Name string
 	// Description is the member's documentation text.
 	Description string
+	// Deprecated reports whether the member should no longer be used.
+	Deprecated bool
+	// DeprecatedReason explains why the member is deprecated and what to use instead.
+	DeprecatedReason string
 	// Example is the member's example value as source text.
 	Example string
 	// Sensitive reports whether generated Go values mark this member for redaction.

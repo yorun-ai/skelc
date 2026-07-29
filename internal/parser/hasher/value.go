@@ -10,16 +10,20 @@ type _ActorRefHashValue struct {
 }
 
 type _EnumItemHashValue struct {
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
+	Name             string `json:"name"`
+	Description      string `json:"description,omitempty"`
+	Deprecated       bool   `json:"deprecated,omitempty"`
+	DeprecatedReason string `json:"deprecatedReason,omitempty"`
 }
 
 type _MemberHashValue struct {
-	Name        string          `json:"name"`
-	Description string          `json:"description,omitempty"`
-	Example     string          `json:"example,omitempty"`
-	Sensitive   bool            `json:"sensitive,omitempty"`
-	Type        *_TypeHashValue `json:"type,omitempty"`
+	Name             string          `json:"name"`
+	Description      string          `json:"description,omitempty"`
+	Deprecated       bool            `json:"deprecated,omitempty"`
+	DeprecatedReason string          `json:"deprecatedReason,omitempty"`
+	Example          string          `json:"example,omitempty"`
+	Sensitive        bool            `json:"sensitive,omitempty"`
+	Type             *_TypeHashValue `json:"type,omitempty"`
 }
 
 type _TypeHashValue struct {
@@ -36,35 +40,43 @@ type _TypeHashValue struct {
 }
 
 type _EnumHashValue struct {
-	Name        string                `json:"name"`
-	SkelName    string                `json:"skelName"`
-	Description string                `json:"description,omitempty"`
-	Items       []*_EnumItemHashValue `json:"items,omitempty"`
+	Name             string                `json:"name"`
+	SkelName         string                `json:"skelName"`
+	Description      string                `json:"description,omitempty"`
+	Deprecated       bool                  `json:"deprecated,omitempty"`
+	DeprecatedReason string                `json:"deprecatedReason,omitempty"`
+	Items            []*_EnumItemHashValue `json:"items,omitempty"`
 }
 
 type _DataHashValue struct {
-	Name           string              `json:"name"`
-	SkelName       string              `json:"skelName"`
-	Description    string              `json:"description,omitempty"`
-	Kind           model.DataKind      `json:"kind,omitempty"`
-	Pub            bool                `json:"pub,omitempty"`
-	Sensitive      bool                `json:"sensitive,omitempty"`
-	Lifecycle      string              `json:"lifecycle,omitempty"`
-	TypeParameters []string            `json:"typeParameters,omitempty"`
-	Members        []*_MemberHashValue `json:"members,omitempty"`
+	Name             string              `json:"name"`
+	SkelName         string              `json:"skelName"`
+	Description      string              `json:"description,omitempty"`
+	Deprecated       bool                `json:"deprecated,omitempty"`
+	DeprecatedReason string              `json:"deprecatedReason,omitempty"`
+	Kind             model.DataKind      `json:"kind,omitempty"`
+	Pub              bool                `json:"pub,omitempty"`
+	Sensitive        bool                `json:"sensitive,omitempty"`
+	Lifecycle        string              `json:"lifecycle,omitempty"`
+	TypeParameters   []string            `json:"typeParameters,omitempty"`
+	Members          []*_MemberHashValue `json:"members,omitempty"`
 }
 
 type _WebHashValue struct {
-	Name        string                `json:"name"`
-	SkelName    string                `json:"skelName"`
-	Description string                `json:"description,omitempty"`
-	Actors      []*_ActorRefHashValue `json:"actors,omitempty"`
+	Name             string                `json:"name"`
+	SkelName         string                `json:"skelName"`
+	Description      string                `json:"description,omitempty"`
+	Deprecated       bool                  `json:"deprecated,omitempty"`
+	DeprecatedReason string                `json:"deprecatedReason,omitempty"`
+	Actors           []*_ActorRefHashValue `json:"actors,omitempty"`
 }
 
 type _ActorHashValue struct {
 	Name               string   `json:"name"`
 	SkelName           string   `json:"skelName"`
 	Description        string   `json:"description,omitempty"`
+	Deprecated         bool     `json:"deprecated,omitempty"`
+	DeprecatedReason   string   `json:"deprecatedReason,omitempty"`
 	Vias               []string `json:"vias,omitempty"`
 	AuthEnabled        bool     `json:"authEnabled,omitempty"`
 	AuthCredential     string   `json:"authCredential,omitempty"`
@@ -82,6 +94,8 @@ type _ResourceHashValue struct {
 	Name             string             `json:"name"`
 	SkelName         string             `json:"skelName"`
 	Description      string             `json:"description,omitempty"`
+	Deprecated       bool               `json:"deprecated,omitempty"`
+	DeprecatedReason string             `json:"deprecatedReason,omitempty"`
 	Pub              bool               `json:"pub,omitempty"`
 	Checks           []*_ResourceCheck  `json:"checks,omitempty"`
 	Actions          []*_ResourceAction `json:"actions,omitempty"`
@@ -90,28 +104,34 @@ type _ResourceHashValue struct {
 }
 
 type _ResourceAction struct {
-	Name           string            `json:"name"`
-	PermissionCode string            `json:"permissionCode"`
-	Description    string            `json:"description,omitempty"`
-	Checks         []*_ResourceCheck `json:"checks,omitempty"`
+	Name             string            `json:"name"`
+	PermissionCode   string            `json:"permissionCode"`
+	Description      string            `json:"description,omitempty"`
+	Deprecated       bool              `json:"deprecated,omitempty"`
+	DeprecatedReason string            `json:"deprecatedReason,omitempty"`
+	Checks           []*_ResourceCheck `json:"checks,omitempty"`
 }
 
 type _ResourceCheck struct {
-	Name       string              `json:"name"`
-	Method     string              `json:"method"`
-	MethodHash string              `json:"methodHash"`
-	Arguments  []*_MemberHashValue `json:"arguments,omitempty"`
+	Name             string              `json:"name"`
+	Deprecated       bool                `json:"deprecated,omitempty"`
+	DeprecatedReason string              `json:"deprecatedReason,omitempty"`
+	Method           string              `json:"method"`
+	MethodHash       string              `json:"methodHash"`
+	Arguments        []*_MemberHashValue `json:"arguments,omitempty"`
 }
 
 type _ServiceHashValue struct {
-	Name        string                `json:"name"`
-	SkelName    string                `json:"skelName"`
-	Description string                `json:"description,omitempty"`
-	Pub         bool                  `json:"pub,omitempty"`
-	Actors      []*_ActorRefHashValue `json:"actors,omitempty"`
-	Auth        string                `json:"auth,omitempty"`
-	Require     *_RequireHashValue    `json:"require,omitempty"`
-	Methods     []*_NamedValue        `json:"methods,omitempty"`
+	Name             string                `json:"name"`
+	SkelName         string                `json:"skelName"`
+	Description      string                `json:"description,omitempty"`
+	Deprecated       bool                  `json:"deprecated,omitempty"`
+	DeprecatedReason string                `json:"deprecatedReason,omitempty"`
+	Pub              bool                  `json:"pub,omitempty"`
+	Actors           []*_ActorRefHashValue `json:"actors,omitempty"`
+	Auth             string                `json:"auth,omitempty"`
+	Require          *_RequireHashValue    `json:"require,omitempty"`
+	Methods          []*_NamedValue        `json:"methods,omitempty"`
 }
 
 type _RequireHashValue struct {
@@ -142,6 +162,8 @@ type _MethodHashValue struct {
 	Name               string              `json:"name"`
 	SkelName           string              `json:"skelName"`
 	Description        string              `json:"description,omitempty"`
+	Deprecated         bool                `json:"deprecated,omitempty"`
+	DeprecatedReason   string              `json:"deprecatedReason,omitempty"`
 	Example            string              `json:"example,omitempty"`
 	Auth               string              `json:"auth,omitempty"`
 	Require            *_RequireHashValue  `json:"require,omitempty"`
@@ -155,16 +177,20 @@ type _MethodHashValue struct {
 }
 
 type _TaskHashValue struct {
-	Name        string         `json:"name"`
-	SkelName    string         `json:"skelName"`
-	Description string         `json:"description,omitempty"`
-	Triggers    []*_NamedValue `json:"triggers,omitempty"`
+	Name             string         `json:"name"`
+	SkelName         string         `json:"skelName"`
+	Description      string         `json:"description,omitempty"`
+	Deprecated       bool           `json:"deprecated,omitempty"`
+	DeprecatedReason string         `json:"deprecatedReason,omitempty"`
+	Triggers         []*_NamedValue `json:"triggers,omitempty"`
 }
 
 type _TriggerHashValue struct {
 	Name               string              `json:"name"`
 	SkelName           string              `json:"skelName"`
 	Description        string              `json:"description,omitempty"`
+	Deprecated         bool                `json:"deprecated,omitempty"`
+	DeprecatedReason   string              `json:"deprecatedReason,omitempty"`
 	InputDescription   string              `json:"inputDescription,omitempty"`
 	ArgumentsSensitive bool                `json:"argumentsSensitive,omitempty"`
 	Arguments          []*_MemberHashValue `json:"arguments,omitempty"`

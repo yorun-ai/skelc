@@ -32,6 +32,7 @@ func (g *_Gen) renderSkel(templateName string, payload *_SkelPayload) (string, e
 func skelTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
 		"description":   descriptionView,
+		"deprecated":    deprecatedView,
 		"example":       exampleView,
 		"sensitive":     sensitiveView,
 		"importAlias":   importAlias,

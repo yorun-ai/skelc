@@ -18,7 +18,7 @@ type Enum struct {
 func castEnum(p *model.Enum) *Enum {
 	enum := &Enum{
 		Name:         nameutil.ToCamel(p.Name),
-		CommentLines: tsCommentLines(p.Description, ""),
+		CommentLines: deprecatedTsDocLines(tsCommentLines(p.Description, ""), p.Deprecated, p.DeprecatedReason),
 		Items:        make([]*EnumItem, 0, len(p.Items)+1),
 	}
 	enum.Items = append(enum.Items, castEnumItem(p.UnspecifiedItem))
@@ -49,6 +49,6 @@ func castEnumItem(p *model.EnumItem) *EnumItem {
 	return &EnumItem{
 		Literal:      fmt.Sprintf(`"%s"`, nameutil.ToScreamingSnake(p.Name)),
 		Value:        nameutil.ToScreamingSnake(p.Name),
-		CommentLines: tsCommentLines(common.MergeDescriptionAndExample(p.Description, ""), ""),
+		CommentLines: deprecatedTsDocLines(tsCommentLines(common.MergeDescriptionAndExample(p.Description, ""), ""), p.Deprecated, p.DeprecatedReason),
 	}
 }

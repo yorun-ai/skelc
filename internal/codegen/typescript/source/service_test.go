@@ -96,6 +96,37 @@ func TestCastService(t *testing.T) {
 	}
 }
 
+func TestServiceTemplateRendersDeprecatedDocs(t *testing.T) {
+	service := castService(&model.Service{
+		Name:             "UserService",
+		Deprecated:       true,
+		DeprecatedReason: "Use ProfileService instead\nComplete migration first",
+		Methods: []*model.Method{{
+			Name:             "getUser",
+			Deprecated:       true,
+			DeprecatedReason: "Use getProfile instead",
+			Arguments: []*model.Argument{{
+				Name:             "legacyId",
+				Type:             intTypeForTest(),
+				Deprecated:       true,
+				DeprecatedReason: "Use id instead\nLegacy IDs will be removed",
+			}},
+		}},
+	})
+	output := renderTemplate(t, serviceTsTemplate, &ServiceTsPayload{Services: []*Service{service}})
+	for _, expected := range []string{
+		"* @deprecated Use ProfileService instead",
+		"* Complete migration first",
+		"* @deprecated Use getProfile instead",
+		"* @deprecated Use id instead",
+		"* Legacy IDs will be removed",
+	} {
+		if !strings.Contains(output, expected) {
+			t.Fatalf("expected %q in generated service:\n%s", expected, output)
+		}
+	}
+}
+
 func TestBuildServiceTypeImports(t *testing.T) {
 	imports := buildServiceTypeImports([]*model.Service{{
 		Methods: []*model.Method{{

@@ -361,3 +361,56 @@ func assertNoExtraTopLevelBlankLines(t *testing.T, content string) {
 		}
 	}
 }
+
+func TestGenPreservesDeprecatedDecorators(t *testing.T) {
+	domain, _ := parseDomainForTest(t, "demo/domain.skel", "domain demo\n", "demo/api.skel", `domain demo
+
+@deprecated("Use Profile instead")
+pub data User {
+    @deprecated("Use id instead")
+    legacyId: string
+}
+
+pub actor ClientActor {
+    via client {}
+}
+
+@deprecated("Use ProfileService instead")
+pub service UserService {
+    for ClientActor via client
+
+    @deprecated("Use getProfile instead")
+    method getUser {
+        input {
+            @deprecated("Use id instead")
+            legacyId: string
+        }
+        output User
+    }
+}
+`, nil)
+	outputDir := t.TempDir()
+
+	Generate(domain, Option{Out: outputDir, PubOnly: true})
+	assertGeneratedSkelParses(t, outputDir)
+
+	typesContent := readGeneratedFileForTest(t, filepath.Join(outputDir, "types.skel"))
+	for _, expected := range []string{
+		`@deprecated("Use Profile instead")`,
+		`@deprecated("Use id instead")`,
+	} {
+		if !strings.Contains(typesContent, expected) {
+			t.Fatalf("expected %q in generated types:\n%s", expected, typesContent)
+		}
+	}
+	serviceContent := readGeneratedFileForTest(t, filepath.Join(outputDir, "service.skel"))
+	for _, expected := range []string{
+		`@deprecated("Use ProfileService instead")`,
+		`@deprecated("Use getProfile instead")`,
+		`@deprecated("Use id instead")`,
+	} {
+		if !strings.Contains(serviceContent, expected) {
+			t.Fatalf("expected %q in generated service:\n%s", expected, serviceContent)
+		}
+	}
+}

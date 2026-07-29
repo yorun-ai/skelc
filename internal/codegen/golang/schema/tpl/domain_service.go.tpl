@@ -8,6 +8,7 @@
 			{{- if $service.Description }}
 			Description: {{ quote $service.Description }},
 			{{- end }}
+			{{ template "deprecatedFields" $service }}
 			Hash: {{ quote $service.Hash }},
 			Pub: {{ $service.Pub }},
 			AuthMode: {{ authLiteral $service.AuthMode }},

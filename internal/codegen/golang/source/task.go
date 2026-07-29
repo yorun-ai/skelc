@@ -30,6 +30,7 @@ type Task struct {
 	SkelName                string
 	Hash                    string
 	CommentLines            []string
+	DeprecatedCommentLines  []string
 	SpecName                string
 	LauncherName            string
 	LauncherImplName        string
@@ -85,10 +86,15 @@ func (g *_Gen) buildTaskGoPayload() *TaskGoPayload {
 func (g *_Gen) castTask(p *model.Task) *Task {
 	taskName := nameutil.ToCamel(p.Name)
 	task_ := &Task{
-		Name:                    taskName,
-		SkelName:                p.SkelName,
-		Hash:                    p.Hash,
-		CommentLines:            goDocLines(fmt.Sprintf("%sRunner", taskName), p.Description),
+		Name:     taskName,
+		SkelName: p.SkelName,
+		Hash:     p.Hash,
+		CommentLines: deprecatedGoDocLines(
+			goDocLines(fmt.Sprintf("%sRunner", taskName), p.Description),
+			fmt.Sprintf("%sRunner", taskName),
+			p.DeprecatedReason,
+		),
+		DeprecatedCommentLines:  deprecatedGoDocParagraph(p.DeprecatedReason),
 		SpecName:                fmt.Sprintf("_%sSpec", taskName),
 		LauncherName:            fmt.Sprintf("%sLauncher", taskName),
 		LauncherImplName:        fmt.Sprintf("_%sLauncher", taskName),
@@ -124,9 +130,9 @@ func castTaskTrigger(task_ *model.Task, p *model.TaskTrigger) *TaskTrigger {
 		RunName:            fmt.Sprintf("Run%s", nameutil.ToCamel(p.Name)),
 		SkelName:           p.Name,
 		SpecName:           fmt.Sprintf("_%s%sTriggerSpec", task_.Name, nameutil.ToCamel(p.Name)),
-		CommentLines:       goMethodDocLines(nameutil.ToCamel(p.Name), p.Description, "", arguments, nil, "", ""),
-		LaunchComments:     goMethodDocLines(fmt.Sprintf("Launch%s", nameutil.ToCamel(p.Name)), p.Description, "", arguments, nil, "", ""),
-		RunComments:        goMethodDocLines(fmt.Sprintf("Run%s", nameutil.ToCamel(p.Name)), p.Description, "", arguments, nil, "", ""),
+		CommentLines:       goMethodDocLines(nameutil.ToCamel(p.Name), p.Description, "", arguments, nil, "", "", p.DeprecatedReason),
+		LaunchComments:     goMethodDocLines(fmt.Sprintf("Launch%s", nameutil.ToCamel(p.Name)), p.Description, "", arguments, nil, "", "", p.DeprecatedReason),
+		RunComments:        goMethodDocLines(fmt.Sprintf("Run%s", nameutil.ToCamel(p.Name)), p.Description, "", arguments, nil, "", "", p.DeprecatedReason),
 		ArgumentsSensitive: p.ArgumentsSensitive,
 		Arguments:          arguments,
 	}

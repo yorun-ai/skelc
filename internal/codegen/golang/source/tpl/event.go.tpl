@@ -4,12 +4,6 @@ func init() { {{ range $event := $.Events }}
 	event.Register({{ $event.SpecName }}){{ end }}
 }
 {{ range $event := $.Events }}
-{{- if $event.CommentLines }}
-{{- range $line := $event.CommentLines }}
-// {{ $line }}
-{{- end }}
-{{- end }}
-
 var {{ $event.SpecName }} = &event.EventSpec{
 	Type: event.EventSpecType{{ if $event.ListenerOnly }}Listener{{ else if $event.EmitterOnly }}Emitter{{ else }}Both{{ end }},
 	Name: "{{ $event.Name }}",
@@ -31,6 +25,11 @@ var {{ $event.SpecName }} = &event.EventSpec{
 {{- end }}
 }
 
+{{- if $event.CommentLines }}
+{{- range $line := $event.CommentLines }}
+// {{ $line }}
+{{- end }}
+{{- end }}
 {{ if not $event.Members -}}
 type {{ $event.Name }} struct{}
 {{- else -}}

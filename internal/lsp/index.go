@@ -28,6 +28,7 @@ type _Definition struct {
 	Name        string
 	Detail      string
 	Description string
+	Deprecated  bool
 	Kind        protocol.SymbolKind
 	Range       protocol.Range
 }
@@ -41,6 +42,7 @@ type _Symbol struct {
 	Name        string
 	Detail      string
 	Description string
+	Deprecated  bool
 	Kind        protocol.SymbolKind
 	Range       protocol.Range
 	Children    []_Symbol
@@ -83,11 +85,12 @@ func indexDocument(documentURI uri.URI, path, source string, version int32) *_Do
 			continue
 		}
 		range_ := identifierRange(source, pos, name)
-		description := descriptionFromDecorators(entry.Decorators)
+		description, deprecated := documentationFromDecoratorGroups(entry.Decorators)
 		document.Definitions = append(document.Definitions, _Definition{
-			Key: document.Domain + "." + name, Name: name, Detail: detail, Description: description, Kind: kind, Range: range_,
+			Key: document.Domain + "." + name, Name: name, Detail: detail, Description: description,
+			Deprecated: deprecated, Kind: kind, Range: range_,
 		})
-		document.Symbols = append(document.Symbols, entrySymbol(source, entry, name, detail, description, kind, range_))
+		document.Symbols = append(document.Symbols, entrySymbol(source, entry, name, detail, description, deprecated, kind, range_))
 	}
 	document.Occurrences = indexOccurrences(document, tokens)
 	return document

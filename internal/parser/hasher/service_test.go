@@ -69,6 +69,33 @@ func TestFillHashesIncludesSensitiveMetadata(t *testing.T) {
 	}
 }
 
+func TestFillHashesIncludesDeprecatedMetadata(t *testing.T) {
+	oldDomain := newHashTestDomain(t, "User service")
+	newDomain := newHashTestDomain(t, "User service")
+	newDomain.Data()[0].Members[0].Deprecated = true
+	newDomain.Data()[0].Members[0].DeprecatedReason = "Use id instead"
+	newDomain.Services()[0].Methods[0].Deprecated = true
+	newDomain.Services()[0].Methods[0].DeprecatedReason = "Use getProfile instead"
+	newDomain.Services()[0].Methods[0].Arguments[0].Deprecated = true
+	newDomain.Services()[0].Methods[0].Arguments[0].DeprecatedReason = "Use subject instead"
+
+	FillHashes(oldDomain)
+	FillHashes(newDomain)
+
+	if oldDomain.Data()[0].Hash == newDomain.Data()[0].Hash {
+		t.Fatal("expected data hash to change when member deprecation changes")
+	}
+	if oldDomain.Services()[0].Methods[0].Hash == newDomain.Services()[0].Methods[0].Hash {
+		t.Fatal("expected method hash to change when deprecation changes")
+	}
+	if oldDomain.Services()[0].Hash == newDomain.Services()[0].Hash {
+		t.Fatal("expected service hash to change when method deprecation changes")
+	}
+	if oldDomain.Hash() == newDomain.Hash() {
+		t.Fatal("expected domain hash to change when deprecation changes")
+	}
+}
+
 func TestFillHashesIncludesWholeSensitiveMetadata(t *testing.T) {
 	t.Run("data", func(t *testing.T) {
 		oldDomain := newHashTestDomain(t, "User service")

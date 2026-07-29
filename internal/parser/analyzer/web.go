@@ -8,7 +8,8 @@ import (
 func parseWeb(reporter *diagnosticReporter, gw *grammar.Web, pub bool) (*model.Web, bool) {
 	valid := checkCaseAdvanced(reporter, "Web", "", "Web", caseTypeCamel, gw.Name)
 	meta, metaValid := parseDecoratorMeta(reporter, gw.Decorators, decoratorContext{
-		allowDesc: true,
+		allowDesc:       true,
+		allowDeprecated: true,
 	})
 	valid = metaValid && valid
 	valid = reporter.checkNot(meta.HasExample, "%s web does not support decorator @example", gw.Name.Pos) && valid
@@ -17,11 +18,13 @@ func parseWeb(reporter *diagnosticReporter, gw *grammar.Web, pub bool) (*model.W
 	valid = audiencesValid && valid
 	valid = reporter.check(len(audiences) > 0, "%s web %s must declare at least one actor", gw.Name.Pos, gw.Name.Value) && valid
 	return &model.Web{
-		Pos:         position(gw.Name.Pos),
-		Name:        gw.Name.Value,
-		SkelName:    "",
-		Description: meta.Description,
-		Audiences:   audiences,
+		Pos:              position(gw.Name.Pos),
+		Name:             gw.Name.Value,
+		SkelName:         "",
+		Description:      meta.Description,
+		Deprecated:       meta.Deprecated,
+		DeprecatedReason: meta.DeprecatedReason,
+		Audiences:        audiences,
 	}, valid
 }
 

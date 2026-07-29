@@ -11,8 +11,10 @@ func buildEnumItemHashValues(items []*model.EnumItem) []*_EnumItemHashValue {
 	values := make([]*_EnumItemHashValue, 0, len(items))
 	for _, item := range items {
 		values = append(values, &_EnumItemHashValue{
-			Name:        item.Name,
-			Description: item.Description,
+			Name:             item.Name,
+			Description:      item.Description,
+			Deprecated:       item.Deprecated,
+			DeprecatedReason: item.DeprecatedReason,
 		})
 	}
 	return values
@@ -38,11 +40,13 @@ func (s *_hashState) buildMemberHashValues(items []*model.DataMember) []*_Member
 	values := make([]*_MemberHashValue, 0, len(items))
 	for _, item := range items {
 		values = append(values, &_MemberHashValue{
-			Name:        item.Name,
-			Description: item.Description,
-			Example:     item.Example,
-			Sensitive:   item.Sensitive,
-			Type:        s.buildTypeHashValue(item.Type),
+			Name:             item.Name,
+			Description:      item.Description,
+			Deprecated:       item.Deprecated,
+			DeprecatedReason: item.DeprecatedReason,
+			Example:          item.Example,
+			Sensitive:        item.Sensitive,
+			Type:             s.buildTypeHashValue(item.Type),
 		})
 	}
 	return values
@@ -52,11 +56,13 @@ func (s *_hashState) buildArgumentHashValues(items []*model.Argument) []*_Member
 	values := make([]*_MemberHashValue, 0, len(items))
 	for _, item := range items {
 		values = append(values, &_MemberHashValue{
-			Name:        item.Name,
-			Description: item.Description,
-			Example:     item.Example,
-			Sensitive:   item.Sensitive,
-			Type:        s.buildTypeHashValue(item.Type),
+			Name:             item.Name,
+			Description:      item.Description,
+			Deprecated:       item.Deprecated,
+			DeprecatedReason: item.DeprecatedReason,
+			Example:          item.Example,
+			Sensitive:        item.Sensitive,
+			Type:             s.buildTypeHashValue(item.Type),
 		})
 	}
 	return values

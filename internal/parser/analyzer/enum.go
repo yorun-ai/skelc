@@ -22,10 +22,13 @@ func parseEnum(reporter *diagnosticReporter, ge *grammar.Enum) (*model.Enum, boo
 		Items: []*model.EnumItem{},
 	}
 	meta, metaValid := parseDecoratorMeta(reporter, ge.Decorators, decoratorContext{
-		allowDesc: true,
+		allowDesc:       true,
+		allowDeprecated: true,
 	})
 	valid = metaValid && valid
 	enum.Description = meta.Description
+	enum.Deprecated = meta.Deprecated
+	enum.DeprecatedReason = meta.DeprecatedReason
 	itemPositionByName := map[string]lexer.Position{}
 
 	for _, grammarItem := range ge.Items {
@@ -49,13 +52,16 @@ func parseEnumItem(reporter *diagnosticReporter, gei *grammar.EnumItem) (*model.
 	valid := checkCase(reporter, "EnumItem", caseTypeScreamingSnake, gei.Name)
 	valid = reporter.check(gei.Name.Value != unspecifiedEnumName, "%s reversed EnumItem value %s", gei.Name.Pos, gei.Name.Value) && valid
 	meta, metaValid := parseDecoratorMeta(reporter, gei.Decorators, decoratorContext{
-		allowDesc: true,
+		allowDesc:       true,
+		allowDeprecated: true,
 	})
 	valid = metaValid && valid
 
 	return &model.EnumItem{
-		Pos:         position(gei.Name.Pos),
-		Name:        gei.Name.Value,
-		Description: meta.Description,
+		Pos:              position(gei.Name.Pos),
+		Name:             gei.Name.Value,
+		Description:      meta.Description,
+		Deprecated:       meta.Deprecated,
+		DeprecatedReason: meta.DeprecatedReason,
 	}, valid
 }

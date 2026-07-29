@@ -1,9 +1,13 @@
 package source
 
 import (
+	goparser "go/parser"
+	"go/token"
+	"path/filepath"
 	"reflect"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/golang/view"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -98,6 +102,47 @@ func TestCastService(t *testing.T) {
 	}
 	if service.Methods[0].ResultContainsBinaryType {
 		t.Fatalf("expected method result to not contain binary type")
+	}
+}
+
+func TestGeneratedGoParsesWithMultilineDeprecatedReasons(t *testing.T) {
+	pkg := buildModelDomainForTest(t, model.DomainSpec{
+		Name: "demo.user",
+		Services: []*model.Service{{
+			Name:             "UserService",
+			Deprecated:       true,
+			DeprecatedReason: "Use ProfileService instead\nComplete migration first",
+			Methods: []*model.Method{{
+				Name:             "getUser",
+				Deprecated:       true,
+				DeprecatedReason: "Use getProfile instead\nThe old response will be removed",
+			}},
+		}},
+		Tasks: []*model.Task{{
+			Name:             "RefreshTask",
+			Deprecated:       true,
+			DeprecatedReason: "Use RebuildTask instead\nThe old schedule will be removed",
+			Triggers: []*model.TaskTrigger{{
+				Name:             "legacy",
+				Deprecated:       true,
+				DeprecatedReason: "Use manually instead\nLegacy scheduling is disabled",
+			}},
+		}},
+	})
+	outputDir := t.TempDir()
+	gen := newGen(Option{
+		Domain: pkg, View: mustView(t, view.ModeFull, pkg), Mode: view.ModeFull,
+		PackageName: "skeled", Out: outputDir,
+	})
+	gen.genServiceGo()
+	gen.genTaskGo()
+
+	files, err := goparser.ParseDir(token.NewFileSet(), outputDir, nil, goparser.ParseComments)
+	if err != nil {
+		t.Fatalf("generated Go should parse: %v", err)
+	}
+	if _, ok := files["skeled"]; !ok {
+		t.Fatalf("expected generated package in %s", filepath.Clean(outputDir))
 	}
 }
 

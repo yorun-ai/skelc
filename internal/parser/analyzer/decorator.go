@@ -1,24 +1,30 @@
 package analyzer
 
 import (
+	"strings"
+
 	"github.com/alecthomas/participle/v2/lexer"
 	"go.yorun.ai/skelc/internal/parser/grammar"
 )
 
 type decoratorMeta struct {
-	Description string
-	Example     string
-	HasExample  bool
-	Sensitive   bool
-	examplePos  lexer.Position
+	Description      string
+	Example          string
+	HasExample       bool
+	Sensitive        bool
+	Deprecated       bool
+	DeprecatedReason string
+	hasDeprecated    bool
+	examplePos       lexer.Position
 }
 
 type decoratorContext struct {
-	allowDesc      bool
-	allowExample   bool
-	allowSensitive bool
-	ignoreOthers   bool
-	requireDesc    bool
+	allowDesc       bool
+	allowExample    bool
+	allowSensitive  bool
+	allowDeprecated bool
+	ignoreOthers    bool
+	requireDesc     bool
 }
 
 func parseDecoratorMeta(reporter *diagnosticReporter, decorators []*grammar.Decorator, ctx decoratorContext) (decoratorMeta, bool) {
@@ -62,6 +68,30 @@ func parseDecoratorMeta(reporter *diagnosticReporter, decorators []*grammar.Deco
 			if accepted {
 				meta.Sensitive = true
 			}
+		case "deprecated":
+			accepted := reporter.check(ctx.allowDeprecated, "%s unexpected decorator %s", decorator.Name.Pos, "@"+decorator.Name.Value)
+			accepted = reporter.checkNot(meta.hasDeprecated, "%s duplicated decorator @deprecated", decorator.Name.Pos) && accepted
+			meta.hasDeprecated = true
+			accepted = reporter.check(decorator.Value != nil,
+				"%s decorator @deprecated requires a non-empty string argument", decorator.Name.Pos) && accepted
+			valid = accepted && valid
+			if !accepted {
+				continue
+			}
+			reason, err := grammar.UnquoteDescriptionString(decorator.Value.Raw)
+			if err != nil {
+				reporter.reportf("%s invalid decorator @deprecated: %v", decorator.Name.Pos, err)
+				valid = false
+				continue
+			}
+			reason = strings.TrimSpace(reason)
+			if reason == "" {
+				reporter.reportf("%s decorator @deprecated requires a non-empty string argument", decorator.Name.Pos)
+				valid = false
+				continue
+			}
+			meta.Deprecated = true
+			meta.DeprecatedReason = reason
 		default:
 			valid = reporter.check(ctx.ignoreOthers,
 				"%s unexpected decorator %s", decorator.Name.Pos, "@"+decorator.Name.Value) && valid

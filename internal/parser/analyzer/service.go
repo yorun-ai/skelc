@@ -11,7 +11,8 @@ import (
 func parseService(reporter *diagnosticReporter, gs *grammar.Service) (*model.Service, bool) {
 	valid := checkCaseAdvanced(reporter, "Service", "", "Service", caseTypeCamel, gs.Name)
 	meta, metaValid := parseDecoratorMeta(reporter, gs.Decorators, decoratorContext{
-		allowDesc: true,
+		allowDesc:       true,
+		allowDeprecated: true,
 	})
 	valid = metaValid && valid
 	valid = reporter.checkNot(meta.HasExample, "%s service does not support decorator @example", gs.Name.Pos) && valid
@@ -28,15 +29,17 @@ func parseService(reporter *diagnosticReporter, gs *grammar.Service) (*model.Ser
 	methods, methodsValid := parseMethods(reporter, gs.Name, serviceMethods(gs))
 	valid = methodsValid && valid
 	return &model.Service{
-		Pos:         position(gs.Name.Pos),
-		Name:        gs.Name.Value,
-		Pub:         gs.Pub,
-		Audiences:   audiences,
-		Auth:        authMode,
-		Require:     require,
-		Description: meta.Description,
-		Methods:     methods,
-		SkelName:    "",
+		Pos:              position(gs.Name.Pos),
+		Name:             gs.Name.Value,
+		Pub:              gs.Pub,
+		Audiences:        audiences,
+		Auth:             authMode,
+		Require:          require,
+		Description:      meta.Description,
+		Deprecated:       meta.Deprecated,
+		DeprecatedReason: meta.DeprecatedReason,
+		Methods:          methods,
+		SkelName:         "",
 	}, valid
 }
 
@@ -60,8 +63,9 @@ func serviceMethods(gs *grammar.Service) []*grammar.Method {
 	methods := make([]*grammar.Method, 0)
 	for _, section := range gs.Sections {
 		if section.Method != nil {
-			section.Method.Decorators = append(section.Decorators, section.Method.Decorators...)
-			methods = append(methods, section.Method)
+			method := *section.Method
+			method.Decorators = append(append([]*grammar.Decorator{}, section.Decorators...), section.Method.Decorators...)
+			methods = append(methods, &method)
 		}
 	}
 	return methods

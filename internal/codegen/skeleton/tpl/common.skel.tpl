@@ -13,9 +13,14 @@
 {{ end }}{{ end }}{{ end }}
 {{ define "sensitive" }}{{ with . }}{{ spaces " " .Indent }}@sensitive
 {{ end }}{{ end }}
-{{ define "resourceCheck" }}{{ template "description" (description .Description .Indent) }}{{ spaces " " .Indent }}check {{ .Name }} {{ if or .Arguments .InputDescription .InputSensitive }}{
+{{ define "deprecated" }}{{ with . }}{{ $indent := spaces " " .Indent }}{{ if .Multiline }}{{ $indent }}@deprecated("""
+{{ range .Lines }}{{ $indent }}{{ . }}
+{{ end }}{{ $indent }}""")
+{{ else }}{{ $indent }}@deprecated({{ .Quoted }})
+{{ end }}{{ end }}{{ end }}
+{{ define "resourceCheck" }}{{ template "description" (description .Description .Indent) }}{{ template "deprecated" (deprecated .Deprecated .DeprecatedReason .Indent) }}{{ spaces " " .Indent }}check {{ .Name }} {{ if or .Arguments .InputDescription .InputSensitive }}{
 {{ template "description" (description .InputDescription .InputIndent) }}{{ template "sensitive" (sensitive .InputSensitive .InputIndent) }}{{ spaces " " .InputIndent }}input {
-{{ range $arg := .Arguments }}{{ template "description" (description $arg.Description $.ArgumentIndent) }}{{ template "example" (example $arg.Example $.ArgumentIndent) }}{{ template "sensitive" (sensitive $arg.Sensitive $.ArgumentIndent) }}{{ spaces " " $.ArgumentIndent }}{{ $arg.Name }}: {{ template "type" (typeRef $arg.Type) }}
+{{ range $arg := .Arguments }}{{ template "description" (description $arg.Description $.ArgumentIndent) }}{{ template "deprecated" (deprecated $arg.Deprecated $arg.DeprecatedReason $.ArgumentIndent) }}{{ template "example" (example $arg.Example $.ArgumentIndent) }}{{ template "sensitive" (sensitive $arg.Sensitive $.ArgumentIndent) }}{{ spaces " " $.ArgumentIndent }}{{ $arg.Name }}: {{ template "type" (typeRef $arg.Type) }}
 {{ end }}{{ spaces " " .InputIndent }}}
 {{ spaces " " .Indent }}}{{ else }}{}{{ end }}
 {{ end }}

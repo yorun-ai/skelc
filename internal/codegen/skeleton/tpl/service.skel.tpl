@@ -8,7 +8,7 @@ import {{ $import.Name }}{{ with importAlias $import }} as {{ . }}{{ end }}
 {{ if $i }}
 {{ end -}}
 {{- $serviceAuth := authMarker $service.Auth -}}
-{{ template "description" (description $service.Description 0) }}pub service {{ $service.Name }} {
+{{ template "description" (description $service.Description 0) }}{{ template "deprecated" (deprecated $service.Deprecated $service.DeprecatedReason 0) }}pub service {{ $service.Name }} {
 {{- range $audience := $service.Audiences }}
     for {{ $audience.Actor }}{{ with $audience.Via }} via {{ . }}{{ end }}
 {{- end }}
@@ -26,7 +26,7 @@ import {{ $import.Name }}{{ with importAlias $import }} as {{ . }}{{ end }}
 
 {{ end }}
 {{- $methodAuth := methodAuth $method -}}
-{{ template "description" (description $method.Description 4) }}{{ if emptyMethod $method $service }}    method {{ $method.Name }} {}
+{{ template "description" (description $method.Description 4) }}{{ template "deprecated" (deprecated $method.Deprecated $method.DeprecatedReason 4) }}{{ if emptyMethod $method $service }}    method {{ $method.Name }} {}
 {{- else }}    method {{ $method.Name }} {
 {{- if $methodAuth }}
         {{ $methodAuth }}
@@ -37,7 +37,7 @@ import {{ $import.Name }}{{ with importAlias $import }} as {{ . }}{{ end }}
 {{- if or $method.Arguments $method.ArgumentsSensitive }}
 {{ template "description" (description $method.InputDescription 8) }}{{ template "sensitive" (sensitive $method.ArgumentsSensitive 8) }}        input {
 {{- range $argument := $method.Arguments }}
-{{ template "description" (description $argument.Description 12) }}{{ template "example" (example $argument.Example 12) }}{{ template "sensitive" (sensitive $argument.Sensitive 12) }}            {{ $argument.Name }}: {{ template "type" (typeRef $argument.Type) }}
+{{ template "description" (description $argument.Description 12) }}{{ template "deprecated" (deprecated $argument.Deprecated $argument.DeprecatedReason 12) }}{{ template "example" (example $argument.Example 12) }}{{ template "sensitive" (sensitive $argument.Sensitive 12) }}            {{ $argument.Name }}: {{ template "type" (typeRef $argument.Type) }}
 {{- end }}
         }
 {{- end }}

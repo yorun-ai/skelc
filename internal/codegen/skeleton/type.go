@@ -19,6 +19,8 @@ type _TypeView struct {
 type _ResourceCheckView struct {
 	Name             string
 	Description      string
+	Deprecated       bool
+	DeprecatedReason string
 	InputDescription string
 	InputSensitive   bool
 	Arguments        []*model.Argument
@@ -78,6 +80,8 @@ func resourceCheckView(check *model.ResourceCheck, indent int) *_ResourceCheckVi
 	return &_ResourceCheckView{
 		Name:             check.Name,
 		Description:      check.Method.Description,
+		Deprecated:       check.Deprecated,
+		DeprecatedReason: check.DeprecatedReason,
 		InputDescription: check.Method.InputDescription,
 		InputSensitive:   check.Method.ArgumentsSensitive,
 		Arguments:        renderResourceCheckArguments(check),

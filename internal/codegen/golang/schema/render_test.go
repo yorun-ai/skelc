@@ -61,3 +61,39 @@ func TestGenSchemaGoRendersActorAuthEnabled(t *testing.T) {
 		t.Fatalf("expected generated schema to render disabled PermEnabled, got:\n%s", string(content))
 	}
 }
+
+func TestGenSchemaGoRendersDeprecatedFields(t *testing.T) {
+	pkg := buildModelDomainForTest(t, model.DomainSpec{
+		Name: "demo.user",
+		Data: []*model.Data{{
+			Name:             "User",
+			Deprecated:       true,
+			DeprecatedReason: "Use Profile instead",
+			Members: []*model.DataMember{{
+				Name:             "legacyId",
+				Type:             stringTypeForTest(),
+				Deprecated:       true,
+				DeprecatedReason: "Use id instead",
+			}},
+		}},
+	})
+	outputDir := filepath.Join(t.TempDir(), "skeled")
+	newGen(Option{
+		Domain: pkg, View: mustView(t, view.ModeFull, pkg), Mode: view.ModeFull,
+		PackageName: "skeled", Out: outputDir,
+	}).gen()
+
+	content, err := os.ReadFile(filepath.Join(outputDir, schemaGoFilename))
+	if err != nil {
+		t.Fatalf("ReadFile() error = %v", err)
+	}
+	generated := string(content)
+	if strings.Count(generated, "Deprecated:") < 2 {
+		t.Fatalf("expected data and member deprecation flags, got:\n%s", generated)
+	}
+	for _, reason := range []string{"Use Profile instead", "Use id instead"} {
+		if !strings.Contains(generated, `"`+reason+`"`) {
+			t.Fatalf("expected reason %q, got:\n%s", reason, generated)
+		}
+	}
+}

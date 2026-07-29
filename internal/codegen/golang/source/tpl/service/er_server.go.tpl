@@ -1,5 +1,11 @@
 {{- define "serviceERServer" -}}{{ if not .ClientOnly }}
 // {{ .Name }} / ERServer
+{{- if .DeprecatedCommentLines }}
+//
+{{- range .DeprecatedCommentLines }}
+// {{ . }}
+{{- end }}
+{{- end }}
 
 type {{ .ERServerName }} interface {
 {{- range .Methods }}

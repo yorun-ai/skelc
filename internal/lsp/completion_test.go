@@ -39,10 +39,34 @@ func TestServerCompletesKeywordsTypesAndImportedSymbols(t *testing.T) {
 	items = result.(protocol.CompletionItemSlice)
 	assert.True(t, hasCompletion(items, "service"))
 	assert.True(t, hasCompletion(items, "@sensitive"))
+	assert.True(t, hasCompletion(items, "@deprecated"))
 	assert.True(t, hasCompletion(items, "string"))
 	assert.True(t, hasCompletion(items, "Order"))
 	assert.True(t, hasCompletion(items, "Status"))
 	assert.True(t, hasCompletion(items, "user"))
+}
+
+func TestServerMarksDeprecatedCompletion(t *testing.T) {
+	server := newServer()
+	documentURI := uri.File("/workspace/user.skel")
+	server.putDocument(documentURI, "domain demo\n@deprecated(\"Use Profile instead\")\ndata User {}\ndata Order { user: Us }\n", 1, true)
+
+	result, err := server.Completion(t.Context(), &protocol.CompletionParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
+			Position:     protocol.Position{Line: 3, Character: 21},
+		},
+	})
+	require.NoError(t, err)
+	items := result.(protocol.CompletionItemSlice)
+	for _, item := range items {
+		if item.Label == "User" {
+			assert.Equal(t, []protocol.CompletionItemTag{protocol.CompletionItemTagDeprecated}, item.Tags)
+			assert.Contains(t, string(item.Documentation.(protocol.String)), "Deprecated: Use Profile instead")
+			return
+		}
+	}
+	t.Fatal("expected User completion")
 }
 
 func hasCompletion(items protocol.CompletionItemSlice, label string) bool {

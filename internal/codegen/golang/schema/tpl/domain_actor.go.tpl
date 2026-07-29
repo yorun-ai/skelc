@@ -8,6 +8,7 @@
 			{{- if $actor.Description }}
 			Description: {{ quote $actor.Description }},
 			{{- end }}
+			{{ template "deprecatedFields" $actor }}
 			Hash: {{ quote $actor.Hash }},
 			{{- if $actor.Vias }}
 			Vias: []skel.ActorVia{

@@ -8,6 +8,7 @@
 			{{- if $event.Description }}
 			Description: {{ quote $event.Description }},
 			{{- end }}
+			{{ template "deprecatedFields" $event }}
 			Hash: {{ quote $event.Hash }},
 			Pub: {{ $event.Pub }},
 			{{- if $event.Sensitive }}

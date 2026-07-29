@@ -41,10 +41,12 @@ func newHashState(domain *model.Domain) *_hashState {
 func (s *_hashState) enumHash(enum *model.Enum) string {
 	return s.memoHash("enum", enum.SkelName, func() string {
 		return hashValue(_EnumHashValue{
-			Name:        enum.Name,
-			SkelName:    enum.SkelName,
-			Description: enum.Description,
-			Items:       buildEnumItemHashValues(enum.Items),
+			Name:             enum.Name,
+			SkelName:         enum.SkelName,
+			Description:      enum.Description,
+			Deprecated:       enum.Deprecated,
+			DeprecatedReason: enum.DeprecatedReason,
+			Items:            buildEnumItemHashValues(enum.Items),
 		})
 	})
 }
@@ -52,15 +54,17 @@ func (s *_hashState) enumHash(enum *model.Enum) string {
 func (s *_hashState) dataHash(data *model.Data) string {
 	return s.memoHash(string(data.Kind), data.SkelName, func() string {
 		return hashValue(_DataHashValue{
-			Name:           data.Name,
-			SkelName:       data.SkelName,
-			Description:    data.Description,
-			Kind:           data.Kind,
-			Pub:            data.Pub,
-			Sensitive:      data.Sensitive,
-			Lifecycle:      string(data.Lifecycle),
-			TypeParameters: buildTypeParameterNames(data.TypeParameters),
-			Members:        s.buildMemberHashValues(data.Members),
+			Name:             data.Name,
+			SkelName:         data.SkelName,
+			Description:      data.Description,
+			Deprecated:       data.Deprecated,
+			DeprecatedReason: data.DeprecatedReason,
+			Kind:             data.Kind,
+			Pub:              data.Pub,
+			Sensitive:        data.Sensitive,
+			Lifecycle:        string(data.Lifecycle),
+			TypeParameters:   buildTypeParameterNames(data.TypeParameters),
+			Members:          s.buildMemberHashValues(data.Members),
 		})
 	})
 }
@@ -68,10 +72,12 @@ func (s *_hashState) dataHash(data *model.Data) string {
 func (s *_hashState) webHash(web *model.Web) string {
 	return s.memoHash("web", web.SkelName, func() string {
 		return hashValue(_WebHashValue{
-			Name:        web.Name,
-			SkelName:    web.SkelName,
-			Description: web.Description,
-			Actors:      s.buildActorAudienceHashValues(web.Audiences),
+			Name:             web.Name,
+			SkelName:         web.SkelName,
+			Description:      web.Description,
+			Deprecated:       web.Deprecated,
+			DeprecatedReason: web.DeprecatedReason,
+			Actors:           s.buildActorAudienceHashValues(web.Audiences),
 		})
 	})
 }
@@ -102,6 +108,8 @@ func (s *_hashState) actorHash(actor *model.Actor) string {
 			Name:               actor.Name,
 			SkelName:           actor.SkelName,
 			Description:        actor.Description,
+			Deprecated:         actor.Deprecated,
+			DeprecatedReason:   actor.DeprecatedReason,
 			Vias:               buildActorViaNames(actor.Vias),
 			AuthEnabled:        actor.AuthEnabled,
 			AuthCredential:     authCredentialName,

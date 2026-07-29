@@ -52,6 +52,13 @@ export function {{ $service.FactoryName }}(client: VrpcClient) {
     {{ $method.Name }}(
       params: {{- if $method.HasParams }} {
       {{- range $argument := $method.Arguments }}
+        {{- if $argument.DeprecatedLines }}
+        /**
+        {{- range $line := $argument.DeprecatedLines }}
+         * {{ $line }}
+        {{- end }}
+         */
+        {{- end }}
         {{ $argument.Name }}: {{ $argument.Type.Plain }};
       {{- end }}
       }{{- else }} null{{- end }},

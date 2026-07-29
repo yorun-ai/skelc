@@ -13,11 +13,13 @@ import (
 func buildArgumentMembers(args []*model.Argument) []*model.DataMember {
 	return sliceutil.Map(args, func(arg *model.Argument) *model.DataMember {
 		return &model.DataMember{
-			Name:        arg.Name,
-			Description: arg.Description,
-			Example:     arg.Example,
-			Sensitive:   arg.Sensitive,
-			Type:        arg.Type,
+			Name:             arg.Name,
+			Description:      arg.Description,
+			Deprecated:       arg.Deprecated,
+			DeprecatedReason: arg.DeprecatedReason,
+			Example:          arg.Example,
+			Sensitive:        arg.Sensitive,
+			Type:             arg.Type,
 		}
 	})
 }
@@ -50,7 +52,8 @@ func parseMethods(reporter *diagnosticReporter, owner *grammar.Identifier, metho
 func parseMethod(reporter *diagnosticReporter, gm *grammar.Method) (*model.Method, bool) {
 	valid := checkCase(reporter, "Method", caseTypeLowerCamel, gm.Name)
 	meta, metaValid := parseDecoratorMeta(reporter, gm.Decorators, decoratorContext{
-		allowDesc: true,
+		allowDesc:       true,
+		allowDeprecated: true,
 	})
 	valid = metaValid && valid
 	require, requireValid := parseRequire(reporter, gm.Require)
@@ -58,13 +61,15 @@ func parseMethod(reporter *diagnosticReporter, gm *grammar.Method) (*model.Metho
 	authMode, authModeValid := parseAuthMode(reporter, methodAuthMarker(gm), model.AuthModeUnset)
 	valid = authModeValid && valid
 	method := &model.Method{
-		Pos:         position(gm.Name.Pos),
-		Name:        gm.Name.Value,
-		SkelName:    gm.Name.Value,
-		Description: meta.Description,
-		Auth:        authMode,
-		Require:     require,
-		Arguments:   []*model.Argument{},
+		Pos:              position(gm.Name.Pos),
+		Name:             gm.Name.Value,
+		SkelName:         gm.Name.Value,
+		Description:      meta.Description,
+		Deprecated:       meta.Deprecated,
+		DeprecatedReason: meta.DeprecatedReason,
+		Auth:             authMode,
+		Require:          require,
+		Arguments:        []*model.Argument{},
 	}
 	input := methodInput(gm)
 	output := methodOutput(gm)
@@ -133,20 +138,23 @@ func methodOutput(gm *grammar.Method) *grammar.MethodOutput {
 func parseArgument(reporter *diagnosticReporter, ga *grammar.Argument) (*model.Argument, bool) {
 	valid := checkCase(reporter, "Argument", caseTypeLowerCamel, ga.Name)
 	meta, metaValid := parseDecoratorMeta(reporter, ga.Decorators, decoratorContext{
-		allowDesc:      true,
-		allowExample:   true,
-		allowSensitive: true,
-		requireDesc:    true,
+		allowDesc:       true,
+		allowExample:    true,
+		allowSensitive:  true,
+		allowDeprecated: true,
+		requireDesc:     true,
 	})
 	valid = metaValid && valid
 	argType, typeValid := parseType(reporter, ga.Type)
 	valid = typeValid && valid
 	arg := &model.Argument{
-		Pos:         position(ga.Name.Pos),
-		Name:        ga.Name.Value,
-		Description: meta.Description,
-		Sensitive:   meta.Sensitive,
-		Type:        argType,
+		Pos:              position(ga.Name.Pos),
+		Name:             ga.Name.Value,
+		Description:      meta.Description,
+		Deprecated:       meta.Deprecated,
+		DeprecatedReason: meta.DeprecatedReason,
+		Sensitive:        meta.Sensitive,
+		Type:             argType,
 	}
 	if meta.HasExample {
 		arg.Example = meta.Example

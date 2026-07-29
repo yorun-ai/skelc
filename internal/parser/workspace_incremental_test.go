@@ -50,3 +50,28 @@ func TestWorkspaceAnalyzerHonorsCancellation(t *testing.T) {
 		t.Fatalf("expected context cancellation, got %v", err)
 	}
 }
+
+func TestWorkspaceAnalyzerDoesNotDuplicateMethodDecoratorsOnReanalysis(t *testing.T) {
+	analyzer := NewWorkspaceAnalyzer()
+	sources := []Source{
+		{Path: "/workspace/user.skel", Content: []byte("domain demo.user\npub data User { id: string }\n")},
+		{Path: "/workspace/order.skel", Content: []byte(`domain demo.order
+import demo.user
+@deprecated("Use NewOrderService")
+service OrderService {
+    @deprecated("Use getNewOrder")
+    method getOrder {
+        output user.User
+    }
+}
+`)},
+	}
+	if diagnostics := analyzer.Analyze(sources); len(diagnostics) != 0 {
+		t.Fatalf("unexpected initial diagnostics: %v", diagnostics)
+	}
+
+	sources[0].Content = []byte("domain demo.user\npub data User { id: uuid }\n")
+	if diagnostics := analyzer.Analyze(sources); len(diagnostics) != 0 {
+		t.Fatalf("unexpected diagnostics after dependent reanalysis: %v", diagnostics)
+	}
+}

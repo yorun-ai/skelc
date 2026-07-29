@@ -12,6 +12,10 @@ type Task struct {
 	Hash string
 	// Description is the task's documentation text.
 	Description string
+	// Deprecated reports whether the task should no longer be used.
+	Deprecated bool
+	// DeprecatedReason explains why the task is deprecated and what to use instead.
+	DeprecatedReason string
 	// Triggers lists task triggers in source order.
 	Triggers []*TaskTrigger
 }
@@ -28,6 +32,10 @@ type TaskTrigger struct {
 	Hash string
 	// Description is the trigger's documentation text.
 	Description string
+	// Deprecated reports whether the trigger should no longer be used.
+	Deprecated bool
+	// DeprecatedReason explains why the trigger is deprecated and what to use instead.
+	DeprecatedReason string
 	// InputDescription documents the trigger input as a whole.
 	InputDescription string
 	// ArgumentsSensitive reports whether the trigger input is sensitive as a whole.

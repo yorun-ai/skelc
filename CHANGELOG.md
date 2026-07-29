@@ -8,6 +8,9 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ### Added
 
+- `@deprecated("reason")` metadata for declarations and their deprecatable
+  elements, including generated Vine schemas, Go docs, TypeScript JSDoc,
+  public Skel output, and LSP presentation
 - UUID map keys in contracts, generated Go maps, TypeScript records, and public Skel output
 - LSP document formatting, keyword and type completion, and declaration hover details
 - Hierarchical document symbols, workspace symbol search, and top-level declaration rename

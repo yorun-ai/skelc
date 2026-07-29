@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"strings"
 	"testing"
 
 	"go.yorun.ai/skelc/internal/parser/grammar"
@@ -69,6 +70,61 @@ func TestParseData(t *testing.T) {
 	}
 	if !data.Members[1].Type.Nullable {
 		t.Fatal("expected nullable nextToken member")
+	}
+}
+
+func TestParseDataDeprecated(t *testing.T) {
+	data := parseDataTest(t, &grammar.Data{
+		Decorators: []*grammar.Decorator{
+			{Name: ident("deprecated"), Value: decoratorValue(`"  Use UserProfile instead  "`)},
+		},
+		Name: ident("User"),
+		Members: []*grammar.DataMember{{
+			Decorators: []*grammar.Decorator{
+				{Name: ident("deprecated"), Value: decoratorValue(`"Use id instead"`)},
+			},
+			Name: ident("legacyId"),
+			Type: plainType(grammar.String),
+		}},
+	})
+
+	if !data.Deprecated || data.DeprecatedReason != "Use UserProfile instead" {
+		t.Fatalf("unexpected data deprecation: %+v", data)
+	}
+	if !data.Members[0].Deprecated || data.Members[0].DeprecatedReason != "Use id instead" {
+		t.Fatalf("unexpected member deprecation: %+v", data.Members[0])
+	}
+}
+
+func TestParseDataRejectsInvalidDeprecatedDecorator(t *testing.T) {
+	for name, decorators := range map[string][]*grammar.Decorator{
+		"missing argument": {{Name: ident("deprecated")}},
+		"empty reason":     {{Name: ident("deprecated"), Value: decoratorValue(`"  "`)}},
+		"non-string":       {{Name: ident("deprecated"), Value: decoratorValue(`true`)}},
+		"duplicated": {
+			{Name: ident("deprecated"), Value: decoratorValue(`"first"`)},
+			{Name: ident("deprecated"), Value: decoratorValue(`"second"`)},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			expectDataDiagnostic(t, "decorator @deprecated", &grammar.Data{
+				Decorators: decorators,
+				Name:       ident("User"),
+			})
+		})
+	}
+}
+
+func TestDomainRejectsDeprecatedDecorator(t *testing.T) {
+	domain := &grammar.DomainContent{
+		Decorators: []*grammar.Decorator{
+			{Name: ident("deprecated"), Value: decoratorValue(`"Domains are not deprecable"`)},
+		},
+		Name: qualifiedName("demo"),
+	}
+	err := domain.Finalize()
+	if err == nil || !strings.Contains(err.Error(), "unexpected decorator @deprecated") {
+		t.Fatalf("expected domain deprecation diagnostic, got %v", err)
 	}
 }
 

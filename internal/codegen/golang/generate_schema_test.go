@@ -67,8 +67,8 @@ func TestGeneratorGoRendersSchemaFile(t *testing.T) {
 	if !strings.Contains(string(goSchemaContent), `Name:     "AppContext"`) {
 		t.Fatalf("expected pub schema data entry, got:\n%s", string(goSchemaContent))
 	}
-	if !strings.Contains(string(goSchemaContent), `Name:      "AppConfig"`) ||
-		!strings.Contains(string(goSchemaContent), `SkelName:  "demo.app.AppConfig"`) ||
+	if !strings.Contains(string(goSchemaContent), `"AppConfig"`) ||
+		!strings.Contains(string(goSchemaContent), `"demo.app.AppConfig"`) ||
 		!strings.Contains(string(goSchemaContent), `Pub:       true`) {
 		t.Fatalf("expected pub schema config pub flag, got:\n%s", string(goSchemaContent))
 	}

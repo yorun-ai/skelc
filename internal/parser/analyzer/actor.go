@@ -23,7 +23,8 @@ type _ActorAuth struct {
 func parseActor(reporter *diagnosticReporter, ga *grammar.Actor) (*model.Actor, bool) {
 	valid := checkCaseAdvanced(reporter, "Actor", "", "Actor", caseTypeCamel, ga.Name)
 	meta, metaValid := parseDecoratorMeta(reporter, ga.Decorators, decoratorContext{
-		allowDesc: true,
+		allowDesc:       true,
+		allowDeprecated: true,
 	})
 	valid = metaValid && valid
 	valid = reporter.checkNot(meta.HasExample, "%s actor does not support decorator @example", ga.Name.Pos) && valid
@@ -40,16 +41,18 @@ func parseActor(reporter *diagnosticReporter, ga *grammar.Actor) (*model.Actor, 
 	permEnabled, permissionValid := actorPermissionDeclared(reporter, ga)
 	valid = permissionValid && valid
 	return &model.Actor{
-		Pos:            position(ga.Name.Pos),
-		Name:           ga.Name.Value,
-		SkelName:       "",
-		Description:    meta.Description,
-		Pub:            ga.Pub,
-		Vias:           vias,
-		AuthEnabled:    auth != nil,
-		AuthCredential: authCredential,
-		AuthInfo:       authInfo,
-		PermEnabled:    permEnabled,
+		Pos:              position(ga.Name.Pos),
+		Name:             ga.Name.Value,
+		SkelName:         "",
+		Description:      meta.Description,
+		Deprecated:       meta.Deprecated,
+		DeprecatedReason: meta.DeprecatedReason,
+		Pub:              ga.Pub,
+		Vias:             vias,
+		AuthEnabled:      auth != nil,
+		AuthCredential:   authCredential,
+		AuthInfo:         authInfo,
+		PermEnabled:      permEnabled,
 	}, valid
 }
 

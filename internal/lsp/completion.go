@@ -8,7 +8,7 @@ import (
 )
 
 var completionKeywords = []string{
-	"@desc", "@example", "@sensitive",
+	"@deprecated", "@desc", "@example", "@sensitive",
 	"actor", "action", "all", "any", "as", "auth", "check", "config", "credential", "data",
 	"domain", "enum", "event", "for", "import", "info", "input", "method", "noauth", "output",
 	"payload", "permission", "pub", "require", "resource", "service", "task", "trigger", "via", "web",
@@ -89,6 +89,9 @@ func symbolCompletion(definition _Definition, domain string) protocol.Completion
 	}
 	if definition.Description != "" {
 		item.Documentation = protocol.String(definition.Description)
+	}
+	if definition.Deprecated {
+		item.Tags = []protocol.CompletionItemTag{protocol.CompletionItemTagDeprecated}
 	}
 	return item
 }

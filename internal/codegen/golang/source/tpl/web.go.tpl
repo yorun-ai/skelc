@@ -6,12 +6,6 @@ func init() {
 {{- end }}
 }
 {{ range $web := $.Webs }}
-{{- if $web.CommentLines }}
-{{- range $line := $web.CommentLines }}
-// {{ $line }}
-{{- end }}
-{{- end }}
-
 var {{ $web.SpecName }} = &web.WebSpec{
 	Name: "{{ $web.Name }}",
 	SkelName: "{{ $web.SkelName }}",
@@ -20,6 +14,11 @@ var {{ $web.SpecName }} = &web.WebSpec{
 	DefaultServerType: reflect.TypeFor[*{{ $web.DefaultServerName }}](),
 }
 
+{{- if $web.CommentLines }}
+{{- range $line := $web.CommentLines }}
+// {{ $line }}
+{{- end }}
+{{- end }}
 type {{ $web.ServerName }} interface {
 	web.Handler
 

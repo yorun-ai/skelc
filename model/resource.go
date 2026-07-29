@@ -12,6 +12,10 @@ type Resource struct {
 	Hash string
 	// Description is the resource's documentation text.
 	Description string
+	// Deprecated reports whether the resource should no longer be used.
+	Deprecated bool
+	// DeprecatedReason explains why the resource is deprecated and what to use instead.
+	DeprecatedReason string
 	// Pub reports whether the resource belongs to the public contract.
 	Pub bool
 	// Checks lists checks declared directly on the resource.
@@ -32,6 +36,10 @@ type ResourceAction struct {
 	PermissionCode string
 	// Description is the action's documentation text.
 	Description string
+	// Deprecated reports whether the action should no longer be used.
+	Deprecated bool
+	// DeprecatedReason explains why the action is deprecated and what to use instead.
+	DeprecatedReason string
 	// Checks lists checks available for this action.
 	Checks []*ResourceCheck
 }
@@ -40,6 +48,10 @@ type ResourceAction struct {
 type ResourceCheck struct {
 	// Name is the check's local name.
 	Name string
+	// Deprecated reports whether the check should no longer be used.
+	Deprecated bool
+	// DeprecatedReason explains why the check is deprecated and what to use instead.
+	DeprecatedReason string
 	// Method is the generated service method implementing the check.
 	Method *Method
 }

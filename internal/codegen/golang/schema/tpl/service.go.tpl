@@ -5,6 +5,7 @@
 	{{- if .Description }}
 	Description: {{ quote .Description }},
 	{{- end }}
+	{{ template "deprecatedFields" . }}
 	Hash: {{ quote .Hash }},
 	Pub: {{ .Pub }},
 	AuthMode: {{ authLiteral .AuthMode }},

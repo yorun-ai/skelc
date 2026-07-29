@@ -2,6 +2,7 @@ package source
 
 import (
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"go.yorun.ai/skelc/internal/codegen/golang/view"
@@ -21,6 +22,22 @@ func TestBuildDocGoPayloadUsesDomainDescription(t *testing.T) {
 
 	if len(payload.CommentLines) == 0 || payload.CommentLines[0] != "Package skeled User domain" {
 		t.Fatalf("unexpected doc comment lines: %+v", payload.CommentLines)
+	}
+}
+
+func TestDeprecatedGoDocLines(t *testing.T) {
+	got := deprecatedGoDocLines(nil, "User", "Use Profile instead")
+	want := []string{"User", "", "Deprecated: Use Profile instead."}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected deprecated docs: got=%v want=%v", got, want)
+	}
+}
+
+func TestDeprecatedGoDocLinesSupportsMultilineReason(t *testing.T) {
+	got := deprecatedGoDocLines(nil, "User", "Use Profile instead\nComplete migration first")
+	want := []string{"User", "", "Deprecated: Use Profile instead", "Complete migration first."}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected multiline deprecated docs: got=%v want=%v", got, want)
 	}
 }
 

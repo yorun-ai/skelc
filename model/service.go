@@ -24,6 +24,10 @@ type Service struct {
 	Hash string
 	// Description is the service's documentation text.
 	Description string
+	// Deprecated reports whether the service should no longer be used.
+	Deprecated bool
+	// DeprecatedReason explains why the service is deprecated and what to use instead.
+	DeprecatedReason string
 	// Pub reports whether the service belongs to the public contract.
 	Pub bool
 	// Audiences lists actors allowed to call the service.
@@ -59,6 +63,10 @@ type Method struct {
 	Hash string
 	// Description is the method's documentation text.
 	Description string
+	// Deprecated reports whether the method should no longer be used.
+	Deprecated bool
+	// DeprecatedReason explains why the method is deprecated and what to use instead.
+	DeprecatedReason string
 	// Example is the method's example text.
 	Example string
 	// Auth is the method-level authentication mode.
@@ -91,6 +99,10 @@ type Argument struct {
 	Name string
 	// Description is the argument's documentation text.
 	Description string
+	// Deprecated reports whether the argument should no longer be used.
+	Deprecated bool
+	// DeprecatedReason explains why the argument is deprecated and what to use instead.
+	DeprecatedReason string
 	// Example is the argument's example value as source text.
 	Example string
 	// Sensitive reports whether generated Go values mark this argument for redaction.

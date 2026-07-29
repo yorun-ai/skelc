@@ -58,7 +58,16 @@ func castServiceMethod(ps *model.Service, pm *model.Method) *ServiceMethod {
 		}
 	}
 	method.ValidateArguments = buildMethodValidateArguments(method)
-	method.CommentLines = goMethodDocLines(method.Name, pm.Description, pm.Example, method.Arguments, method.ResultType, pm.OutputDescription, pm.OutputExample)
+	method.CommentLines = goMethodDocLines(
+		method.Name,
+		pm.Description,
+		pm.Example,
+		method.Arguments,
+		method.ResultType,
+		pm.OutputDescription,
+		pm.OutputExample,
+		pm.DeprecatedReason,
+	)
 	return method
 }
 
@@ -129,10 +138,17 @@ type MethodArgument struct {
 
 func castMethodArgument(p *model.Argument) *MethodArgument {
 	argType := castType(p.Type)
+	description := common.MergeDescriptionAndExample(p.Description, p.Example)
+	if p.Deprecated {
+		if description != "" {
+			description += " "
+		}
+		description += "Deprecated: " + common.EnsureSentence(p.DeprecatedReason)
+	}
 	return &MethodArgument{
 		Name:        nameutil.ToLowerCamel(p.Name),
 		SkelName:    p.Name,
-		Description: common.MergeDescriptionAndExample(p.Description, p.Example),
+		Description: description,
 		Type:        argType,
 		ParsedType:  p.Type,
 	}

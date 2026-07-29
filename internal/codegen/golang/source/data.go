@@ -68,7 +68,7 @@ func castData(p *model.Data) *Data {
 		Name:             transDataName(p),
 		ImplName:         "_" + transDataName(p),
 		ConstructorName:  "_New" + transDataName(p),
-		CommentLines:     goDocLines(transDataName(p), p.Description),
+		CommentLines:     deprecatedGoDocLines(goDocLines(transDataName(p), p.Description), transDataName(p), p.DeprecatedReason),
 		Members:          make([]*DataMember, 0, len(p.Members)),
 		Sensitive:        p.Sensitive,
 		MarkerMethodName: skelmeta.SensitiveMarkerMethodName,
@@ -110,11 +110,15 @@ type DataMember struct {
 func castDataMember(p *model.DataMember) *DataMember {
 	memberType := castType(p.Type)
 	return &DataMember{
-		Name:         nameutil.ToCamel(p.Name),
-		CommentLines: goDocLines(nameutil.ToCamel(p.Name), common.MergeDescriptionAndExample(p.Description, p.Example)),
-		Type:         memberType,
-		SkelName:     p.Name,
-		Sensitive:    p.Sensitive,
+		Name: nameutil.ToCamel(p.Name),
+		CommentLines: deprecatedGoDocLines(
+			goDocLines(nameutil.ToCamel(p.Name), common.MergeDescriptionAndExample(p.Description, p.Example)),
+			nameutil.ToCamel(p.Name),
+			p.DeprecatedReason,
+		),
+		Type:      memberType,
+		SkelName:  p.Name,
+		Sensitive: p.Sensitive,
 	}
 }
 

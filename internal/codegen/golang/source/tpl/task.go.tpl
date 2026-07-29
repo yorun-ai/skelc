@@ -79,6 +79,12 @@ type {{ $trigger.ArgumentsData.Name }} struct {
 {{- end }}
 
 // {{ $task.Name }} / Launcher
+{{- if $task.DeprecatedCommentLines }}
+//
+{{- range $task.DeprecatedCommentLines }}
+// {{ . }}
+{{- end }}
+{{- end }}
 
 type {{ $task.LauncherName }} interface {
 {{- range $task.Triggers }}
@@ -119,6 +125,12 @@ _ltOpts ...task.LaunchOption) {
 {{ end }}
 
 // {{ $task.Name }} / Runner
+{{- if $task.DeprecatedCommentLines }}
+//
+{{- range $task.DeprecatedCommentLines }}
+// {{ . }}
+{{- end }}
+{{- end }}
 
 type {{ $task.RunnerName }} interface {
 {{- range $task.Triggers }}
@@ -152,6 +164,12 @@ func (*{{ $task.DefaultRunnerName }}) {{ .RunName }}(
 func (*{{ $task.DefaultRunnerName }}) mustBe{{ $task.RunnerName }}() {}
 
 // {{ $task.Name }} / RunnerER
+{{- if $task.DeprecatedCommentLines }}
+//
+{{- range $task.DeprecatedCommentLines }}
+// {{ . }}
+{{- end }}
+{{- end }}
 
 type {{ $task.ERRunnerName }} interface {
 {{- range $task.Triggers }}

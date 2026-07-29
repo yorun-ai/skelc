@@ -29,6 +29,24 @@ func TestServerHoverShowsQualifiedDeclaration(t *testing.T) {
 	assert.Contains(t, content.Value, "Account data")
 }
 
+func TestServerHoverShowsDeprecation(t *testing.T) {
+	server := newServer()
+	userURI := uri.File("/workspace/user.skel")
+	orderURI := uri.File("/workspace/order.skel")
+	server.putDocument(userURI, "domain demo.user\n@deprecated(\"Use Profile instead\")\ndata User {}\n", 1, true)
+	server.putDocument(orderURI, "domain demo.order\nimport demo.user\ndata Order { owner: user.User }\n", 1, true)
+
+	hover, err := server.Hover(t.Context(), &protocol.HoverParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: orderURI},
+			Position:     protocol.Position{Line: 2, Character: 27},
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, hover)
+	assert.Contains(t, hover.Contents.(*protocol.MarkupContent).Value, "Deprecated: Use Profile instead")
+}
+
 func TestServerSuppressesCompletionInCommentsAndHoversBuiltInTypes(t *testing.T) {
 	server := newServer()
 	documentURI := uri.File("/workspace/user.skel")

@@ -54,14 +54,22 @@ func castEnum(p *model.Enum) *Enum {
 		UnspecifiedItem: castEnumItem(p.UnspecifiedItem),
 		Items:           sliceutil.Map(p.Items, castEnumItem),
 	}
-	enum.CommentLines = goDocLines(enum.Name, p.Description)
+	enum.CommentLines = deprecatedGoDocLines(goDocLines(enum.Name, p.Description), enum.Name, p.DeprecatedReason)
 
 	if len(enum.Items) > 0 {
 		enum.UnspecifiedItem.Name = enum.Name + enum.UnspecifiedItem.Name
-		enum.UnspecifiedItem.CommentLines = goDocLines(enum.UnspecifiedItem.Name, common.MergeDescriptionAndExample(p.UnspecifiedItem.Description, ""))
+		enum.UnspecifiedItem.CommentLines = deprecatedGoDocLines(
+			goDocLines(enum.UnspecifiedItem.Name, common.MergeDescriptionAndExample(p.UnspecifiedItem.Description, "")),
+			enum.UnspecifiedItem.Name,
+			enum.UnspecifiedItem.DeprecatedReason,
+		)
 		sliceutil.ForEach(enum.Items, func(i *EnumItem) {
 			i.Name = enum.Name + i.Name
-			i.CommentLines = goDocLines(i.Name, common.MergeDescriptionAndExample(i.Description, ""))
+			i.CommentLines = deprecatedGoDocLines(
+				goDocLines(i.Name, common.MergeDescriptionAndExample(i.Description, "")),
+				i.Name,
+				i.DeprecatedReason,
+			)
 		})
 	}
 
@@ -77,18 +85,20 @@ func transUnspecifiedItemName(p *model.Enum) string {
 }
 
 type EnumItem struct {
-	Name         string
-	Value        string
-	Description  string
-	CommentLines []string
+	Name             string
+	Value            string
+	Description      string
+	DeprecatedReason string
+	CommentLines     []string
 }
 
 func castEnumItem(p *model.EnumItem) *EnumItem {
 	name := nameutil.ToCamel(strings.ToLower(p.Name))
 	return &EnumItem{
-		Name:         name,
-		Value:        nameutil.ToScreamingSnake(p.Name),
-		Description:  p.Description,
-		CommentLines: goDocLines(name, common.MergeDescriptionAndExample(p.Description, "")),
+		Name:             name,
+		Value:            nameutil.ToScreamingSnake(p.Name),
+		Description:      p.Description,
+		DeprecatedReason: p.DeprecatedReason,
+		CommentLines:     goDocLines(name, common.MergeDescriptionAndExample(p.Description, "")),
 	}
 }

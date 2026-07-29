@@ -17,7 +17,14 @@ import type * as {{ $import.Alias }} from '{{ $import.Path }}';
 {{- end }}
 export type {{ $e.Name }} =
 {{- range $item := $e.Items }}
-  | {{ $item.Literal }}{{ $item.ValuePadding }}{{- if $item.CommentLines }} // {{ index $item.CommentLines 0 }}{{- end }}
+  {{- if $item.CommentLines }}
+  /**
+  {{- range $line := $item.CommentLines }}
+   * {{ $line }}
+  {{- end }}
+   */
+  {{- end }}
+  | {{ $item.Literal }}{{ $item.ValuePadding }}
 {{- end }}
 ;
 {{- end }}

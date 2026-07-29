@@ -46,6 +46,13 @@ func sensitiveView(sensitive bool, indent int) *_DecoratorView {
 	return &_DecoratorView{Indent: indent}
 }
 
+func deprecatedView(deprecated bool, reason string, indent int) *_DecoratorView {
+	if !deprecated {
+		return nil
+	}
+	return descriptionView(reason, indent)
+}
+
 func emptyMethod(method *model.Method, service *model.Service) bool {
 	return methodAuthMarker(method) == "" && len(method.Arguments) == 0 && method.ResultType == nil
 }

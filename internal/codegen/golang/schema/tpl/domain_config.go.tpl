@@ -8,6 +8,7 @@
 			{{- if $config.Description }}
 			Description: {{ quote $config.Description }},
 			{{- end }}
+			{{ template "deprecatedFields" $config }}
 			Hash: {{ quote $config.Hash }},
 			Pub: {{ $config.Pub }},
 			{{- if $config.Sensitive }}

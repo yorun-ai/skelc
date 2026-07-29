@@ -91,6 +91,10 @@ func TestBuildSpecTsPayloadRendersSparseWireForBinaryMethods(t *testing.T) {
 				Name: "chunks",
 				Type: mapTypeForTest(intTypeForTest(), dataTypeForTest(chunk)),
 			},
+			{
+				Name: "chunksById",
+				Type: mapTypeForTest(uuidTypeForTest(), dataTypeForTest(chunk)),
+			},
 		},
 	}
 	pkg := buildModelDomainForTest(t, model.DomainSpec{
@@ -128,6 +132,7 @@ func TestBuildSpecTsPayloadRendersSparseWireForBinaryMethods(t *testing.T) {
 		"kind: 'binary'",
 		"nullable: true",
 		"key: 'int'",
+		"key: 'string'",
 	} {
 		if !strings.Contains(output, check) {
 			t.Fatalf("expected rendered spec to contain %q, got:\n%s", check, output)

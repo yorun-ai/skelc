@@ -72,6 +72,7 @@ pub data User {
 
 pub data Page<TItem> {
     items: map<string, list<TItem>>
+    itemsById: map<uuid, list<TItem>>
     nextToken: string?
 }
 
@@ -167,7 +168,7 @@ pub data User {
 	if strings.Contains(typesContent, "ClientActorCredential") || strings.Contains(typesContent, "ClientActorInfo") {
 		t.Fatalf("actor implicit data should stay in actor.skel, got:\n%s", typesContent)
 	}
-	if !strings.Contains(typesContent, "pub data Page<TItem> {\n    items: map<string, list<TItem>>\n    nextToken: string?\n}") {
+	if !strings.Contains(typesContent, "pub data Page<TItem> {\n    items: map<string, list<TItem>>\n    itemsById: map<uuid, list<TItem>>\n    nextToken: string?\n}") {
 		t.Fatalf("expected template-rendered generic types, got:\n%s", typesContent)
 	}
 	if !strings.Contains(typesContent, "@sensitive\npub config CacheConfig eternal {") {

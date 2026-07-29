@@ -242,6 +242,27 @@ func TestAnalyzeAllowsConfigMapEnumKey(t *testing.T) {
 	}
 }
 
+func TestAnalyzeAllowsConfigMapUUIDKey(t *testing.T) {
+	domain := mustAnalyze(t, &grammar.SkelContent{
+		Domain: domainContent("demo.user"),
+		Entries: []*grammar.SkelEntry{
+			{
+				Config: &grammar.Data{
+					Name:      ident("AppConfig"),
+					Qualifier: ident("eternal"),
+					Members: []*grammar.DataMember{
+						{Name: ident("labelsById"), Type: mapType(plainType(grammar.UUID), plainType(grammar.String))},
+					},
+				},
+			},
+		},
+	}).Model()
+	key := domain.Configs()[0].Members[0].Type.Map.Key
+	if key.Kind != model.TypeKindScalar || key.Scalar != model.ScalarUUID {
+		t.Fatalf("unexpected config map key: %+v", key)
+	}
+}
+
 func TestAnalyzeReturnsErrorForHardReferenceCycle(t *testing.T) {
 	expectAnalyzeDiagnosticsContains(t, "hard reference chain detected", &grammar.SkelContent{
 		Domain: domainContent("demo.user"),

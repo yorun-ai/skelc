@@ -8,6 +8,7 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ### Added
 
+- UUID map keys in contracts, generated Go maps, TypeScript records, and public Skel output
 - LSP document formatting, keyword and type completion, and declaration hover details
 - Hierarchical document symbols, workspace symbol search, and top-level declaration rename
 - Best-effort domain, import, and top-level declaration indexing while a document has syntax errors

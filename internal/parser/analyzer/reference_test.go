@@ -124,8 +124,17 @@ func TestFixRefReturnsErrorWhenMapKeyIsNullable(t *testing.T) {
 	expectFixTypeRefDiagnostic(t, "incorrect key type, must not be nullable", typ, &refContext{})
 }
 
+func TestFixRefAllowsUUIDMapKey(t *testing.T) {
+	typ := parseTypeTest(t, mapType(plainType(grammar.UUID), plainType(grammar.Int)))
+
+	fixTypeRefTest(t, typ, &refContext{})
+	if typ.Map.Key.Kind != model.TypeKindScalar || typ.Map.Key.Scalar != model.ScalarUUID {
+		t.Fatalf("unexpected map key: %+v", typ.Map.Key)
+	}
+}
+
 func TestFixRefReturnsErrorWhenMapKeyTypeIsUnsupported(t *testing.T) {
 	typ := parseTypeTest(t, mapType(plainType(grammar.Float), plainType(grammar.Int)))
 
-	expectFixTypeRefDiagnostic(t, "int/string or Enum expected", typ, &refContext{})
+	expectFixTypeRefDiagnostic(t, "int/string/uuid or Enum expected", typ, &refContext{})
 }

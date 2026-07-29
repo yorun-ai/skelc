@@ -93,7 +93,7 @@ func checkTypeCanBeMapKey(reporter *diagnosticReporter, t *model.Type) bool {
 			canBeMapKey = true
 		}
 	}
-	valid = reporter.check(canBeMapKey, "%s incorrect key type, int/string or Enum expected", t.Pos) && valid
+	valid = reporter.check(canBeMapKey, "%s incorrect key type, int/string/uuid or Enum expected", t.Pos) && valid
 	return valid
 }
 

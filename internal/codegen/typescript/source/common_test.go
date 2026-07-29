@@ -37,6 +37,13 @@ func TestCastTypeMapsJSONToString(t *testing.T) {
 	}
 }
 
+func TestCastMapTypeMapsUUIDKeyToString(t *testing.T) {
+	got := castType(mapTypeForTest(uuidTypeForTest(), stringTypeForTest()))
+	if got.Plain != "Record<string, string>" {
+		t.Fatalf("unexpected uuid-keyed map type: %s", got.Plain)
+	}
+}
+
 func TestCastTypeQualifiesExternalDataWithAlias(t *testing.T) {
 	got := castType(&model.Type{
 		Kind: model.TypeKindData,
@@ -87,6 +94,10 @@ func stringTypeForTest() *model.Type {
 
 func intTypeForTest() *model.Type {
 	return scalarTypeForTest(model.ScalarInt)
+}
+
+func uuidTypeForTest() *model.Type {
+	return scalarTypeForTest(model.ScalarUUID)
 }
 
 func binaryTypeForTest() *model.Type {

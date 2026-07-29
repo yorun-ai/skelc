@@ -11,7 +11,7 @@ const scalarNone model.Scalar = 0
 
 var (
 	mapKeyTypes       = []model.TypeKind{model.TypeKindScalar, model.TypeKindEnum}
-	mapKeyScalarTypes = []model.Scalar{model.ScalarInt, model.ScalarString}
+	mapKeyScalarTypes = []model.Scalar{model.ScalarInt, model.ScalarString, model.ScalarUUID}
 )
 
 type refContext struct {
@@ -26,7 +26,7 @@ type refContext struct {
 
 func fixTypeRef(reporter *diagnosticReporter, t *model.Type, refCtx *refContext) bool {
 	// 1. fix Enum/Data/TypeParameter type references
-	// 2. check map key type (int/string/Enum)
+	// 2. check map key type (int/string/uuid/Enum)
 
 	if t == nil {
 		return true

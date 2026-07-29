@@ -64,3 +64,20 @@ func TestCastExternalEnumTypeUsesQualifiedUnspecifiedDefaultValue(t *testing.T) 
 		t.Fatalf("unexpected default value: %s", got.DefaultValue)
 	}
 }
+
+func TestCastMapTypeMapsUUIDKeyToSkelUUID(t *testing.T) {
+	got := castType(&model.Type{
+		Kind: model.TypeKindMap,
+		Map: &model.MapType{
+			Key:   &model.Type{Kind: model.TypeKindScalar, Scalar: model.ScalarUUID},
+			Value: &model.Type{Kind: model.TypeKindScalar, Scalar: model.ScalarString},
+		},
+	})
+
+	if got.Plain != "map[skel.UUID]string" {
+		t.Fatalf("unexpected map type: %s", got.Plain)
+	}
+	if len(got.Imports) != 1 || got.Imports[0].Path != skelImport {
+		t.Fatalf("unexpected map imports: %+v", got.Imports)
+	}
+}

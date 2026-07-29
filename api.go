@@ -19,6 +19,10 @@ import (
 	"go.yorun.ai/skelc/model"
 )
 
+// MinimumGolangVineVersion is the minimum Vine module version supported by
+// generated Go code.
+const MinimumGolangVineVersion = golang.MinimumVineVersion
+
 // DefaultGolangVineVersion is the Vine module version used for generated Go
 // modules when GolangOption.VineVersion is empty.
 const DefaultGolangVineVersion = golang.DefaultVineVersion
@@ -78,7 +82,8 @@ type GolangOption struct {
 	// imported-domain mapping is omitted.
 	ModulePrefix string
 	// VineVersion selects the go.yorun.ai/vine version written to generated module
-	// metadata. An empty value uses [DefaultGolangVineVersion].
+	// metadata. It must not be lower than [MinimumGolangVineVersion]. An empty
+	// value uses [DefaultGolangVineVersion].
 	VineVersion string
 }
 

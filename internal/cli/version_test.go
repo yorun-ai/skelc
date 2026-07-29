@@ -59,14 +59,16 @@ func TestRunSkelcVersionRejectsLegacyJSONFlag(t *testing.T) {
 	}
 }
 
-func TestDefaultGoVineVersion(t *testing.T) {
+func TestGoVineVersions(t *testing.T) {
 	info, err := versionInfo()
 	if err != nil {
 		t.Fatal(err)
 	}
-	version := info.GolangCodeGen.DefaultVineVersion
-	if version != "v0.10.0" {
-		t.Fatalf("unexpected default go vine version: %q", version)
+	if version := info.GolangCodeGen.MinimumVineVersion; version != "v0.10.1" {
+		t.Fatalf("unexpected minimum Go Vine version: %q", version)
+	}
+	if version := info.GolangCodeGen.DefaultVineVersion; version != "v0.10.1" {
+		t.Fatalf("unexpected default Go Vine version: %q", version)
 	}
 }
 

@@ -6,7 +6,10 @@ import (
 	"go.yorun.ai/skelc/model"
 )
 
-// DefaultVineVersion is the minimum Vine version targeted by generated Go code.
+// MinimumVineVersion is the minimum Vine version supported by generated Go code.
+const MinimumVineVersion = gomodule.MinimumVineVersion
+
+// DefaultVineVersion is the Vine version used when generation does not select one.
 const DefaultVineVersion = gomodule.DefaultVineVersion
 
 type Option struct {

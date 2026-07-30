@@ -41,12 +41,20 @@ func (s *_Server) Completion(_ context.Context, params *protocol.CompletionParam
 			if !strings.HasPrefix(decorator, prefix) {
 				continue
 			}
-			items = append(items, protocol.CompletionItem{
+			item := protocol.CompletionItem{
 				Label: "@" + decorator, Kind: protocol.CompletionItemKindKeyword,
 				Detail:     protocol.NewOptional("Skel decorator"),
 				FilterText: protocol.NewOptional(decorator),
 				TextEdit:   &protocol.TextEdit{Range: range_, NewText: decorator},
-			})
+			}
+			if decorator == "deprecated" {
+				item.TextEdit = &protocol.TextEdit{Range: range_, NewText: `deprecated("")`}
+				if s.snippetSupport {
+					item.InsertTextFormat = protocol.InsertTextFormatSnippet
+					item.TextEdit = &protocol.TextEdit{Range: range_, NewText: `deprecated("$0")`}
+				}
+			}
+			items = append(items, item)
 		}
 		return items, nil
 	}

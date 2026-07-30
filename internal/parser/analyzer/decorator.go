@@ -73,7 +73,7 @@ func parseDecoratorMeta(reporter *diagnosticReporter, decorators []*grammar.Deco
 			accepted = reporter.checkNot(meta.hasDeprecated, "%s duplicated decorator @deprecated", decorator.Name.Pos) && accepted
 			meta.hasDeprecated = true
 			accepted = reporter.check(decorator.Value != nil,
-				"%s decorator @deprecated requires a non-empty string argument", decorator.Name.Pos) && accepted
+				"%s decorator @deprecated requires a deprecation reason", decorator.Name.Pos) && accepted
 			valid = accepted && valid
 			if !accepted {
 				continue
@@ -86,7 +86,7 @@ func parseDecoratorMeta(reporter *diagnosticReporter, decorators []*grammar.Deco
 			}
 			reason = strings.TrimSpace(reason)
 			if reason == "" {
-				reporter.reportf("%s decorator @deprecated requires a non-empty string argument", decorator.Name.Pos)
+				reporter.reportf("%s decorator @deprecated requires a deprecation reason", decorator.Name.Pos)
 				valid = false
 				continue
 			}

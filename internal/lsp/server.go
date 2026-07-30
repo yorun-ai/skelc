@@ -26,6 +26,7 @@ type _Server struct {
 	semanticTimer  *time.Timer
 	semanticCancel context.CancelFunc
 	analyzer       *parser.WorkspaceAnalyzer
+	snippetSupport bool
 	exit           chan struct{}
 	exitOnce       sync.Once
 }
@@ -70,6 +71,12 @@ func newServer() *_Server {
 }
 
 func (s *_Server) Initialize(_ context.Context, params *protocol.InitializeParams) (*protocol.InitializeResult, error) {
+	if textDocument := params.Capabilities.TextDocument; textDocument != nil &&
+		textDocument.Completion != nil &&
+		textDocument.Completion.CompletionItem != nil &&
+		textDocument.Completion.CompletionItem.SnippetSupport != nil {
+		s.snippetSupport = *textDocument.Completion.CompletionItem.SnippetSupport
+	}
 	if folders, ok := params.WorkspaceFolders.Get(); ok {
 		for _, folder := range folders {
 			s.loadWorkspace(folder.URI)

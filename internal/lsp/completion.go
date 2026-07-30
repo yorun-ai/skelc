@@ -19,6 +19,9 @@ var completionTypes = []string{
 	"localdatetime", "localtime", "map", "PermissionCode", "string", "timestamp", "uuid",
 }
 
+var actorViaCompletionValues = []string{"agent", "client", "openapi"}
+var configLifecycleCompletionValues = []string{"eternal", "instant"}
+
 func (s *_Server) Completion(_ context.Context, params *protocol.CompletionParams) (protocol.CompletionResult, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -28,6 +31,16 @@ func (s *_Server) Completion(_ context.Context, params *protocol.CompletionParam
 	}
 	if positionInNonCode(document.Source, params.Position) {
 		return protocol.CompletionItemSlice{}, nil
+	}
+	if values := completionValuesBeforePosition(document.Source, params.Position); len(values) > 0 {
+		items := make(protocol.CompletionItemSlice, 0, len(values))
+		for _, value := range values {
+			items = append(items, protocol.CompletionItem{
+				Label: value, Kind: protocol.CompletionItemKindValue,
+				Detail: protocol.NewOptional("Skel value"),
+			})
+		}
+		return items, nil
 	}
 
 	items := map[string]protocol.CompletionItem{}

@@ -69,6 +69,38 @@ func TestServerMarksDeprecatedCompletion(t *testing.T) {
 	t.Fatal("expected User completion")
 }
 
+func TestServerCompletesContextualLanguageValues(t *testing.T) {
+	server := newServer()
+	documentURI := uri.File("/workspace/user.skel")
+	source := "domain demo\nconfig DatabaseConfig et\nactor ClientActor {\n    via cl\n}\nservice UserService {\n    for ClientActor via op\n}\n"
+	server.putDocument(documentURI, source, 1, true)
+
+	tests := []struct {
+		position protocol.Position
+		want     []string
+	}{
+		{position: protocol.Position{Line: 1, Character: 24}, want: []string{"eternal", "instant"}},
+		{position: protocol.Position{Line: 3, Character: 10}, want: []string{"agent", "client", "openapi"}},
+		{position: protocol.Position{Line: 6, Character: 26}, want: []string{"agent", "client", "openapi"}},
+	}
+	for _, test := range tests {
+		result, err := server.Completion(t.Context(), &protocol.CompletionParams{
+			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+				TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
+				Position:     test.position,
+			},
+		})
+		require.NoError(t, err)
+		items := result.(protocol.CompletionItemSlice)
+		labels := make([]string, 0, len(items))
+		for _, item := range items {
+			labels = append(labels, item.Label)
+			assert.Equal(t, protocol.CompletionItemKindValue, item.Kind)
+		}
+		assert.Equal(t, test.want, labels)
+	}
+}
+
 func hasCompletion(items protocol.CompletionItemSlice, label string) bool {
 	for _, item := range items {
 		if item.Label == label {

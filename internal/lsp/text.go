@@ -33,6 +33,39 @@ func qualifierBeforePosition(source string, position protocol.Position) string {
 	return source[start:end]
 }
 
+func completionValuesBeforePosition(source string, position protocol.Position) []string {
+	offset := positionOffset(source, position)
+	lineStart := strings.LastIndexByte(source[:offset], '\n') + 1
+	prefix := strings.TrimSpace(source[lineStart:offset])
+	fields := strings.Fields(prefix)
+	if len(fields) == 0 {
+		return nil
+	}
+	if fields[0] == "pub" {
+		fields = fields[1:]
+		if len(fields) == 0 {
+			return nil
+		}
+	}
+	trailingSpace := offset > lineStart && (source[offset-1] == ' ' || source[offset-1] == '\t')
+	if len(fields) >= 2 && fields[0] == "config" {
+		switch {
+		case len(fields) == 2 && trailingSpace:
+			return configLifecycleCompletionValues
+		case len(fields) == 3 && isIdentifierValue(fields[2]):
+			return configLifecycleCompletionValues
+		}
+	}
+	last := len(fields) - 1
+	switch {
+	case fields[last] == "via" && trailingSpace:
+		return actorViaCompletionValues
+	case last > 0 && fields[last-1] == "via" && isIdentifierValue(fields[last]):
+		return actorViaCompletionValues
+	}
+	return nil
+}
+
 func positionOffset(source string, position protocol.Position) int {
 	lineStart := 0
 	for line := uint32(0); line < position.Line && lineStart < len(source); line++ {

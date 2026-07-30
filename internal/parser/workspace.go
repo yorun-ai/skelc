@@ -67,9 +67,12 @@ type DiagnosticSuggestion struct {
 // Source is an in-memory Skel document used by workspace analysis. Domain is a
 // best-effort hint used to suppress cascading diagnostics when syntax is
 // temporarily incomplete and the full domain declaration cannot be parsed.
+// Root identifies one logical compiler input so separate copies of the same
+// named domain in a larger editor workspace are not merged.
 type Source struct {
 	Path             string
 	Domain           string
+	Root             string
 	ExpectedDomain   string
 	Content          []byte
 	Parsed           *grammar.SkelContent
@@ -138,7 +141,9 @@ func (d Diagnostics) DiagnosticEntries() Diagnostics {
 }
 
 type _WorkspaceDomain struct {
+	key           string
 	name          string
+	root          string
 	contents      []*grammar.SkelContent
 	invalid       bool
 	syntaxInvalid bool
@@ -232,7 +237,12 @@ func (w *WorkspaceAnalyzer) analyze(ctx context.Context, sources []Source, allow
 		diagnostics = append(diagnostics, syntaxDiagnostics...)
 		if content == nil {
 			if source.Domain != "" {
-				domain := workspaceDomain(domains, source.Domain)
+				domain := workspaceDomain(
+					domains,
+					workspaceDomainKey(source.Domain, source.Root),
+					source.Domain,
+					source.Root,
+				)
 				domain.invalid = true
 			}
 			continue
@@ -252,10 +262,15 @@ func (w *WorkspaceAnalyzer) analyze(ctx context.Context, sources []Source, allow
 				Code: DiagnosticCodeDomainMismatch, Severity: DiagnosticSeverityError, Position: position, Range: sourceRangeAt(position, source.Content),
 				Message: fmt.Sprintf("domain mismatch: found=%s, expected=%s", name, source.ExpectedDomain),
 			})
-			workspaceDomain(domains, source.ExpectedDomain).invalid = true
+			workspaceDomain(
+				domains,
+				workspaceDomainKey(source.ExpectedDomain, source.Root),
+				source.ExpectedDomain,
+				source.Root,
+			).invalid = true
 			continue
 		}
-		domain := workspaceDomain(domains, name)
+		domain := workspaceDomain(domains, workspaceDomainKey(name, source.Root), name, source.Root)
 		if len(syntaxDiagnostics) > 0 {
 			domain.syntaxInvalid = true
 		}
@@ -263,19 +278,26 @@ func (w *WorkspaceAnalyzer) analyze(ctx context.Context, sources []Source, allow
 		domain.sources = append(domain.sources, source)
 	}
 
-	names := make([]string, 0, len(domains))
-	for name, domain := range domains {
+	keys := make([]string, 0, len(domains))
+	domainsByName := map[string][]*_WorkspaceDomain{}
+	for key, domain := range domains {
 		if len(domain.contents) > 0 {
 			domain.merged = mergeWorkspaceContents(domain.contents)
 		}
-		names = append(names, name)
+		domainsByName[domain.name] = append(domainsByName[domain.name], domain)
+		keys = append(keys, key)
 	}
-	slices.Sort(names)
-	for _, name := range names {
+	for _, candidates := range domainsByName {
+		slices.SortFunc(candidates, func(left, right *_WorkspaceDomain) int {
+			return strings.Compare(left.key, right.key)
+		})
+	}
+	slices.Sort(keys)
+	for _, key := range keys {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		w.analyzeWorkspaceDomain(ctx, domains[name], domains, &diagnostics, allowMissingImports)
+		w.analyzeWorkspaceDomain(ctx, domains[key], domainsByName, &diagnostics, allowMissingImports)
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
@@ -297,9 +319,9 @@ func (w *WorkspaceAnalyzer) analyze(ctx context.Context, sources []Source, allow
 			delete(w.parses, path)
 		}
 	}
-	for name := range w.domains {
-		if domains[name] == nil {
-			delete(w.domains, name)
+	for key := range w.domains {
+		if domains[key] == nil {
+			delete(w.domains, key)
 		}
 	}
 	return diagnostics, nil
@@ -324,11 +346,18 @@ func (w *WorkspaceAnalyzer) parseWorkspaceSource(source Source) (*grammar.SkelCo
 	return content, diagnostics
 }
 
-func workspaceDomain(domains map[string]*_WorkspaceDomain, name string) *_WorkspaceDomain {
-	domain := domains[name]
+func workspaceDomainKey(name, root string) string {
+	if root == "" {
+		return name
+	}
+	return filepath.Clean(root) + "\x00" + name
+}
+
+func workspaceDomain(domains map[string]*_WorkspaceDomain, key, name, root string) *_WorkspaceDomain {
+	domain := domains[key]
 	if domain == nil {
-		domain = &_WorkspaceDomain{name: name}
-		domains[name] = domain
+		domain = &_WorkspaceDomain{key: key, name: name, root: root}
+		domains[key] = domain
 	}
 	return domain
 }
@@ -356,7 +385,7 @@ func mergeWorkspaceContents(contents []*grammar.SkelContent) *grammar.SkelConten
 func (w *WorkspaceAnalyzer) analyzeWorkspaceDomain(
 	ctx context.Context,
 	domain *_WorkspaceDomain,
-	domains map[string]*_WorkspaceDomain,
+	domainsByName map[string][]*_WorkspaceDomain,
 	diagnostics *[]Diagnostic,
 	allowMissingImports bool,
 ) bool {
@@ -385,7 +414,7 @@ func (w *WorkspaceAnalyzer) analyzeWorkspaceDomain(
 	imports := make([]*analyzer.Analysis, 0, len(domain.merged.Imports))
 	seenImports := map[string]bool{}
 	importsValid := true
-	hasMissingImports := false
+	hasUnresolvedImports := false
 	for _, importDecl := range domain.merged.Imports {
 		if ctx.Err() != nil {
 			return false
@@ -395,14 +424,26 @@ func (w *WorkspaceAnalyzer) analyzeWorkspaceDomain(
 			continue
 		}
 		seenImports[name] = true
-		imported := domains[name]
+		if domain.root != "" {
+			hasUnresolvedImports = true
+			continue
+		}
+		candidates := domainsByName[name]
+		if len(candidates) > 1 {
+			hasUnresolvedImports = true
+			continue
+		}
+		var imported *_WorkspaceDomain
+		if len(candidates) == 1 {
+			imported = candidates[0]
+		}
 		if imported != nil && (imported.invalid || imported.syntaxInvalid) {
 			importsValid = false
 			continue
 		}
 		if imported == nil || imported.merged == nil {
 			if allowMissingImports {
-				hasMissingImports = true
+				hasUnresolvedImports = true
 				continue
 			}
 			*diagnostics = append(*diagnostics, Diagnostic{
@@ -412,7 +453,7 @@ func (w *WorkspaceAnalyzer) analyzeWorkspaceDomain(
 			importsValid = false
 			continue
 		}
-		if !w.analyzeWorkspaceDomain(ctx, imported, domains, diagnostics, allowMissingImports) {
+		if !w.analyzeWorkspaceDomain(ctx, imported, domainsByName, diagnostics, allowMissingImports) {
 			importsValid = false
 			continue
 		}
@@ -423,8 +464,8 @@ func (w *WorkspaceAnalyzer) analyzeWorkspaceDomain(
 		return false
 	}
 
-	domain.fingerprint = workspaceDomainFingerprint(domain, domains)
-	if cached, ok := w.domains[domain.name]; ok && cached.fingerprint == domain.fingerprint {
+	domain.fingerprint = workspaceDomainFingerprint(domain, domainsByName)
+	if cached, ok := w.domains[domain.key]; ok && cached.fingerprint == domain.fingerprint {
 		w.stats.ReusedDomains++
 		domain.analysis = cached.analysis
 		domain.state = workspaceDomainComplete
@@ -433,7 +474,7 @@ func (w *WorkspaceAnalyzer) analyzeWorkspaceDomain(
 	var analysis *analyzer.Analysis
 	var analysisErrors []error
 	w.stats.AnalyzedDomains++
-	if hasMissingImports {
+	if hasUnresolvedImports {
 		analysis, analysisErrors = analyzer.AnalyzeImport(domain.merged)
 	} else {
 		analysis, analysisErrors = analyzer.Analyze(domain.merged, imports)
@@ -447,11 +488,11 @@ func (w *WorkspaceAnalyzer) analyzeWorkspaceDomain(
 	}
 	domain.analysis = analysis
 	domain.state = workspaceDomainComplete
-	w.domains[domain.name] = _CachedWorkspaceDomain{fingerprint: domain.fingerprint, analysis: analysis}
+	w.domains[domain.key] = _CachedWorkspaceDomain{fingerprint: domain.fingerprint, analysis: analysis}
 	return true
 }
 
-func workspaceDomainFingerprint(domain *_WorkspaceDomain, domains map[string]*_WorkspaceDomain) string {
+func workspaceDomainFingerprint(domain *_WorkspaceDomain, domainsByName map[string][]*_WorkspaceDomain) string {
 	hash := sha256.New()
 	ordered := append([]Source{}, domain.sources...)
 	slices.SortFunc(ordered, func(left, right Source) int { return strings.Compare(left.Path, right.Path) })
@@ -468,8 +509,11 @@ func workspaceDomainFingerprint(domain *_WorkspaceDomain, domains map[string]*_W
 	for _, importDecl := range imports {
 		name := importDecl.Domain.String()
 		_, _ = hash.Write([]byte(name))
-		if imported := domains[name]; imported != nil {
-			_, _ = hash.Write([]byte(imported.fingerprint))
+		if domain.root == "" {
+			candidates := domainsByName[name]
+			if len(candidates) == 1 {
+				_, _ = hash.Write([]byte(candidates[0].fingerprint))
+			}
 		}
 	}
 	return hex.EncodeToString(hash.Sum(nil))

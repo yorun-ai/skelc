@@ -32,6 +32,36 @@ func TestAnalyzeWorkspaceMergesSameDomainFiles(t *testing.T) {
 	assert.Empty(t, diagnostics)
 }
 
+func TestAnalyzeWorkspaceKeepsSameNamedRootsIndependent(t *testing.T) {
+	diagnostics := AnalyzeWorkspace([]Source{
+		{
+			Path: "/workspace/source/actor.skel", Root: "/workspace/source",
+			Content: []byte("domain demo\nresource User { action read }\n"),
+		},
+		{
+			Path: "/workspace/generated/types.skel", Root: "/workspace/generated",
+			Content: []byte("domain demo\nresource User { action read }\n"),
+		},
+	})
+
+	assert.Empty(t, diagnostics)
+}
+
+func TestAnalyzeWorkspaceDoesNotResolveImportsForRootedSources(t *testing.T) {
+	diagnostics := AnalyzeWorkspace([]Source{
+		{
+			Path: "/workspace/source/user.skel", Root: "/workspace/source",
+			Content: []byte("domain demo.user\npub data User {}\n"),
+		},
+		{
+			Path: "/workspace/order/order.skel", Root: "/workspace/order",
+			Content: []byte("domain demo.order\nimport demo.user\ndata Order { user: user.Missing }\n"),
+		},
+	})
+
+	assert.Empty(t, diagnostics)
+}
+
 func TestAnalyzeWorkspaceReturnsStructuredDuplicatePosition(t *testing.T) {
 	diagnostics := AnalyzeWorkspace([]Source{
 		{Path: "/workspace/a.skel", Content: []byte("domain demo\ndata User {}\n")},

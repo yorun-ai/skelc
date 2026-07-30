@@ -33,6 +33,22 @@ func qualifierBeforePosition(source string, position protocol.Position) string {
 	return source[start:end]
 }
 
+func decoratorPrefixBeforePosition(source string, position protocol.Position) (string, protocol.Range, bool) {
+	offset := positionOffset(source, position)
+	start := offset
+	for start > 0 {
+		r, size := utf8.DecodeLastRuneInString(source[:start])
+		if r != '_' && !isLetterOrDigit(r) {
+			break
+		}
+		start -= size
+	}
+	if start == 0 || source[start-1] != '@' {
+		return "", protocol.Range{}, false
+	}
+	return source[start:offset], offsetRange(source, start, offset), true
+}
+
 func completionValuesBeforePosition(source string, position protocol.Position) []string {
 	offset := positionOffset(source, position)
 	lineStart := strings.LastIndexByte(source[:offset], '\n') + 1

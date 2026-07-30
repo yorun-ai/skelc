@@ -39,7 +39,7 @@ jobs:
         run: ./examples/quickstart/generate.sh "$RUNNER_TEMP/skelc-quickstart"
 
   ci-checks:
-    name: CI / Checks
+    name: CI / Required Checks
     if: ${{ always() }}
     needs: [go]
     runs-on: ubuntu-latest

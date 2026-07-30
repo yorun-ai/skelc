@@ -77,6 +77,46 @@ func TestServerCompletesDecoratorPrefixForField(t *testing.T) {
 	assert.Equal(t, "example", textEdit.NewText)
 }
 
+func TestServerCompletesDeprecatedDecoratorWithReasonSnippet(t *testing.T) {
+	server := newServer()
+	snippetSupport := true
+	_, err := server.Initialize(t.Context(), &protocol.InitializeParams{
+		Capabilities: protocol.ClientCapabilities{
+			TextDocument: &protocol.TextDocumentClientCapabilities{
+				Completion: &protocol.CompletionClientCapabilities{
+					CompletionItem: &protocol.ClientCompletionItemOptions{
+						SnippetSupport: &snippetSupport,
+					},
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+	documentURI := uri.File("/workspace/user.skel")
+	source := "domain demo\ndata User {\n    @dep\n    legacyId: string\n}\n"
+	server.putDocument(documentURI, source, 1, true)
+
+	result, err := server.Completion(t.Context(), &protocol.CompletionParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
+			Position:     protocol.Position{Line: 2, Character: 8},
+		},
+	})
+	require.NoError(t, err)
+	items := result.(protocol.CompletionItemSlice)
+	require.Len(t, items, 1)
+	item := items[0]
+	assert.Equal(t, "@deprecated", item.Label)
+	assert.Equal(t, protocol.InsertTextFormatSnippet, item.InsertTextFormat)
+	textEdit, ok := item.TextEdit.(*protocol.TextEdit)
+	require.True(t, ok)
+	assert.Equal(t, protocol.Range{
+		Start: protocol.Position{Line: 2, Character: 5},
+		End:   protocol.Position{Line: 2, Character: 8},
+	}, textEdit.Range)
+	assert.Equal(t, `deprecated("$0")`, textEdit.NewText)
+}
+
 func TestServerFiltersDecoratorCompletionByTarget(t *testing.T) {
 	tests := []struct {
 		name   string

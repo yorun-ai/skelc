@@ -97,18 +97,33 @@ func TestParseDataDeprecated(t *testing.T) {
 }
 
 func TestParseDataRejectsInvalidDeprecatedDecorator(t *testing.T) {
-	for name, decorators := range map[string][]*grammar.Decorator{
-		"missing argument": {{Name: ident("deprecated")}},
-		"empty reason":     {{Name: ident("deprecated"), Value: decoratorValue(`"  "`)}},
-		"non-string":       {{Name: ident("deprecated"), Value: decoratorValue(`true`)}},
+	for name, test := range map[string]struct {
+		decorators []*grammar.Decorator
+		message    string
+	}{
+		"missing argument": {
+			decorators: []*grammar.Decorator{{Name: ident("deprecated")}},
+			message:    "decorator @deprecated requires a deprecation reason",
+		},
+		"empty reason": {
+			decorators: []*grammar.Decorator{{Name: ident("deprecated"), Value: decoratorValue(`"  "`)}},
+			message:    "decorator @deprecated requires a deprecation reason",
+		},
+		"non-string": {
+			decorators: []*grammar.Decorator{{Name: ident("deprecated"), Value: decoratorValue(`true`)}},
+			message:    "invalid decorator @deprecated",
+		},
 		"duplicated": {
-			{Name: ident("deprecated"), Value: decoratorValue(`"first"`)},
-			{Name: ident("deprecated"), Value: decoratorValue(`"second"`)},
+			decorators: []*grammar.Decorator{
+				{Name: ident("deprecated"), Value: decoratorValue(`"first"`)},
+				{Name: ident("deprecated"), Value: decoratorValue(`"second"`)},
+			},
+			message: "duplicated decorator @deprecated",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			expectDataDiagnostic(t, "decorator @deprecated", &grammar.Data{
-				Decorators: decorators,
+			expectDataDiagnostic(t, test.message, &grammar.Data{
+				Decorators: test.decorators,
 				Name:       ident("User"),
 			})
 		})

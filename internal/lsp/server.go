@@ -20,6 +20,7 @@ type _Server struct {
 	documents      map[uri.URI]*_Document
 	open           map[uri.URI]bool
 	semantic       map[uri.URI][]protocol.Diagnostic
+	workspaceFiles map[uri.URI]map[uri.URI]struct{}
 	client         protocol.Client
 	generation     uint64
 	semanticTimer  *time.Timer
@@ -61,23 +62,26 @@ func Serve(ctx context.Context, input io.Reader, output io.Writer) error {
 func newServer() *_Server {
 	return &_Server{
 		documents: map[uri.URI]*_Document{}, open: map[uri.URI]bool{},
-		semantic: map[uri.URI][]protocol.Diagnostic{}, exit: make(chan struct{}),
-		analyzer: parser.NewWorkspaceAnalyzer(),
+		semantic:       map[uri.URI][]protocol.Diagnostic{},
+		workspaceFiles: map[uri.URI]map[uri.URI]struct{}{},
+		exit:           make(chan struct{}),
+		analyzer:       parser.NewWorkspaceAnalyzer(),
 	}
 }
 
 func (s *_Server) Initialize(_ context.Context, params *protocol.InitializeParams) (*protocol.InitializeResult, error) {
 	if folders, ok := params.WorkspaceFolders.Get(); ok {
 		for _, folder := range folders {
-			s.loadWorkspace(folder.URI.FsPath())
+			s.loadWorkspace(folder.URI)
 		}
 	} else if params.RootURI != nil {
-		s.loadWorkspace(params.RootURI.FsPath())
+		s.loadWorkspace(*params.RootURI)
 	} else if rootPath, ok := params.RootPath.Get(); ok {
-		s.loadWorkspace(rootPath)
+		s.loadWorkspace(uri.File(rootPath))
 	}
 	openClose := true
 	prepareRename := true
+	workspaceFolders := true
 	change := protocol.TextDocumentSyncKindFull
 	return &protocol.InitializeResult{
 		Capabilities: protocol.ServerCapabilities{
@@ -92,6 +96,9 @@ func (s *_Server) Initialize(_ context.Context, params *protocol.InitializeParam
 			DocumentFormattingProvider: protocol.Boolean(true),
 			RenameProvider:             &protocol.RenameOptions{PrepareProvider: &prepareRename},
 			CodeActionProvider:         protocol.Boolean(true),
+			Workspace: &protocol.WorkspaceOptions{WorkspaceFolders: &protocol.WorkspaceFoldersServerCapabilities{
+				Supported: &workspaceFolders, ChangeNotifications: protocol.Boolean(true),
+			}},
 		},
 		ServerInfo: protocol.ServerInfo{Name: "skelc"},
 	}, nil

@@ -3,6 +3,7 @@ package lsp
 import (
 	"context"
 	"net"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -47,6 +48,11 @@ func TestServeLifecycle(t *testing.T) {
 	assert.Equal(t, protocol.Boolean(true), result.Capabilities.HoverProvider)
 	assert.Equal(t, protocol.Boolean(true), result.Capabilities.WorkspaceSymbolProvider)
 	assert.Equal(t, protocol.Boolean(true), result.Capabilities.DocumentFormattingProvider)
+	require.NotNil(t, result.Capabilities.Workspace)
+	require.NotNil(t, result.Capabilities.Workspace.WorkspaceFolders)
+	require.NotNil(t, result.Capabilities.Workspace.WorkspaceFolders.Supported)
+	assert.True(t, *result.Capabilities.Workspace.WorkspaceFolders.Supported)
+	assert.Equal(t, protocol.Boolean(true), result.Capabilities.Workspace.WorkspaceFolders.ChangeNotifications)
 	rename, ok := result.Capabilities.RenameProvider.(*protocol.RenameOptions)
 	require.True(t, ok)
 	require.NotNil(t, rename.PrepareProvider)
@@ -117,6 +123,68 @@ func TestServePublishesAndInvalidatesSemanticDiagnostics(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("language server did not exit after the exit notification")
 	}
+}
+
+func TestServerPreservesRemoteWorkspaceURIs(t *testing.T) {
+	rootPath := t.TempDir()
+	userPath := filepath.Join(rootPath, "user.skel")
+	require.NoError(t, os.WriteFile(userPath, []byte("domain demo.user\ndata User {}\n"), 0o600))
+	rootURI, err := uri.From(uri.Components{
+		Scheme: "vscode-remote", Authority: "ssh-remote+test", Path: filepath.ToSlash(rootPath),
+	})
+	require.NoError(t, err)
+	userURI, err := uri.JoinPath(rootURI, "user.skel")
+	require.NoError(t, err)
+
+	server := newServer()
+	_, err = server.Initialize(t.Context(), &protocol.InitializeParams{
+		WorkspaceFoldersInitializeParams: protocol.WorkspaceFoldersInitializeParams{
+			WorkspaceFolders: protocol.NewNullable([]protocol.WorkspaceFolder{{URI: rootURI, Name: "remote"}}),
+		},
+		Capabilities: protocol.ClientCapabilities{},
+	})
+	require.NoError(t, err)
+	require.Contains(t, server.documents, userURI)
+	assert.NotContains(t, server.documents, uri.File(userPath))
+
+	require.NoError(t, server.DidOpen(t.Context(), &protocol.DidOpenTextDocumentParams{
+		TextDocument: protocol.TextDocumentItem{
+			URI: userURI, LanguageID: "skel", Version: 1, Text: "domain demo.user\ndata Profile {}\n",
+		},
+	}))
+	require.Len(t, server.documents, 1)
+	assert.Equal(t, int32(1), server.documents[userURI].Version)
+	assert.Equal(t, "Profile", server.documents[userURI].Definitions[0].Name)
+}
+
+func TestServerUpdatesDynamicWorkspaceFolders(t *testing.T) {
+	firstPath := t.TempDir()
+	secondPath := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(firstPath, "first.skel"), []byte("domain demo.first\ndata First {}\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(secondPath, "second.skel"), []byte("domain demo.second\ndata Second {}\n"), 0o600))
+	firstURI := uri.File(firstPath)
+	secondURI := uri.File(secondPath)
+	firstDocumentURI := uri.File(filepath.Join(firstPath, "first.skel"))
+	secondDocumentURI := uri.File(filepath.Join(secondPath, "second.skel"))
+
+	server := newServer()
+	_, err := server.Initialize(t.Context(), &protocol.InitializeParams{
+		WorkspaceFoldersInitializeParams: protocol.WorkspaceFoldersInitializeParams{
+			WorkspaceFolders: protocol.NewNullable([]protocol.WorkspaceFolder{{URI: firstURI, Name: "first"}}),
+		},
+		Capabilities: protocol.ClientCapabilities{},
+	})
+	require.NoError(t, err)
+	require.Contains(t, server.documents, firstDocumentURI)
+
+	require.NoError(t, server.DidChangeWorkspaceFolders(t.Context(), &protocol.DidChangeWorkspaceFoldersParams{
+		Event: protocol.WorkspaceFoldersChangeEvent{
+			Added:   []protocol.WorkspaceFolder{{URI: secondURI, Name: "second"}},
+			Removed: []protocol.WorkspaceFolder{{URI: firstURI, Name: "first"}},
+		},
+	}))
+	assert.NotContains(t, server.documents, firstDocumentURI)
+	assert.Contains(t, server.documents, secondDocumentURI)
 }
 
 func waitForDiagnostics(

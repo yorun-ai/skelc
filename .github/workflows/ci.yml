@@ -37,3 +37,14 @@ jobs:
 
       - name: Exercise quickstart
         run: ./examples/quickstart/generate.sh "$RUNNER_TEMP/skelc-quickstart"
+
+  ci-checks:
+    name: CI / Checks
+    if: ${{ always() }}
+    needs: [go]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify CI results
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: echo "$NEEDS" | jq --exit-status 'all(.[]; .result == "success")'

@@ -6,6 +6,15 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+### Fixed
+
+- Language-server semantic analysis now matches `check`: it merges same-domain
+  files only within one source directory, leaves imports unresolved, and keeps
+  same-named domain instances in separate directories independent
+- Decorator completion now filters and replaces prefixes after `@` correctly
+  and only suggests decorators accepted for the following declaration, block,
+  field, or argument; decorators already present on the same target are omitted
+
 ## [0.10.2] - 2026-07-30
 
 ### Added

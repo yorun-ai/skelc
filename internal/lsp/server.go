@@ -87,7 +87,7 @@ func (s *_Server) Initialize(_ context.Context, params *protocol.InitializeParam
 		Capabilities: protocol.ServerCapabilities{
 			PositionEncoding:           protocol.PositionEncodingKindUTF16,
 			TextDocumentSync:           &protocol.TextDocumentSyncOptions{OpenClose: &openClose, Change: &change},
-			CompletionProvider:         &protocol.CompletionOptions{TriggerCharacters: []string{"."}},
+			CompletionProvider:         &protocol.CompletionOptions{TriggerCharacters: []string{".", "@"}},
 			HoverProvider:              protocol.Boolean(true),
 			DefinitionProvider:         protocol.Boolean(true),
 			ReferencesProvider:         protocol.Boolean(true),

@@ -16,7 +16,8 @@ func semanticSources(documents map[uri.URI]*_Document) ([]parser.Source, map[str
 	for documentURI, document := range documents {
 		path := filepath.Clean(document.Path)
 		sources = append(sources, parser.Source{
-			Path: path, Domain: document.Domain, Content: []byte(document.Source), Parsed: document.Parsed,
+			Path: path, Domain: document.Domain, Root: filepath.Dir(path),
+			Content: []byte(document.Source), Parsed: document.Parsed,
 			ParseDiagnostics: document.ParseDiagnostics,
 		})
 		paths[path] = documentURI

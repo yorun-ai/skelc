@@ -158,7 +158,7 @@ skelc format --skel-in ./skel
 
 `check` recovers at declaration, block-member, closing-brace, and decorator boundaries and reports up to 50 independent syntax and semantic diagnostics per domain in one run. Invalid declarations are isolated so dependent errors do not cascade. JSONL diagnostics include a stable code, severity, exact range, related locations, and an optional fix suggestion.
 
-`skelc lsp` provides recoverable syntax and workspace-wide semantic diagnostics, diagnostic quick fixes, editor formatting, keyword and type completion, declaration hover details, hierarchical document and workspace symbols, definition and reference navigation, and safe top-level declaration rename. Duplicate declarations include the first declaration as related information. Semantic analysis uses the current in-memory contents of every document, caches parsed syntax trees, and recalculates only changed domains and their reverse dependents. Superseded analysis is cancelled immediately.
+`skelc lsp` provides recoverable syntax and workspace-wide semantic diagnostics, diagnostic quick fixes, editor formatting, keyword and type completion, declaration hover details, hierarchical document and workspace symbols, definition and reference navigation, and safe top-level declaration rename. Duplicate declarations include the first declaration as related information. Semantic analysis uses the current in-memory contents of every document and merges same-domain files only within one source directory. Like `skelc check`, it leaves imports unresolved; full import-graph validation happens during generation with explicit import path mappings. Parsed syntax trees are cached, and superseded analysis is cancelled immediately.
 
 ## Programmatic API
 

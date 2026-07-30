@@ -44,7 +44,7 @@ func TestServeLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, protocol.PositionEncodingKindUTF16, result.Capabilities.PositionEncoding)
 	require.NotNil(t, result.Capabilities.CompletionProvider)
-	assert.Equal(t, []string{"."}, result.Capabilities.CompletionProvider.TriggerCharacters)
+	assert.Equal(t, []string{".", "@"}, result.Capabilities.CompletionProvider.TriggerCharacters)
 	assert.Equal(t, protocol.Boolean(true), result.Capabilities.HoverProvider)
 	assert.Equal(t, protocol.Boolean(true), result.Capabilities.WorkspaceSymbolProvider)
 	assert.Equal(t, protocol.Boolean(true), result.Capabilities.DocumentFormattingProvider)
@@ -95,7 +95,7 @@ func TestServePublishesAndInvalidatesSemanticDiagnostics(t *testing.T) {
 	}}))
 	require.NoError(t, server.DidOpen(t.Context(), &protocol.DidOpenTextDocumentParams{TextDocument: protocol.TextDocumentItem{
 		URI: orderURI, LanguageID: "skel", Version: 1,
-		Text: "domain demo.order\nimport demo.user\ndata Order { owner: user.Missing }\n",
+		Text: "domain demo.order\ndata Order { owner: Missing }\n",
 	}}))
 
 	diagnostic := waitForDiagnostics(t, client.diagnostics, func(params *protocol.PublishDiagnosticsParams) bool {
@@ -108,7 +108,7 @@ func TestServePublishesAndInvalidatesSemanticDiagnostics(t *testing.T) {
 			TextDocumentIdentifier: protocol.TextDocumentIdentifier{URI: orderURI}, Version: 2,
 		},
 		ContentChanges: []protocol.TextDocumentContentChangeEvent{&protocol.TextDocumentContentChangeWholeDocument{
-			Text: "domain demo.order\nimport demo.user\ndata Order { owner: user.User }\n",
+			Text: "domain demo.order\ndata Order { owner: int }\n",
 		}},
 	}))
 	waitForDiagnostics(t, client.diagnostics, func(params *protocol.PublishDiagnosticsParams) bool {

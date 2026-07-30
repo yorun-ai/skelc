@@ -3,16 +3,18 @@ package lsp
 import (
 	"context"
 	"slices"
+	"strings"
 
 	"go.lsp.dev/protocol"
 )
 
 var completionKeywords = []string{
-	"@deprecated", "@desc", "@example", "@sensitive",
 	"actor", "action", "all", "any", "as", "auth", "check", "config", "credential", "data",
 	"domain", "enum", "event", "for", "import", "info", "input", "method", "noauth", "output",
 	"payload", "permission", "pub", "require", "resource", "service", "task", "trigger", "via", "web",
 }
+
+var completionDecorators = []string{"deprecated", "desc", "example", "sensitive"}
 
 var completionTypes = []string{
 	"binary", "bool", "decimal", "duration", "float", "int", "json", "list", "localdate",
@@ -31,6 +33,22 @@ func (s *_Server) Completion(_ context.Context, params *protocol.CompletionParam
 	}
 	if positionInNonCode(document.Source, params.Position) {
 		return protocol.CompletionItemSlice{}, nil
+	}
+	if prefix, range_, ok := decoratorPrefixBeforePosition(document.Source, params.Position); ok {
+		decorators := allowedDecoratorsAt(document, params.Position)
+		items := make(protocol.CompletionItemSlice, 0, len(decorators))
+		for _, decorator := range decorators {
+			if !strings.HasPrefix(decorator, prefix) {
+				continue
+			}
+			items = append(items, protocol.CompletionItem{
+				Label: "@" + decorator, Kind: protocol.CompletionItemKindKeyword,
+				Detail:     protocol.NewOptional("Skel decorator"),
+				FilterText: protocol.NewOptional(decorator),
+				TextEdit:   &protocol.TextEdit{Range: range_, NewText: decorator},
+			})
+		}
+		return items, nil
 	}
 	if values := completionValuesBeforePosition(document.Source, params.Position); len(values) > 0 {
 		items := make(protocol.CompletionItemSlice, 0, len(values))

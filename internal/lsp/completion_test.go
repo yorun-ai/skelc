@@ -1,6 +1,7 @@
 package lsp
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -38,12 +39,216 @@ func TestServerCompletesKeywordsTypesAndImportedSymbols(t *testing.T) {
 	require.NoError(t, err)
 	items = result.(protocol.CompletionItemSlice)
 	assert.True(t, hasCompletion(items, "service"))
-	assert.True(t, hasCompletion(items, "@sensitive"))
-	assert.True(t, hasCompletion(items, "@deprecated"))
+	assert.False(t, hasCompletion(items, "@sensitive"))
+	assert.False(t, hasCompletion(items, "@deprecated"))
 	assert.True(t, hasCompletion(items, "string"))
 	assert.True(t, hasCompletion(items, "Order"))
 	assert.True(t, hasCompletion(items, "Status"))
 	assert.True(t, hasCompletion(items, "user"))
+}
+
+func TestServerCompletesDecoratorPrefixForField(t *testing.T) {
+	server := newServer()
+	documentURI := uri.File("/workspace/user.skel")
+	source := "domain demo\nconfig FeatureFlagConfig instant {\n    @desc(\"Enabled\")\n    @e\n    enabled: bool\n}\n"
+	server.putDocument(documentURI, source, 1, true)
+
+	result, err := server.Completion(t.Context(), &protocol.CompletionParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
+			Position:     protocol.Position{Line: 3, Character: 6},
+		},
+	})
+	require.NoError(t, err)
+	items := result.(protocol.CompletionItemSlice)
+	require.Len(t, items, 1)
+	item := items[0]
+	assert.Equal(t, "@example", item.Label)
+	assert.Equal(t, protocol.CompletionItemKindKeyword, item.Kind)
+	filterText, ok := item.FilterText.Get()
+	require.True(t, ok)
+	assert.Equal(t, "example", filterText)
+	textEdit, ok := item.TextEdit.(*protocol.TextEdit)
+	require.True(t, ok)
+	assert.Equal(t, protocol.Range{
+		Start: protocol.Position{Line: 3, Character: 5},
+		End:   protocol.Position{Line: 3, Character: 6},
+	}, textEdit.Range)
+	assert.Equal(t, "example", textEdit.NewText)
+}
+
+func TestServerFiltersDecoratorCompletionByTarget(t *testing.T) {
+	tests := []struct {
+		name   string
+		source string
+		line   uint32
+		want   []string
+	}{
+		{
+			name: "domain",
+			source: "@\n" +
+				"domain demo\n",
+			line: 0,
+			want: []string{"@desc"},
+		},
+		{
+			name: "data declaration",
+			source: "domain demo\n@\n" +
+				"pub data User {}\n",
+			line: 1,
+			want: []string{"@deprecated", "@desc", "@sensitive"},
+		},
+		{
+			name: "event declaration",
+			source: "domain demo\n@\n" +
+				"event UserCreated { payload {} }\n",
+			line: 1,
+			want: []string{"@deprecated", "@desc"},
+		},
+		{
+			name: "enum item",
+			source: "domain demo\nenum Status {\n    @\n" +
+				"    ACTIVE\n}\n",
+			line: 2,
+			want: []string{"@deprecated", "@desc"},
+		},
+		{
+			name: "field",
+			source: "domain demo\ndata User {\n    @\n" +
+				"    password: string\n}\n",
+			line: 2,
+			want: []string{"@deprecated", "@desc", "@example", "@sensitive"},
+		},
+		{
+			name: "field with description",
+			source: "domain demo\ndata User {\n    @desc(\"Password\")\n    @\n" +
+				"    password: string\n}\n",
+			line: 3,
+			want: []string{"@deprecated", "@example", "@sensitive"},
+		},
+		{
+			name: "field with description and example",
+			source: "domain demo\ndata User {\n    @desc(\"User name\")\n    @example(\"Ada\")\n    @\n" +
+				"    name: string\n}\n",
+			line: 4,
+			want: []string{"@deprecated", "@sensitive"},
+		},
+		{
+			name: "field with example before description",
+			source: "domain demo\ndata User {\n    @example(\"Ada\")\n    @\n" +
+				"    name: string\n}\n",
+			line: 3,
+			want: []string{"@deprecated", "@desc", "@sensitive"},
+		},
+		{
+			name: "field with sensitive",
+			source: "domain demo\ndata User {\n    @sensitive\n    @\n" +
+				"    password: string\n}\n",
+			line: 3,
+			want: []string{"@deprecated", "@desc", "@example"},
+		},
+		{
+			name: "event payload",
+			source: "domain demo\nevent UserCreated {\n    @\n" +
+				"    payload {}\n}\n",
+			line: 2,
+			want: []string{"@sensitive"},
+		},
+		{
+			name: "actor credential block",
+			source: "domain demo\nactor UserActor {\n    auth {\n        @\n" +
+				"        credential {}\n        info {}\n    }\n}\n",
+			line: 3,
+			want: []string{"@sensitive"},
+		},
+		{
+			name: "method",
+			source: "domain demo\nservice UserService {\n    @\n" +
+				"    method get {}\n}\n",
+			line: 2,
+			want: []string{"@deprecated", "@desc"},
+		},
+		{
+			name: "deprecated method",
+			source: "domain demo\nservice UserService {\n    @deprecated(\"Use fetch\")\n    @\n" +
+				"    method get {}\n}\n",
+			line: 3,
+			want: []string{"@desc"},
+		},
+		{
+			name: "resource action",
+			source: "domain demo\nresource User {\n    @\n" +
+				"    action read\n}\n",
+			line: 2,
+			want: []string{"@deprecated", "@desc"},
+		},
+		{
+			name: "resource check",
+			source: "domain demo\nresource User {\n    @\n" +
+				"    check byId {}\n}\n",
+			line: 2,
+			want: []string{"@deprecated", "@desc"},
+		},
+		{
+			name: "task trigger",
+			source: "domain demo\ntask RebuildTask {\n    @\n" +
+				"    trigger manual {}\n}\n",
+			line: 2,
+			want: []string{"@deprecated", "@desc"},
+		},
+		{
+			name: "input block",
+			source: "domain demo\nservice UserService {\n    method get {\n        @\n" +
+				"        input {}\n    }\n}\n",
+			line: 3,
+			want: []string{"@desc", "@sensitive"},
+		},
+		{
+			name: "output block",
+			source: "domain demo\nservice UserService {\n    method get {\n        @\n" +
+				"        output string\n    }\n}\n",
+			line: 3,
+			want: []string{"@desc", "@example", "@sensitive"},
+		},
+		{
+			name: "described output block",
+			source: "domain demo\nservice UserService {\n    method get {\n        @desc(\"Result\")\n        @\n" +
+				"        output string\n    }\n}\n",
+			line: 4,
+			want: []string{"@example", "@sensitive"},
+		},
+		{
+			name: "unsupported service section",
+			source: "domain demo\nservice UserService {\n    @\n" +
+				"    auth\n}\n",
+			line: 2,
+			want: []string{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			server := newServer()
+			documentURI := uri.File("/workspace/test.skel")
+			server.putDocument(documentURI, test.source, 1, true)
+			result, err := server.Completion(t.Context(), &protocol.CompletionParams{
+				TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+					TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
+					Position: protocol.Position{
+						Line:      test.line,
+						Character: uint32(len(strings.Split(test.source, "\n")[test.line])),
+					},
+				},
+			})
+			require.NoError(t, err)
+			items := result.(protocol.CompletionItemSlice)
+			labels := make([]string, 0, len(items))
+			for _, item := range items {
+				labels = append(labels, item.Label)
+			}
+			assert.Equal(t, test.want, labels)
+		})
+	}
 }
 
 func TestServerMarksDeprecatedCompletion(t *testing.T) {

@@ -1,0 +1,20 @@
+domain commerce.order
+
+@desc("Permissions available for orders")
+pub resource Order {
+    check exists {
+        input {
+            orderId: uuid
+        }
+    }
+
+    action read
+
+    action cancel {
+        check ownedByCaller {
+            input {
+                orderId: uuid
+            }
+        }
+    }
+}

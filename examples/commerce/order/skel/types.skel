@@ -1,0 +1,40 @@
+domain commerce.order
+
+import identity.user
+
+@desc("Current order lifecycle status")
+pub enum OrderStatus {
+    PENDING
+    PAID
+    CANCELLED
+}
+
+pub data Page<TItem> {
+    items: list<TItem>
+    nextToken: string?
+}
+
+pub data OrderLine {
+    productId: uuid
+    quantity: int
+    unitPrice: decimal
+}
+
+pub data Order {
+    id: uuid
+    customer: user.UserSummary
+    status: OrderStatus
+    lines: list<OrderLine>
+    attributes: map<string, string>
+    receipt: binary?
+}
+
+pub data OrderPage {
+    page: Page<Order>
+}
+
+config CheckoutConfig eternal {
+    timeout: duration
+    supportedCurrencies: list<string>
+    retryLimitByRegion: map<string, int>
+}

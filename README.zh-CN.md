@@ -109,6 +109,14 @@ const user = await userService.getUser({ userId: 1001 });
 ./examples/quickstart/generate.sh
 ```
 
+如果需要覆盖更多语言能力，[`examples/commerce`](examples/commerce)
+包含两个 domain，演示跨 domain import、泛型 data、config、event、resource 与
+permission、web 和 task：
+
+```bash
+./examples/commerce/generate.sh
+```
+
 ## 常用工作流
 
 ### 使用目录管理一个 domain

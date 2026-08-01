@@ -1,0 +1,18 @@
+domain commerce.order
+
+@desc("Customer-facing web capability")
+web CustomerPortalWeb {
+    for CustomerActor via client
+}
+
+@desc("Rebuilds the searchable order index")
+task RebuildOrderIndexTask {
+    trigger manually {}
+
+    trigger forCustomer {
+        input {
+            customerId: uuid
+            requestedAt: timestamp
+        }
+    }
+}

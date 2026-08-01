@@ -109,6 +109,14 @@ A runnable version of this walkthrough lives in [`examples/quickstart`](examples
 ./examples/quickstart/generate.sh
 ```
 
+For broader language coverage, [`examples/commerce`](examples/commerce)
+contains two domains and demonstrates imports, generic data, configuration,
+events, resources and permissions, web capabilities, and tasks:
+
+```bash
+./examples/commerce/generate.sh
+```
+
 ## Common Workflows
 
 ### Organize a Domain as a Directory

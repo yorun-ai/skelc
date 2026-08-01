@@ -35,8 +35,10 @@ jobs:
       - name: Run go vet
         run: GOWORK=off go vet ./...
 
-      - name: Exercise quickstart
-        run: ./examples/quickstart/generate.sh "$RUNNER_TEMP/skelc-quickstart"
+      - name: Exercise examples
+        run: |
+          ./examples/quickstart/generate.sh "$RUNNER_TEMP/skelc-quickstart"
+          ./examples/commerce/generate.sh "$RUNNER_TEMP/skelc-commerce"
 
   ci-checks:
     name: CI / Required Checks

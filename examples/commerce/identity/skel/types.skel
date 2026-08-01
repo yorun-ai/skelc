@@ -1,0 +1,17 @@
+domain identity.user
+
+@desc("Current account status")
+pub enum UserStatus {
+    ACTIVE
+    SUSPENDED
+}
+
+pub data UserSummary {
+    id: uuid
+    displayName: string
+    status: UserStatus
+}
+
+pub resource User {
+    action read
+}

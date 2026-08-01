@@ -1,0 +1,29 @@
+domain commerce.order
+
+@desc("Queries and commands for customer orders")
+pub service OrderService {
+    for CustomerActor via client
+    auth
+    require any(Order:read, user.User:read)
+
+    method list {
+        input {
+            pageSize: int
+            nextToken: string?
+        }
+        output OrderPage
+    }
+
+    method cancel {
+        require all(
+            Order:cancel,
+            Order:cancel:ownedByCaller(orderId),
+            Order:read:exists(orderId)
+        )
+
+        input {
+            orderId: uuid
+        }
+        output Order
+    }
+}

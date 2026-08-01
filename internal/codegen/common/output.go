@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"go.yorun.ai/skelc/internal/util/fileutil"
 )
 
 const outputManifestName = ".skelc-manifest.json"
@@ -251,26 +253,5 @@ func fileSHA256(path string) (string, error) {
 }
 
 func atomicWriteFile(path string, content []byte, mode fs.FileMode) error {
-	temporary, err := os.CreateTemp(filepath.Dir(path), ".skelc-write-*")
-	if err != nil {
-		return err
-	}
-	temporaryPath := temporary.Name()
-	defer os.Remove(temporaryPath)
-	if err := temporary.Chmod(mode); err != nil {
-		_ = temporary.Close()
-		return err
-	}
-	if _, err := temporary.Write(content); err != nil {
-		_ = temporary.Close()
-		return err
-	}
-	if err := temporary.Sync(); err != nil {
-		_ = temporary.Close()
-		return err
-	}
-	if err := temporary.Close(); err != nil {
-		return err
-	}
-	return os.Rename(temporaryPath, path)
+	return fileutil.Replace(fileutil.Replacement{Path: path, Content: content, Mode: mode})
 }

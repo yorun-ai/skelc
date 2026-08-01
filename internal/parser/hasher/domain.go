@@ -2,7 +2,7 @@ package hasher
 
 import "go.yorun.ai/skelc/model"
 
-func FillHashes(domain *model.Domain) {
+func FillHashes(domain *model.Domain) error {
 	state := newHashState(domain)
 
 	for _, enum := range domain.Enums() {
@@ -44,7 +44,7 @@ func FillHashes(domain *model.Domain) {
 		task.Hash = state.taskHash(task)
 	}
 
-	domain.SetHash(hashValue(_DomainHashValue{
+	domainHash := state.hashValue(_DomainHashValue{
 		Domain:      domain.Name(),
 		Description: domain.Description(),
 		Enums: buildNamedValues(domain.Enums(),
@@ -74,5 +74,10 @@ func FillHashes(domain *model.Domain) {
 		Tasks: buildNamedValues(domain.Tasks(),
 			func(task *model.Task) string { return task.SkelName },
 			func(task *model.Task) string { return task.Hash }),
-	}))
+	})
+	if state.err != nil {
+		return state.err
+	}
+	domain.SetHash(domainHash)
+	return nil
 }

@@ -8,7 +8,7 @@ import (
 )
 
 func (s *_hashState) triggerHash(trigger *model.TaskTrigger) string {
-	return hashValue(_TriggerHashValue{
+	return s.hashValue(_TriggerHashValue{
 		Name:               trigger.Name,
 		SkelName:           trigger.SkelName,
 		Description:        trigger.Description,
@@ -25,7 +25,7 @@ func (s *_hashState) taskHash(task *model.Task) string {
 		for _, trigger := range task.Triggers {
 			trigger.Hash = s.triggerHash(trigger)
 		}
-		return hashValue(_TaskHashValue{
+		return s.hashValue(_TaskHashValue{
 			Name:             task.Name,
 			SkelName:         task.SkelName,
 			Description:      task.Description,
@@ -44,12 +44,30 @@ func (s *_hashState) memoHash(kind string, skelName string, build func() string)
 		return hash
 	}
 	if s.status[key] {
-		return cycleHash(kind, skelName)
+		return s.hashValue(struct {
+			Kind     string `json:"kind"`
+			SkelName string `json:"skelName"`
+		}{
+			Kind:     kind,
+			SkelName: skelName,
+		})
 	}
 	s.status[key] = true
 	hash := build()
 	s.status[key] = false
 	s.cache[key] = hash
+	return hash
+}
+
+func (s *_hashState) hashValue(value any) string {
+	if s.err != nil {
+		return ""
+	}
+	hash, err := hashValue(value)
+	if err != nil {
+		s.err = err
+		return ""
+	}
 	return hash
 }
 

@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/bits"
-
-	"go.yorun.ai/skelc/internal/util/checkutil"
 )
 
 type _NamedValue struct {
@@ -19,20 +17,12 @@ const (
 	murmurC2 uint32 = 0x1b873593
 )
 
-func hashValue(value any) string {
+func hashValue(value any) (string, error) {
 	serialized, err := json.Marshal(value)
-	checkutil.CheckNilError(err, "marshal hash value failed")
-	return fmt.Sprintf("%08x", murmur32(serialized))
-}
-
-func cycleHash(kind string, skelName string) string {
-	return hashValue(struct {
-		Kind     string `json:"kind"`
-		SkelName string `json:"skelName"`
-	}{
-		Kind:     kind,
-		SkelName: skelName,
-	})
+	if err != nil {
+		return "", fmt.Errorf("marshal hash value: %w", err)
+	}
+	return fmt.Sprintf("%08x", murmur32(serialized)), nil
 }
 
 func buildNamedValues[T any](items []*T, skelNameOf func(*T) string, hashOf func(*T) string) []*_NamedValue {

@@ -17,8 +17,7 @@ func TestFillHashesPropagatesDataChangesToService(t *testing.T) {
 		},
 	})
 
-	FillHashes(oldDomain)
-	FillHashes(newDomain)
+	fillHashes(t, oldDomain, newDomain)
 
 	if oldDomain.Data()[0].Hash == newDomain.Data()[0].Hash {
 		t.Fatal("expected data hash to change")
@@ -38,8 +37,7 @@ func TestFillHashesIncludesAllowVia(t *testing.T) {
 	clientDomain := newHashAllowViaTestDomain(t, "client")
 	openapiDomain := newHashAllowViaTestDomain(t, "openapi")
 
-	FillHashes(clientDomain)
-	FillHashes(openapiDomain)
+	fillHashes(t, clientDomain, openapiDomain)
 
 	if clientDomain.Services()[0].Hash == openapiDomain.Services()[0].Hash {
 		t.Fatal("expected service hash to change when for via changes")
@@ -58,8 +56,7 @@ func TestFillHashesIncludesSensitiveMetadata(t *testing.T) {
 	newDomain.Data()[0].Members[0].Sensitive = true
 	newDomain.Services()[0].Methods[0].Arguments[0].Sensitive = true
 
-	FillHashes(oldDomain)
-	FillHashes(newDomain)
+	fillHashes(t, oldDomain, newDomain)
 
 	if oldDomain.Data()[0].Hash == newDomain.Data()[0].Hash {
 		t.Fatal("expected data hash to change when sensitive metadata changes")
@@ -79,8 +76,7 @@ func TestFillHashesIncludesDeprecatedMetadata(t *testing.T) {
 	newDomain.Services()[0].Methods[0].Arguments[0].Deprecated = true
 	newDomain.Services()[0].Methods[0].Arguments[0].DeprecatedReason = "Use subject instead"
 
-	FillHashes(oldDomain)
-	FillHashes(newDomain)
+	fillHashes(t, oldDomain, newDomain)
 
 	if oldDomain.Data()[0].Hash == newDomain.Data()[0].Hash {
 		t.Fatal("expected data hash to change when member deprecation changes")
@@ -102,8 +98,7 @@ func TestFillHashesIncludesWholeSensitiveMetadata(t *testing.T) {
 		newDomain := newHashTestDomain(t, "User service")
 		newDomain.Data()[0].Sensitive = true
 
-		FillHashes(oldDomain)
-		FillHashes(newDomain)
+		fillHashes(t, oldDomain, newDomain)
 
 		if oldDomain.Data()[0].Hash == newDomain.Data()[0].Hash {
 			t.Fatal("expected data hash to change when whole-data sensitive metadata changes")
@@ -132,8 +127,7 @@ func TestFillHashesIncludesWholeSensitiveMetadata(t *testing.T) {
 			newDomain, newData := test.build()
 			newData.Sensitive = true
 
-			FillHashes(oldDomain)
-			FillHashes(newDomain)
+			fillHashes(t, oldDomain, newDomain)
 
 			if oldData.Hash == newData.Hash {
 				t.Fatalf("expected %s hash to change when whole-value sensitive metadata changes", test.name)
@@ -157,8 +151,7 @@ func TestFillHashesIncludesWholeSensitiveMetadata(t *testing.T) {
 			newActor := newDomain.Actors()[0]
 			test.selectData(newActor).Sensitive = true
 
-			FillHashes(oldDomain)
-			FillHashes(newDomain)
+			fillHashes(t, oldDomain, newDomain)
 
 			oldActor := oldDomain.Actors()[0]
 			if test.selectData(oldActor).Hash == test.selectData(newActor).Hash {
@@ -182,8 +175,7 @@ func TestFillHashesIncludesWholeSensitiveMetadata(t *testing.T) {
 			newDomain := newHashTestDomain(t, "User service")
 			mutate(newDomain.Services()[0].Methods[0])
 
-			FillHashes(oldDomain)
-			FillHashes(newDomain)
+			fillHashes(t, oldDomain, newDomain)
 
 			if oldDomain.Services()[0].Methods[0].Hash == newDomain.Services()[0].Methods[0].Hash {
 				t.Fatalf("expected method hash to change when whole-%s sensitive metadata changes", name)
@@ -196,8 +188,7 @@ func TestFillHashesIncludesWholeSensitiveMetadata(t *testing.T) {
 		newDomain := newHashTaskTestDomain(t)
 		newDomain.Tasks()[0].Triggers[0].ArgumentsSensitive = true
 
-		FillHashes(oldDomain)
-		FillHashes(newDomain)
+		fillHashes(t, oldDomain, newDomain)
 
 		if oldDomain.Tasks()[0].Triggers[0].Hash == newDomain.Tasks()[0].Triggers[0].Hash {
 			t.Fatal("expected trigger hash to change when whole-input sensitive metadata changes")

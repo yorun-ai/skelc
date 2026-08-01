@@ -35,7 +35,9 @@ func Parse(option Option) (Result, error) {
 	diagnostics = appendAnalysisWarnings(diagnostics, domain.Warnings())
 	slices.SortFunc(diagnostics, compareDiagnostics)
 	parsed := domain.Model()
-	hasher.FillHashes(parsed)
+	if err := hasher.FillHashes(parsed); err != nil {
+		return Result{}, err
+	}
 	return Result{Domain: parsed, Diagnostics: diagnostics}, nil
 }
 
@@ -50,7 +52,9 @@ func ParseImport(skelIn string) (Result, error) {
 	diagnostics = appendAnalysisWarnings(diagnostics, domain.Warnings())
 	slices.SortFunc(diagnostics, compareDiagnostics)
 	parsed := domain.Model()
-	hasher.FillHashes(parsed)
+	if err := hasher.FillHashes(parsed); err != nil {
+		return Result{}, err
+	}
 	return Result{Domain: parsed, Diagnostics: diagnostics}, nil
 }
 

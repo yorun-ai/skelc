@@ -10,7 +10,7 @@ func (s *_hashState) resourceHash(resource *model.Resource) string {
 			checkServiceName = resource.CheckService.SkelName
 			checkServiceHash = s.serviceHash(resource.CheckService)
 		}
-		return hashValue(_ResourceHashValue{
+		return s.hashValue(_ResourceHashValue{
 			Name:             resource.Name,
 			SkelName:         resource.SkelName,
 			Description:      resource.Description,
@@ -26,7 +26,7 @@ func (s *_hashState) resourceHash(resource *model.Resource) string {
 }
 
 func (s *_hashState) methodHash(method *model.Method) string {
-	return hashValue(_MethodHashValue{
+	return s.hashValue(_MethodHashValue{
 		Name:               method.Name,
 		SkelName:           method.SkelName,
 		Description:        method.Description,
@@ -50,7 +50,7 @@ func (s *_hashState) serviceHash(service *model.Service) string {
 		for _, method := range service.Methods {
 			method.Hash = s.methodHash(method)
 		}
-		return hashValue(_ServiceHashValue{
+		return s.hashValue(_ServiceHashValue{
 			Name:             service.Name,
 			SkelName:         service.SkelName,
 			Description:      service.Description,

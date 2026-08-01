@@ -6,8 +6,7 @@ func TestFillHashesIncludesActorCredential(t *testing.T) {
 	oldDomain := newHashActorCredentialTestDomain(t, "subject")
 	newDomain := newHashActorCredentialTestDomain(t, "tenant")
 
-	FillHashes(oldDomain)
-	FillHashes(newDomain)
+	fillHashes(t, oldDomain, newDomain)
 
 	if oldDomain.Actors()[0].Hash == newDomain.Actors()[0].Hash {
 		t.Fatal("expected actor hash to change when credential changes")

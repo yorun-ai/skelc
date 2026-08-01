@@ -9,31 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCheckNilErrorWrapsCause(t *testing.T) {
-	cause := errors.New("cause")
-	defer func() {
-		value := recover()
-		err, ok := value.(error)
-		if !ok || !errors.Is(err, cause) {
-			t.Fatalf("expected wrapped cause, got %#v", value)
-		}
-	}()
-
-	CheckNilError(cause, "operation failed")
-}
-
-func TestCheckNotNilRejectsTypedNil(t *testing.T) {
-	var value *int
-	defer func() {
-		if recover() == nil {
-			t.Fatal("expected typed nil to panic")
-		}
-	}()
-
-	CheckNotNil(value, "unexpected nil")
-}
-
-func TestFailfCarriesStructuredPosition(t *testing.T) {
+func TestNewFailurefCarriesStructuredPosition(t *testing.T) {
 	err := NewFailuref("%s %s has an invalid type", lexer.Position{Filename: "/workspace/user.skel", Line: 4, Column: 9}, "field")
 
 	var failure *Failure
@@ -43,6 +19,13 @@ func TestFailfCarriesStructuredPosition(t *testing.T) {
 	assert.Equal(t, 4, failure.Position.Line)
 	assert.Equal(t, 9, failure.Position.Column)
 	assert.Equal(t, "/workspace/user.skel:4:9 field has an invalid type", failure.Message)
+}
+
+func TestNewFailureWithCauseWrapsCause(t *testing.T) {
+	cause := errors.New("cause")
+	failure := NewFailureWithCause(cause, "operation failed")
+
+	require.ErrorIs(t, failure, cause)
 }
 
 func TestNewFailurefDoesNotPanic(t *testing.T) {

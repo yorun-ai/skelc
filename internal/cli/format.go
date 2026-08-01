@@ -11,6 +11,7 @@ import (
 	"go.yorun.ai/skelc/internal/formatter"
 	"go.yorun.ai/skelc/internal/loader"
 	"go.yorun.ai/skelc/internal/parser"
+	"go.yorun.ai/skelc/internal/util/fileutil"
 )
 
 const (
@@ -20,8 +21,9 @@ const (
 )
 
 type _FormattedFile struct {
-	path    string
-	content []byte
+	path     string
+	original []byte
+	content  []byte
 }
 
 func newFormatCommand() *ucli.Command {
@@ -74,12 +76,30 @@ func formatFiles(skelIn string) error {
 		if bytes.Equal(sourceFile.Content, formatted) {
 			continue
 		}
-		formattedFiles = append(formattedFiles, _FormattedFile{path: sourceFile.FilePath, content: formatted})
+		formattedFiles = append(formattedFiles, _FormattedFile{
+			path: sourceFile.FilePath, original: sourceFile.Content, content: formatted,
+		})
 	}
+	replacements := make([]fileutil.Replacement, 0, len(formattedFiles))
 	for _, file := range formattedFiles {
-		if err := os.WriteFile(file.path, file.content, 0o644); err != nil {
-			return fmt.Errorf("write %s: %w", file.path, err)
+		writePath, err := filepath.EvalSymlinks(file.path)
+		if err != nil {
+			return fmt.Errorf("resolve format target %s: %w", file.path, err)
 		}
+		info, err := os.Stat(writePath)
+		if err != nil {
+			return fmt.Errorf("inspect format target %s: %w", writePath, err)
+		}
+		current, err := os.ReadFile(writePath)
+		if err != nil {
+			return fmt.Errorf("read format target %s: %w", writePath, err)
+		}
+		if !bytes.Equal(current, file.original) {
+			return fmt.Errorf("format target %s changed while formatting", writePath)
+		}
+		replacements = append(replacements, fileutil.Replacement{
+			Path: writePath, Content: file.content, Mode: info.Mode(),
+		})
 	}
-	return nil
+	return fileutil.ReplaceAll(replacements)
 }

@@ -170,6 +170,15 @@ func analyzeHashTestDomain(t *testing.T, content *grammar.SkelContent) *analyzer
 	return analysis
 }
 
+func fillHashes(t *testing.T, domains ...*model.Domain) {
+	t.Helper()
+	for _, domain := range domains {
+		if err := FillHashes(domain); err != nil {
+			t.Fatalf("fill hashes: %v", err)
+		}
+	}
+}
+
 func domainContent(name string) *grammar.DomainContent {
 	parts := strings.Split(name, ".")
 	idents := make([]*grammar.Identifier, 0, len(parts))

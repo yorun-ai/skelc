@@ -6,8 +6,7 @@ func TestFillHashesChangesOnlyAffectedComponents(t *testing.T) {
 	oldDomain := newHashTestDomain(t, "User service")
 	newDomain := newHashTestDomain(t, "User service (new version)")
 
-	FillHashes(oldDomain)
-	FillHashes(newDomain)
+	fillHashes(t, oldDomain, newDomain)
 
 	if oldDomain.Actors()[0].Hash != newDomain.Actors()[0].Hash {
 		t.Fatal("expected actor hash to remain stable")

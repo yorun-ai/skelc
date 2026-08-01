@@ -9,6 +9,7 @@ type _hashState struct {
 	actorBySkel map[string]*model.Actor
 	status      map[string]bool
 	cache       map[string]string
+	err         error
 }
 
 func newHashState(domain *model.Domain) *_hashState {
@@ -40,7 +41,7 @@ func newHashState(domain *model.Domain) *_hashState {
 
 func (s *_hashState) enumHash(enum *model.Enum) string {
 	return s.memoHash("enum", enum.SkelName, func() string {
-		return hashValue(_EnumHashValue{
+		return s.hashValue(_EnumHashValue{
 			Name:             enum.Name,
 			SkelName:         enum.SkelName,
 			Description:      enum.Description,
@@ -53,7 +54,7 @@ func (s *_hashState) enumHash(enum *model.Enum) string {
 
 func (s *_hashState) dataHash(data *model.Data) string {
 	return s.memoHash(string(data.Kind), data.SkelName, func() string {
-		return hashValue(_DataHashValue{
+		return s.hashValue(_DataHashValue{
 			Name:             data.Name,
 			SkelName:         data.SkelName,
 			Description:      data.Description,
@@ -71,7 +72,7 @@ func (s *_hashState) dataHash(data *model.Data) string {
 
 func (s *_hashState) webHash(web *model.Web) string {
 	return s.memoHash("web", web.SkelName, func() string {
-		return hashValue(_WebHashValue{
+		return s.hashValue(_WebHashValue{
 			Name:             web.Name,
 			SkelName:         web.SkelName,
 			Description:      web.Description,
@@ -104,7 +105,7 @@ func (s *_hashState) actorHash(actor *model.Actor) string {
 			permMethodName = actor.PermMethod.SkelName
 			permMethodHash = s.methodHash(actor.PermMethod)
 		}
-		return hashValue(_ActorHashValue{
+		return s.hashValue(_ActorHashValue{
 			Name:               actor.Name,
 			SkelName:           actor.SkelName,
 			Description:        actor.Description,

@@ -8,7 +8,7 @@ import (
 
 const unspecifiedEnumName = "UNSPECIFIED"
 
-func parseEnum(reporter *diagnosticReporter, ge *grammar.Enum) (*model.Enum, bool) {
+func parseEnum(reporter *_DiagnosticReporter, ge *grammar.Enum) (*model.Enum, bool) {
 	valid := checkCase(reporter, "Enum", caseTypeCamel, ge.Name)
 	valid = checkNotReservedKindSuffix(reporter, "Enum", ge.Name) && valid
 
@@ -21,7 +21,7 @@ func parseEnum(reporter *diagnosticReporter, ge *grammar.Enum) (*model.Enum, boo
 		},
 		Items: []*model.EnumItem{},
 	}
-	meta, metaValid := parseDecoratorMeta(reporter, ge.Decorators, decoratorContext{
+	meta, metaValid := parseDecoratorMeta(reporter, ge.Decorators, _DecoratorContext{
 		allowDesc:       true,
 		allowDeprecated: true,
 	})
@@ -48,10 +48,10 @@ func parseEnum(reporter *diagnosticReporter, ge *grammar.Enum) (*model.Enum, boo
 	return enum, valid
 }
 
-func parseEnumItem(reporter *diagnosticReporter, gei *grammar.EnumItem) (*model.EnumItem, bool) {
+func parseEnumItem(reporter *_DiagnosticReporter, gei *grammar.EnumItem) (*model.EnumItem, bool) {
 	valid := checkCase(reporter, "EnumItem", caseTypeScreamingSnake, gei.Name)
 	valid = reporter.check(gei.Name.Value != unspecifiedEnumName, "%s reversed EnumItem value %s", gei.Name.Pos, gei.Name.Value) && valid
-	meta, metaValid := parseDecoratorMeta(reporter, gei.Decorators, decoratorContext{
+	meta, metaValid := parseDecoratorMeta(reporter, gei.Decorators, _DecoratorContext{
 		allowDesc:       true,
 		allowDeprecated: true,
 	})

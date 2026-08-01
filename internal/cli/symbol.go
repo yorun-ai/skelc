@@ -50,7 +50,7 @@ func newSymbolListCommand() *ucli.Command {
 			if err != nil {
 				return err
 			}
-			result, err := compiler.ParseImport(option.SkelIn)
+			result, err := compiler.CompileImport(option.SkelIn)
 			if err != nil {
 				return err
 			}
@@ -106,7 +106,7 @@ func newSymbolGetCommand() *ucli.Command {
 			if err != nil {
 				return err
 			}
-			result, err := compiler.ParseImport(option.SkelIn)
+			result, err := compiler.CompileImport(option.SkelIn)
 			if err != nil {
 				return err
 			}

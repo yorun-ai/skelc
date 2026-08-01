@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"go.yorun.ai/skelc/internal/analyzer"
-	"go.yorun.ai/skelc/internal/loader"
+	"go.yorun.ai/skelc/internal/parser"
 	"go.yorun.ai/skelc/internal/parser/grammar"
 )
 
@@ -64,26 +64,6 @@ func workspaceDomain(domains map[string]*_WorkspaceDomain, key, name, root strin
 	return domain
 }
 
-func mergeWorkspaceContents(contents []*grammar.SkelContent) *grammar.SkelContent {
-	ordered := append([]*grammar.SkelContent{}, contents...)
-	slices.SortFunc(ordered, func(left, right *grammar.SkelContent) int {
-		return strings.Compare(left.Pos.Filename, right.Pos.Filename)
-	})
-	domainContent := ordered[0].Domain
-	for _, content := range ordered {
-		if filepath.Base(content.Pos.Filename) == loader.DomainFileName {
-			domainContent = content.Domain
-			break
-		}
-	}
-	merged := &grammar.SkelContent{Pos: domainContent.Pos, Domain: domainContent}
-	for _, content := range ordered {
-		merged.Imports = append(merged.Imports, content.Imports...)
-		merged.Entries = append(merged.Entries, content.Entries...)
-	}
-	return merged
-}
-
 func (w *WorkspaceAnalyzer) analyzeWorkspaceDomain(
 	ctx context.Context,
 	domain *_WorkspaceDomain,
@@ -103,7 +83,7 @@ func (w *WorkspaceAnalyzer) analyzeWorkspaceDomain(
 	case workspaceDomainFailed:
 		return false
 	case workspaceDomainVisiting:
-		position := workspacePosition(domain.merged.Domain.Name.Pos)
+		position := parser.SourcePosition(domain.merged.Domain.Name.Pos)
 		*diagnostics = append(*diagnostics, Diagnostic{
 			Code: DiagnosticCodeImportCycle, Severity: DiagnosticSeverityError, Position: position, Range: SourceRange{Start: position, End: position},
 			Message: fmt.Sprintf("cyclic domain import involving %s", domain.name),
@@ -168,7 +148,7 @@ func (w *WorkspaceAnalyzer) resolveWorkspaceDomainImports(
 				continue
 			}
 			*diagnostics = append(*diagnostics, Diagnostic{
-				Code: DiagnosticCodeImportMissing, Severity: DiagnosticSeverityError, Position: workspacePosition(importDecl.Pos),
+				Code: DiagnosticCodeImportMissing, Severity: DiagnosticSeverityError, Position: parser.SourcePosition(importDecl.Pos),
 				Message: fmt.Sprintf("skel import %s not found in the workspace", name),
 			})
 			resolution.valid = false

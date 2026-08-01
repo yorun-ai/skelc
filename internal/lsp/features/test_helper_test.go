@@ -2,11 +2,9 @@ package features
 
 import (
 	"context"
-	"encoding/json"
 
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
-	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/internal/lsp/workspace"
 )
 
@@ -75,12 +73,4 @@ func (f *testFixture) Formatting(ctx context.Context, params *protocol.DocumentF
 func (f *testFixture) CodeAction(ctx context.Context, params *protocol.CodeActionParams) ([]protocol.CommandOrCodeAction, error) {
 	service := f.service()
 	return service.CodeAction(ctx, params)
-}
-
-func diagnosticSuggestionData(suggestion *compiler.DiagnosticSuggestion) protocol.LSPAny {
-	content, err := json.Marshal(suggestion)
-	if err != nil {
-		return nil
-	}
-	return protocol.LSPAny(content)
 }

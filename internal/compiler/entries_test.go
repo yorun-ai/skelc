@@ -266,7 +266,7 @@ actor ClientActor {
 				writeFile(t, filepath.Join(dir, "domain.skel"), "domain demo\n")
 				writeFile(t, filepath.Join(dir, "contract.skel"), source)
 			}
-			_, err := Parse(Option{SkelIn: dir})
+			_, err := Compile(Option{SkelIn: dir})
 			if err == nil || !strings.Contains(err.Error(), "unexpected decorator @deprecated") {
 				t.Fatalf("expected unsupported @deprecated diagnostic, got %v", err)
 			}

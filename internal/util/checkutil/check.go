@@ -10,7 +10,7 @@ import (
 
 const CodeValidation = "validation"
 
-// Failure is the structured validation error used by parser diagnostics.
+// Failure is the structured validation error used by semantic diagnostics.
 // Error preserves the existing human-readable message, while Position and
 // Code let tool integrations avoid parsing that message.
 type Failure struct {

@@ -7,7 +7,7 @@ import (
 	"go.yorun.ai/skelc/model"
 )
 
-func parseRequire(reporter *diagnosticReporter, gr *grammar.Require) (*model.PermissionRequire, bool) {
+func parseRequire(reporter *_DiagnosticReporter, gr *grammar.Require) (*model.PermissionRequire, bool) {
 	if gr == nil {
 		return nil, true
 	}
@@ -17,7 +17,7 @@ func parseRequire(reporter *diagnosticReporter, gr *grammar.Require) (*model.Per
 	}, valid
 }
 
-func parseRequireExpr(reporter *diagnosticReporter, expr *grammar.RequireExpr) (*model.PermissionExpr, bool) {
+func parseRequireExpr(reporter *_DiagnosticReporter, expr *grammar.RequireExpr) (*model.PermissionExpr, bool) {
 	if expr == nil {
 		return nil, false
 	}
@@ -62,7 +62,7 @@ func parseRequireTerm(term *grammar.RequireTerm) *model.PermissionCheckInvocatio
 	return item
 }
 
-func (p *Analysis) normalizeServiceTypes(service *model.Service, refs *refContext) bool {
+func (p *Analysis) normalizeServiceTypes(service *model.Service, refs *_RefContext) bool {
 	valid := true
 	for _, method := range service.Methods {
 		valid = fixTypeRef(p.reporter, method.ResultType, refs) && valid

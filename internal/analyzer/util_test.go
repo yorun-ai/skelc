@@ -4,40 +4,40 @@ import "testing"
 
 func TestMatchesCase(t *testing.T) {
 	cases := []struct {
-		value    string
-		caseType caseType
-		want     bool
+		value     string
+		_CaseType _CaseType
+		want      bool
 	}{
-		{value: "user_name", caseType: caseTypeSnake, want: true},
-		{value: "USER_NAME", caseType: caseTypeScreamingSnake, want: true},
-		{value: "UserName", caseType: caseTypeCamel, want: true},
-		{value: "userName", caseType: caseTypeLowerCamel, want: true},
-		{value: "UserName", caseType: caseTypeLowerCamel, want: false},
+		{value: "user_name", _CaseType: caseTypeSnake, want: true},
+		{value: "USER_NAME", _CaseType: caseTypeScreamingSnake, want: true},
+		{value: "UserName", _CaseType: caseTypeCamel, want: true},
+		{value: "userName", _CaseType: caseTypeLowerCamel, want: true},
+		{value: "UserName", _CaseType: caseTypeLowerCamel, want: false},
 	}
 
 	for _, tc := range cases {
-		if got := matchesCase(tc.value, tc.caseType); got != tc.want {
-			t.Fatalf("matchesCase(%q, %q) = %v, want %v", tc.value, tc.caseType, got, tc.want)
+		if got := matchesCase(tc.value, tc._CaseType); got != tc.want {
+			t.Fatalf("matchesCase(%q, %q) = %v, want %v", tc.value, tc._CaseType, got, tc.want)
 		}
 	}
 }
 
 func TestConvertCase(t *testing.T) {
 	tests := []struct {
-		value    string
-		caseType caseType
-		want     string
+		value     string
+		_CaseType _CaseType
+		want      string
 	}{
-		{value: "UserName", caseType: caseTypeSnake, want: "user_name"},
-		{value: "userName", caseType: caseTypeScreamingSnake, want: "USER_NAME"},
-		{value: "user_name", caseType: caseTypeCamel, want: "UserName"},
-		{value: "UserName", caseType: caseTypeLowerCamel, want: "userName"},
-		{value: "unchanged", caseType: caseType("custom"), want: "unchanged"},
+		{value: "UserName", _CaseType: caseTypeSnake, want: "user_name"},
+		{value: "userName", _CaseType: caseTypeScreamingSnake, want: "USER_NAME"},
+		{value: "user_name", _CaseType: caseTypeCamel, want: "UserName"},
+		{value: "UserName", _CaseType: caseTypeLowerCamel, want: "userName"},
+		{value: "unchanged", _CaseType: _CaseType("custom"), want: "unchanged"},
 	}
 
 	for _, test := range tests {
-		if got := convertCase(test.value, test.caseType); got != test.want {
-			t.Errorf("convertCase(%q, %q) = %q, want %q", test.value, test.caseType, got, test.want)
+		if got := convertCase(test.value, test._CaseType); got != test.want {
+			t.Errorf("convertCase(%q, %q) = %q, want %q", test.value, test._CaseType, got, test.want)
 		}
 	}
 }

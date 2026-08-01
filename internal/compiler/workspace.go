@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"go.yorun.ai/skelc/internal/parser"
 	"go.yorun.ai/skelc/internal/parser/grammar"
 	"go.yorun.ai/skelc/model"
 )
@@ -123,7 +124,7 @@ func (w *WorkspaceAnalyzer) analyze(ctx context.Context, sources []Source, allow
 		}
 		name := content.Domain.Name.String()
 		if source.ExpectedDomain != "" && name != source.ExpectedDomain {
-			position := workspacePosition(content.Domain.Name.Pos)
+			position := parser.SourcePosition(content.Domain.Name.Pos)
 			diagnostics = append(diagnostics, Diagnostic{
 				Code: DiagnosticCodeDomainMismatch, Severity: DiagnosticSeverityError, Position: position, Range: sourceRangeAt(position, source.Content),
 				Message: fmt.Sprintf("domain mismatch: found=%s, expected=%s", name, source.ExpectedDomain),
@@ -148,7 +149,7 @@ func (w *WorkspaceAnalyzer) analyze(ctx context.Context, sources []Source, allow
 	domainsByName := map[string][]*_WorkspaceDomain{}
 	for key, domain := range domains {
 		if len(domain.contents) > 0 {
-			domain.merged = mergeWorkspaceContents(domain.contents)
+			domain.merged = mergeDomainContents(domain.contents)
 		}
 		domainsByName[domain.name] = append(domainsByName[domain.name], domain)
 		keys = append(keys, key)

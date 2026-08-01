@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/alecthomas/participle/v2/lexer"
+	"go.yorun.ai/skelc/diagnostic"
 	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/model"
 )
@@ -16,34 +17,34 @@ const MaxDiagnosticsPerDomain = 50
 // Semantic diagnostic codes are assigned where analyzer failures originate so
 // downstream integrations never need to classify human-readable messages.
 const (
-	DiagnosticCodeValidation = "semantic.validation"
-	DiagnosticCodeDuplicate  = "semantic.duplicate"
-	DiagnosticCodeNaming     = "semantic.naming"
-	DiagnosticCodeReference  = "semantic.reference"
+	DiagnosticCodeValidation = diagnostic.CodeSemanticValidation
+	DiagnosticCodeDuplicate  = diagnostic.CodeSemanticDuplicate
+	DiagnosticCodeNaming     = diagnostic.CodeSemanticNaming
+	DiagnosticCodeReference  = diagnostic.CodeSemanticReference
 )
 
-type diagnosticReporter struct {
+type _DiagnosticReporter struct {
 	errors []error
 	seen   map[string]bool
 }
 
-func newDiagnosticReporter() *diagnosticReporter {
-	return &diagnosticReporter{seen: map[string]bool{}}
+func newDiagnosticReporter() *_DiagnosticReporter {
+	return &_DiagnosticReporter{seen: map[string]bool{}}
 }
 
-func (r *diagnosticReporter) check(condition bool, message string, args ...any) bool {
+func (r *_DiagnosticReporter) check(condition bool, message string, args ...any) bool {
 	return r.checkCode(DiagnosticCodeValidation, condition, message, args...)
 }
 
-func (r *diagnosticReporter) checkDuplicate(condition bool, message string, args ...any) bool {
+func (r *_DiagnosticReporter) checkDuplicate(condition bool, message string, args ...any) bool {
 	return r.checkCode(DiagnosticCodeDuplicate, condition, message, args...)
 }
 
-func (r *diagnosticReporter) checkReference(condition bool, message string, args ...any) bool {
+func (r *_DiagnosticReporter) checkReference(condition bool, message string, args ...any) bool {
 	return r.checkCode(DiagnosticCodeReference, condition, message, args...)
 }
 
-func (r *diagnosticReporter) checkCode(code string, condition bool, message string, args ...any) bool {
+func (r *_DiagnosticReporter) checkCode(code string, condition bool, message string, args ...any) bool {
 	if condition {
 		return true
 	}
@@ -51,19 +52,19 @@ func (r *diagnosticReporter) checkCode(code string, condition bool, message stri
 	return false
 }
 
-func (r *diagnosticReporter) checkNot(condition bool, message string, args ...any) bool {
+func (r *_DiagnosticReporter) checkNot(condition bool, message string, args ...any) bool {
 	return r.check(!condition, message, args...)
 }
 
-func (r *diagnosticReporter) checkNotDuplicate(condition bool, message string, args ...any) bool {
+func (r *_DiagnosticReporter) checkNotDuplicate(condition bool, message string, args ...any) bool {
 	return r.checkDuplicate(!condition, message, args...)
 }
 
-func (r *diagnosticReporter) reportf(message string, args ...any) {
+func (r *_DiagnosticReporter) reportf(message string, args ...any) {
 	r.report(newDiagnosticFailure(DiagnosticCodeValidation, message, args...))
 }
 
-func (r *diagnosticReporter) reportDuplicatef(message string, args ...any) {
+func (r *_DiagnosticReporter) reportDuplicatef(message string, args ...any) {
 	failure := newDiagnosticFailure(DiagnosticCodeDuplicate, message, args...)
 	positions := diagnosticArgumentPositions(args)
 	if len(positions) > 1 {
@@ -72,11 +73,11 @@ func (r *diagnosticReporter) reportDuplicatef(message string, args ...any) {
 	r.report(failure)
 }
 
-func (r *diagnosticReporter) reportReferencef(message string, args ...any) {
+func (r *_DiagnosticReporter) reportReferencef(message string, args ...any) {
 	r.report(newDiagnosticFailure(DiagnosticCodeReference, message, args...))
 }
 
-func (r *diagnosticReporter) reportNamingf(replacement string, message string, args ...any) {
+func (r *_DiagnosticReporter) reportNamingf(replacement string, message string, args ...any) {
 	failure := newDiagnosticFailure(DiagnosticCodeNaming, message, args...)
 	failure.Suggestion = &checkutil.Suggestion{
 		Message:     "replace with " + replacement,
@@ -105,7 +106,7 @@ func diagnosticArgumentPositions(args []any) []model.Position {
 	return positions
 }
 
-func (r *diagnosticReporter) report(err error) {
+func (r *_DiagnosticReporter) report(err error) {
 	if err == nil || len(r.errors) >= MaxDiagnosticsPerDomain {
 		return
 	}
@@ -118,11 +119,11 @@ func (r *diagnosticReporter) report(err error) {
 	r.errors = append(r.errors, err)
 }
 
-func (r *diagnosticReporter) full() bool {
+func (r *_DiagnosticReporter) full() bool {
 	return len(r.errors) >= MaxDiagnosticsPerDomain
 }
 
-func (r *diagnosticReporter) result() []error {
+func (r *_DiagnosticReporter) result() []error {
 	result := append([]error{}, r.errors...)
 	slices.SortFunc(result, func(left, right error) int {
 		leftPosition, _ := checkutil.Position(left)

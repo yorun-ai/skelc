@@ -140,7 +140,7 @@ func parseDomainHash(t *testing.T, name string, source []byte) string {
 	if err := os.WriteFile(path, source, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	result, err := compiler.Parse(compiler.Option{SkelIn: path})
+	result, err := compiler.Compile(compiler.Option{SkelIn: path})
 	if err != nil {
 		t.Fatalf("parse %s: %v", name, err)
 	}

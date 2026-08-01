@@ -82,7 +82,7 @@ func referencedData(t *model.Type) _Refs {
 	return refs
 }
 
-func checkTypeCanBeMapKey(reporter *diagnosticReporter, t *model.Type) bool {
+func checkTypeCanBeMapKey(reporter *_DiagnosticReporter, t *model.Type) bool {
 	valid := reporter.checkNot(t.Nullable, "%s incorrect key type, must not be nullable", t.Pos)
 
 	canBeMapKey := false
@@ -97,7 +97,7 @@ func checkTypeCanBeMapKey(reporter *diagnosticReporter, t *model.Type) bool {
 	return valid
 }
 
-func parseType(reporter *diagnosticReporter, s *grammar.Type) (*model.Type, bool) {
+func parseType(reporter *_DiagnosticReporter, s *grammar.Type) (*model.Type, bool) {
 	if s == nil {
 		return nil, true
 	}
@@ -195,7 +195,7 @@ func parseType(reporter *diagnosticReporter, s *grammar.Type) (*model.Type, bool
 	return t, valid
 }
 
-func parseReferenceName(reporter *diagnosticReporter, name *grammar.QualifiedName) (string, string, lexer.Position, bool) {
+func parseReferenceName(reporter *_DiagnosticReporter, name *grammar.QualifiedName) (string, string, lexer.Position, bool) {
 	if !reporter.check(name != nil && len(name.Parts) > 0, "missing reference type") {
 		return "", "", lexer.Position{}, false
 	}

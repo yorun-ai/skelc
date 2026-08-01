@@ -9,9 +9,9 @@ import (
 	"go.yorun.ai/skelc/model"
 )
 
-func parseTask(reporter *diagnosticReporter, gt *grammar.Task) (*model.Task, bool) {
+func parseTask(reporter *_DiagnosticReporter, gt *grammar.Task) (*model.Task, bool) {
 	valid := checkCaseAdvanced(reporter, "Task", "", "Task", caseTypeCamel, gt.Name)
-	meta, metaValid := parseDecoratorMeta(reporter, gt.Decorators, decoratorContext{
+	meta, metaValid := parseDecoratorMeta(reporter, gt.Decorators, _DecoratorContext{
 		allowDesc:       true,
 		allowDeprecated: true,
 	})
@@ -29,7 +29,7 @@ func parseTask(reporter *diagnosticReporter, gt *grammar.Task) (*model.Task, boo
 	}, valid
 }
 
-func parseTaskTriggers(reporter *diagnosticReporter, owner *grammar.Identifier, triggers []*grammar.TaskTrigger) ([]*model.TaskTrigger, bool) {
+func parseTaskTriggers(reporter *_DiagnosticReporter, owner *grammar.Identifier, triggers []*grammar.TaskTrigger) ([]*model.TaskTrigger, bool) {
 	parsedTriggers := make([]*model.TaskTrigger, 0, len(triggers))
 	triggerPos := map[string]lexer.Position{}
 	valid := true
@@ -55,9 +55,9 @@ func parseTaskTriggers(reporter *diagnosticReporter, owner *grammar.Identifier, 
 	return parsedTriggers, valid
 }
 
-func parseTaskTrigger(reporter *diagnosticReporter, gt *grammar.TaskTrigger) (*model.TaskTrigger, bool) {
+func parseTaskTrigger(reporter *_DiagnosticReporter, gt *grammar.TaskTrigger) (*model.TaskTrigger, bool) {
 	valid := checkCase(reporter, "TaskTrigger", caseTypeLowerCamel, gt.Name)
-	meta, metaValid := parseDecoratorMeta(reporter, gt.Decorators, decoratorContext{
+	meta, metaValid := parseDecoratorMeta(reporter, gt.Decorators, _DecoratorContext{
 		allowDesc:       true,
 		allowDeprecated: true,
 	})
@@ -76,7 +76,7 @@ func parseTaskTrigger(reporter *diagnosticReporter, gt *grammar.TaskTrigger) (*m
 		return trigger, valid
 	}
 
-	inputMeta, inputValid := parseDecoratorMeta(reporter, gt.Input.Decorators, decoratorContext{
+	inputMeta, inputValid := parseDecoratorMeta(reporter, gt.Input.Decorators, _DecoratorContext{
 		allowDesc:      true,
 		allowSensitive: true,
 	})

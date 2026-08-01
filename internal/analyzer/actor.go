@@ -20,9 +20,9 @@ type _ActorAuth struct {
 	Info       *model.Data
 }
 
-func parseActor(reporter *diagnosticReporter, ga *grammar.Actor) (*model.Actor, bool) {
+func parseActor(reporter *_DiagnosticReporter, ga *grammar.Actor) (*model.Actor, bool) {
 	valid := checkCaseAdvanced(reporter, "Actor", "", "Actor", caseTypeCamel, ga.Name)
-	meta, metaValid := parseDecoratorMeta(reporter, ga.Decorators, decoratorContext{
+	meta, metaValid := parseDecoratorMeta(reporter, ga.Decorators, _DecoratorContext{
 		allowDesc:       true,
 		allowDeprecated: true,
 	})
@@ -56,7 +56,7 @@ func parseActor(reporter *diagnosticReporter, ga *grammar.Actor) (*model.Actor, 
 	}, valid
 }
 
-func parseActorAuth(reporter *diagnosticReporter, ga *grammar.Actor) (*_ActorAuth, bool) {
+func parseActorAuth(reporter *_DiagnosticReporter, ga *grammar.Actor) (*_ActorAuth, bool) {
 	authSection, valid := actorAuthSection(reporter, ga)
 	if authSection == nil {
 		return nil, valid
@@ -66,9 +66,9 @@ func parseActorAuth(reporter *diagnosticReporter, ga *grammar.Actor) (*_ActorAut
 	return &_ActorAuth{Credential: credential, Info: info}, credentialValid && infoValid && valid
 }
 
-func parseActorCredential(reporter *diagnosticReporter, ga *grammar.Actor, authSection *grammar.ActorAuth) (*model.Data, bool) {
+func parseActorCredential(reporter *_DiagnosticReporter, ga *grammar.Actor, authSection *grammar.ActorAuth) (*model.Data, bool) {
 	credentialSection := authSection.Credential
-	meta, metaValid := parseDecoratorMeta(reporter, credentialSection.Decorators, decoratorContext{
+	meta, metaValid := parseDecoratorMeta(reporter, credentialSection.Decorators, _DecoratorContext{
 		allowSensitive: true,
 	})
 	name := &grammar.Identifier{
@@ -92,9 +92,9 @@ func parseActorCredential(reporter *diagnosticReporter, ga *grammar.Actor, authS
 	return credential, valid
 }
 
-func parseActorInfo(reporter *diagnosticReporter, ga *grammar.Actor, authSection *grammar.ActorAuth) (*model.Data, bool) {
+func parseActorInfo(reporter *_DiagnosticReporter, ga *grammar.Actor, authSection *grammar.ActorAuth) (*model.Data, bool) {
 	infoSection := authSection.Info
-	meta, metaValid := parseDecoratorMeta(reporter, infoSection.Decorators, decoratorContext{
+	meta, metaValid := parseDecoratorMeta(reporter, infoSection.Decorators, _DecoratorContext{
 		allowSensitive: true,
 	})
 	name := &grammar.Identifier{
@@ -113,7 +113,7 @@ func parseActorInfo(reporter *diagnosticReporter, ga *grammar.Actor, authSection
 	return info, valid
 }
 
-func actorAuthSection(reporter *diagnosticReporter, ga *grammar.Actor) (*grammar.ActorAuth, bool) {
+func actorAuthSection(reporter *_DiagnosticReporter, ga *grammar.Actor) (*grammar.ActorAuth, bool) {
 	var auth *grammar.ActorAuth
 	var authPos lexer.Position
 	valid := true
@@ -140,7 +140,7 @@ func actorAuthSection(reporter *diagnosticReporter, ga *grammar.Actor) (*grammar
 	return auth, valid
 }
 
-func actorPermissionDeclared(reporter *diagnosticReporter, ga *grammar.Actor) (bool, bool) {
+func actorPermissionDeclared(reporter *_DiagnosticReporter, ga *grammar.Actor) (bool, bool) {
 	var permission *grammar.ActorPermission
 	var permissionPos lexer.Position
 	valid := true
@@ -162,7 +162,7 @@ func actorPermissionDeclared(reporter *diagnosticReporter, ga *grammar.Actor) (b
 	return true, valid
 }
 
-func parseActorVias(reporter *diagnosticReporter, owner *grammar.Identifier, grammarVias []*grammar.ActorVia) ([]*model.ActorVia, bool) {
+func parseActorVias(reporter *_DiagnosticReporter, owner *grammar.Identifier, grammarVias []*grammar.ActorVia) ([]*model.ActorVia, bool) {
 	valid := reporter.check(len(grammarVias) > 0, "%s actor %s must have at least one via", owner.Pos, owner.Value)
 
 	parsedVias := make([]*model.ActorVia, 0, len(grammarVias))
@@ -182,7 +182,7 @@ func parseActorVias(reporter *diagnosticReporter, owner *grammar.Identifier, gra
 	return parsedVias, valid
 }
 
-func parseActorVia(reporter *diagnosticReporter, gv *grammar.ActorVia) (*model.ActorVia, bool) {
+func parseActorVia(reporter *_DiagnosticReporter, gv *grammar.ActorVia) (*model.ActorVia, bool) {
 	valid := checkCase(reporter, "ActorVia", caseTypeLowerCamel, gv.Name)
 	_, ok := sliceutil.Find(actorViaKinds, func(candidate model.ActorViaKind) bool {
 		return string(candidate) == gv.Name.Value

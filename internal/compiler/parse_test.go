@@ -34,9 +34,9 @@ config SiteConfig eternal {
 }
 `)
 
-	result, err := Parse(Option{SkelIn: skelDir})
+	result, err := Compile(Option{SkelIn: skelDir})
 	if err != nil {
-		t.Fatalf("Parse() error = %v", err)
+		t.Fatalf("Compile() error = %v", err)
 	}
 
 	if result.Domain.Name() != "demo.user" {
@@ -104,7 +104,7 @@ pub data Loan {
 }
 `)
 
-	_, err := Parse(Option{
+	_, err := Compile(Option{
 		SkelIn:      bookerDir,
 		SkelImports: map[string]string{"user": userDir},
 	})
@@ -112,7 +112,7 @@ pub data Loan {
 		t.Fatalf("expected missing transitive import error, got %v", err)
 	}
 
-	result, err := Parse(Option{
+	result, err := Compile(Option{
 		SkelIn: bookerDir,
 		SkelImports: map[string]string{
 			"app":  appDir,
@@ -120,7 +120,7 @@ pub data Loan {
 		},
 	})
 	if err != nil {
-		t.Fatalf("Parse() with transitive imports error = %v", err)
+		t.Fatalf("Compile() with transitive imports error = %v", err)
 	}
 
 	if len(result.Domain.Data()) != 1 || result.Domain.Data()[0].Name != "Loan" {
@@ -194,12 +194,12 @@ data AppItem {
 }
 `)
 
-	result, err := Parse(Option{
+	result, err := Compile(Option{
 		SkelIn:      appDir,
 		SkelImports: map[string]string{"base": baseDir},
 	})
 	if err != nil {
-		t.Fatalf("Parse() error = %v", err)
+		t.Fatalf("Compile() error = %v", err)
 	}
 	baseDomain := result.Domain.Imports()[0].Domain
 	var box, item *model.Data
@@ -291,7 +291,7 @@ data AppUser {
 }
 `)
 
-	result, err := Parse(Option{
+	result, err := Compile(Option{
 		SkelIn: appDir,
 		SkelImports: map[string]string{
 			"base": baseDir,
@@ -299,7 +299,7 @@ data AppUser {
 		},
 	})
 	if err != nil {
-		t.Fatalf("Parse() error = %v", err)
+		t.Fatalf("Compile() error = %v", err)
 	}
 	userDomain := result.Domain.Imports()[0].Domain
 	if got := userDomain.Data()[0].Members[0].Type.Kind; got != model.TypeKindEnum {
@@ -325,7 +325,7 @@ func TestParseRejectsCyclicTransitiveImports(t *testing.T) {
 	writeParseFile(t, filepath.Join(targetDir, "domain.skel"), "domain target\n")
 	writeParseFile(t, filepath.Join(targetDir, "types.skel"), "domain target\nimport first\n")
 
-	_, err := Parse(Option{
+	_, err := Compile(Option{
 		SkelIn: targetDir,
 		SkelImports: map[string]string{
 			"first":  firstDir,
@@ -406,7 +406,7 @@ data Wrapper<TItem> {
 
 `+test.declaration)
 
-			_, err := Parse(Option{SkelIn: skelFile})
+			_, err := Compile(Option{SkelIn: skelFile})
 			if err == nil || !strings.Contains(err.Error(), "definition of TItem not found") {
 				t.Fatalf("expected out-of-scope type parameter error, got %v", err)
 			}
@@ -443,14 +443,14 @@ actor DemoActor {
 		{
 			name: "primary domain",
 			parse: func() error {
-				_, err := Parse(Option{SkelIn: skelFile})
+				_, err := Compile(Option{SkelIn: skelFile})
 				return err
 			},
 		},
 		{
 			name: "imported domain",
 			parse: func() error {
-				_, err := ParseImport(skelFile)
+				_, err := CompileImport(skelFile)
 				return err
 			},
 		},
@@ -478,9 +478,9 @@ data Booking {
 }
 `)
 
-	result, err := ParseImport(skelDir)
+	result, err := CompileImport(skelDir)
 	if err != nil {
-		t.Fatalf("ParseImport() error = %v", err)
+		t.Fatalf("CompileImport() error = %v", err)
 	}
 
 	if result.Domain.Name() != "demo.booker" {
@@ -492,7 +492,7 @@ func TestParseReturnsErrorWhenDomainFileMissing(t *testing.T) {
 	skelDir := t.TempDir()
 	writeParseFile(t, filepath.Join(skelDir, "user.skel"), "data User { id: string }\n")
 
-	_, err := Parse(Option{SkelIn: skelDir})
+	_, err := Compile(Option{SkelIn: skelDir})
 	expectErrorContains(t, err, "domain.skel not found")
 }
 
@@ -506,9 +506,9 @@ data User {
 }
 `)
 
-	result, err := Parse(Option{SkelIn: skelFile})
+	result, err := Compile(Option{SkelIn: skelFile})
 	if err != nil {
-		t.Fatalf("Parse() error = %v", err)
+		t.Fatalf("Compile() error = %v", err)
 	}
 
 	if result.Domain.Name() != "demo.user" || len(result.Domain.Data()) != 1 {
@@ -531,7 +531,7 @@ service UserService {
 }
 `)
 
-	_, err := Parse(Option{SkelIn: skelFile})
+	_, err := Compile(Option{SkelIn: skelFile})
 	if err == nil || !strings.Contains(err.Error(), "definition of MissingUser not found") {
 		t.Fatalf("expected semantic error, got %v", err)
 	}

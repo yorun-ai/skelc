@@ -42,9 +42,9 @@ func prepareResourceCheckMethod(domainName string, serviceName string, check *mo
 	return method
 }
 
-func parseResource(reporter *diagnosticReporter, ge *grammar.Resource, pub bool) (*model.Resource, bool) {
+func parseResource(reporter *_DiagnosticReporter, ge *grammar.Resource, pub bool) (*model.Resource, bool) {
 	valid := checkCase(reporter, "Resource", caseTypeCamel, ge.Name)
-	meta, metaValid := parseDecoratorMeta(reporter, ge.Decorators, decoratorContext{
+	meta, metaValid := parseDecoratorMeta(reporter, ge.Decorators, _DecoratorContext{
 		allowDesc:       true,
 		allowDeprecated: true,
 	})
@@ -94,9 +94,9 @@ func parseResource(reporter *diagnosticReporter, ge *grammar.Resource, pub bool)
 	}, valid
 }
 
-func parseResourceAction(reporter *diagnosticReporter, ga *grammar.ResourceAction, resourceCheckPos map[string]lexer.Position) (*model.ResourceAction, bool) {
+func parseResourceAction(reporter *_DiagnosticReporter, ga *grammar.ResourceAction, resourceCheckPos map[string]lexer.Position) (*model.ResourceAction, bool) {
 	valid := checkCase(reporter, "ResourceAction", caseTypeLowerCamel, ga.Name)
-	meta, metaValid := parseDecoratorMeta(reporter, ga.Decorators, decoratorContext{
+	meta, metaValid := parseDecoratorMeta(reporter, ga.Decorators, _DecoratorContext{
 		allowDesc:       true,
 		allowDeprecated: true,
 	})
@@ -133,9 +133,9 @@ func parseResourceAction(reporter *diagnosticReporter, ga *grammar.ResourceActio
 	}, valid
 }
 
-func parseResourceCheck(reporter *diagnosticReporter, actionName string, gc *grammar.ResourceCheck) (*model.ResourceCheck, bool) {
+func parseResourceCheck(reporter *_DiagnosticReporter, actionName string, gc *grammar.ResourceCheck) (*model.ResourceCheck, bool) {
 	valid := checkCase(reporter, "ResourceCheck", caseTypeLowerCamel, gc.Name)
-	meta, metaValid := parseDecoratorMeta(reporter, gc.Decorators, decoratorContext{
+	meta, metaValid := parseDecoratorMeta(reporter, gc.Decorators, _DecoratorContext{
 		allowDesc:       true,
 		allowDeprecated: true,
 	})
@@ -145,7 +145,7 @@ func parseResourceCheck(reporter *diagnosticReporter, actionName string, gc *gra
 	inputSensitive := false
 	hasPermissionCodeArgument := false
 	if gc.Input != nil {
-		inputMeta, inputValid := parseDecoratorMeta(reporter, gc.Input.Decorators, decoratorContext{
+		inputMeta, inputValid := parseDecoratorMeta(reporter, gc.Input.Decorators, _DecoratorContext{
 			allowDesc:      true,
 			allowSensitive: true,
 		})

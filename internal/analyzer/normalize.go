@@ -21,7 +21,7 @@ func (p *Analysis) normalizeImport() {
 }
 
 func (p *Analysis) normalizeWithMissingImports(allowMissingImports bool) {
-	refs := &refContext{
+	refs := &_RefContext{
 		enums:                  p.enumsMap,
 		dataList:               p.dataMap,
 		imports:                p.importsMap,
@@ -34,7 +34,7 @@ func (p *Analysis) normalizeWithMissingImports(allowMissingImports bool) {
 	p.validateNormalizedData(allowMissingImports)
 }
 
-func (p *Analysis) normalizeDeclaredData(refs *refContext) {
+func (p *Analysis) normalizeDeclaredData(refs *_RefContext) {
 	for _, name := range slices.Sorted(maps.Keys(p.dataMap)) {
 		dataType := p.dataMap[name]
 		if !p.normalizeDataType(dataType, refs) {
@@ -45,7 +45,7 @@ func (p *Analysis) normalizeDeclaredData(refs *refContext) {
 	p.propagateInvalidData()
 }
 
-func (p *Analysis) normalizeOwnedTypes(refs *refContext, allowMissingImports bool) {
+func (p *Analysis) normalizeOwnedTypes(refs *_RefContext, allowMissingImports bool) {
 	for _, name := range slices.Sorted(maps.Keys(p.actorsMap)) {
 		actor := p.actorsMap[name]
 		p.normalizeDataType(actor.AuthCredential, refs)
@@ -108,7 +108,7 @@ func (p *Analysis) validateNormalizedData(allowMissingImports bool) {
 	p.checkConfigMemberTypes(allData)
 }
 
-func (p *Analysis) normalizeDataType(dataType *model.Data, refs *refContext) bool {
+func (p *Analysis) normalizeDataType(dataType *model.Data, refs *_RefContext) bool {
 	if dataType == nil {
 		return true
 	}

@@ -7,7 +7,7 @@ import (
 	"go.yorun.ai/skelc/model"
 )
 
-func requireNoReporterDiagnostics(t *testing.T, reporter *diagnosticReporter) {
+func requireNoReporterDiagnostics(t *testing.T, reporter *_DiagnosticReporter) {
 	t.Helper()
 	if diagnostics := reporter.result(); len(diagnostics) > 0 {
 		t.Fatalf("unexpected diagnostics: %v", diagnostics)
@@ -142,14 +142,14 @@ func parseTypeTest(t *testing.T, value *grammar.Type) *model.Type {
 	return parsed
 }
 
-func fixTypeRefTest(t *testing.T, value *model.Type, refs *refContext) {
+func fixTypeRefTest(t *testing.T, value *model.Type, refs *_RefContext) {
 	t.Helper()
 	reporter := newDiagnosticReporter()
 	fixTypeRef(reporter, value, refs)
 	requireNoReporterDiagnostics(t, reporter)
 }
 
-func expectFixTypeRefDiagnostic(t *testing.T, expected string, value *model.Type, refs *refContext) {
+func expectFixTypeRefDiagnostic(t *testing.T, expected string, value *model.Type, refs *_RefContext) {
 	t.Helper()
 	reporter := newDiagnosticReporter()
 	fixTypeRef(reporter, value, refs)

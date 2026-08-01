@@ -13,7 +13,7 @@ func (p *Analysis) checkConfigMemberTypes(dataList []*model.Data) {
 	}
 }
 
-func checkConfigMemberType(reporter *diagnosticReporter, dataType *model.Data, member *model.DataMember) bool {
+func checkConfigMemberType(reporter *_DiagnosticReporter, dataType *model.Data, member *model.DataMember) bool {
 	if member.Type.Kind == model.TypeKindData {
 		reporter.reportf("%s config %s member %s cannot reference data %s", member.Pos, dataType.Name, member.Name, member.Type.Data.Name)
 		return false

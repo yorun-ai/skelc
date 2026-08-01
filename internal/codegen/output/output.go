@@ -1,4 +1,5 @@
-package common
+// Package output commits generated files through managed multi-target transactions.
+package output
 
 import (
 	"crypto/sha256"

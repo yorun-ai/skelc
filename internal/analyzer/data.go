@@ -9,15 +9,15 @@ import (
 	"go.yorun.ai/skelc/model"
 )
 
-func parseData(reporter *diagnosticReporter, gs *grammar.Data) (*model.Data, bool) {
+func parseData(reporter *_DiagnosticReporter, gs *grammar.Data) (*model.Data, bool) {
 	return parseDataLike(reporter, gs, model.DataKindData)
 }
 
-func parseConfig(reporter *diagnosticReporter, gs *grammar.Data) (*model.Data, bool) {
+func parseConfig(reporter *_DiagnosticReporter, gs *grammar.Data) (*model.Data, bool) {
 	return parseDataLike(reporter, gs, model.DataKindConfig)
 }
 
-func parseEvent(reporter *diagnosticReporter, ge *grammar.Event) (*model.Data, bool) {
+func parseEvent(reporter *_DiagnosticReporter, ge *grammar.Event) (*model.Data, bool) {
 	members := []*grammar.DataMember{}
 	if ge.Payload != nil {
 		members = ge.Payload.Members
@@ -34,14 +34,14 @@ func parseEvent(reporter *diagnosticReporter, ge *grammar.Event) (*model.Data, b
 	if ge.Payload == nil {
 		return event, valid
 	}
-	payloadMeta, payloadValid := parseDecoratorMeta(reporter, ge.Payload.Decorators, decoratorContext{
+	payloadMeta, payloadValid := parseDecoratorMeta(reporter, ge.Payload.Decorators, _DecoratorContext{
 		allowSensitive: true,
 	})
 	event.Sensitive = payloadMeta.Sensitive
 	return event, payloadValid && valid
 }
 
-func parseDataLike(reporter *diagnosticReporter, gs *grammar.Data, kind model.DataKind) (*model.Data, bool) {
+func parseDataLike(reporter *_DiagnosticReporter, gs *grammar.Data, kind model.DataKind) (*model.Data, bool) {
 	valid := checkCase(reporter, "Data", caseTypeCamel, gs.Name)
 	if kind == model.DataKindConfig {
 		valid = reporter.check(strings.HasSuffix(gs.Name.Value, "Config"), "%s Config name must end with Config", gs.Name.Pos) && valid
@@ -84,7 +84,7 @@ func parseDataLike(reporter *diagnosticReporter, gs *grammar.Data, kind model.Da
 	if gs.Qualifier != nil {
 		parsedData.Lifecycle = model.ConfigLifecycle(gs.Qualifier.Value)
 	}
-	meta, metaValid := parseDecoratorMeta(reporter, gs.Decorators, decoratorContext{
+	meta, metaValid := parseDecoratorMeta(reporter, gs.Decorators, _DecoratorContext{
 		allowDesc:       true,
 		allowSensitive:  kind != model.DataKindEvent,
 		allowDeprecated: true,
@@ -129,7 +129,7 @@ func parseDataLike(reporter *diagnosticReporter, gs *grammar.Data, kind model.Da
 	return parsedData, valid
 }
 
-func parseTypeParameter(reporter *diagnosticReporter, gtp *grammar.TypeParameter) (*model.TypeParameter, bool) {
+func parseTypeParameter(reporter *_DiagnosticReporter, gtp *grammar.TypeParameter) (*model.TypeParameter, bool) {
 	valid := checkCaseAdvanced(reporter, "TypeParameter", "T", "", caseTypeCamel, gtp.Name)
 	valid = reporter.checkNot(gtp.Nullable, "%s TypeParameter %s cannot be nullable", gtp.Pos, gtp.Name.Value) && valid
 	return &model.TypeParameter{
@@ -138,9 +138,9 @@ func parseTypeParameter(reporter *diagnosticReporter, gtp *grammar.TypeParameter
 	}, valid
 }
 
-func parseDataMember(reporter *diagnosticReporter, gsm *grammar.DataMember) (*model.DataMember, bool) {
+func parseDataMember(reporter *_DiagnosticReporter, gsm *grammar.DataMember) (*model.DataMember, bool) {
 	valid := checkCase(reporter, "DataMember", caseTypeLowerCamel, gsm.Name)
-	meta, metaValid := parseDecoratorMeta(reporter, gsm.Decorators, decoratorContext{
+	meta, metaValid := parseDecoratorMeta(reporter, gsm.Decorators, _DecoratorContext{
 		allowDesc:       true,
 		allowExample:    true,
 		allowSensitive:  true,

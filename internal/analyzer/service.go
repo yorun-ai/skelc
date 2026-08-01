@@ -8,9 +8,9 @@ import (
 	"go.yorun.ai/skelc/model"
 )
 
-func parseService(reporter *diagnosticReporter, gs *grammar.Service) (*model.Service, bool) {
+func parseService(reporter *_DiagnosticReporter, gs *grammar.Service) (*model.Service, bool) {
 	valid := checkCaseAdvanced(reporter, "Service", "", "Service", caseTypeCamel, gs.Name)
-	meta, metaValid := parseDecoratorMeta(reporter, gs.Decorators, decoratorContext{
+	meta, metaValid := parseDecoratorMeta(reporter, gs.Decorators, _DecoratorContext{
 		allowDesc:       true,
 		allowDeprecated: true,
 	})
@@ -71,7 +71,7 @@ func serviceMethods(gs *grammar.Service) []*grammar.Method {
 	return methods
 }
 
-func serviceAuthMarker(reporter *diagnosticReporter, gs *grammar.Service) (*grammar.AuthMarker, bool) {
+func serviceAuthMarker(reporter *_DiagnosticReporter, gs *grammar.Service) (*grammar.AuthMarker, bool) {
 	if len(gs.Sections) == 0 {
 		return gs.Auth, true
 	}
@@ -93,7 +93,7 @@ func serviceAuthMarker(reporter *diagnosticReporter, gs *grammar.Service) (*gram
 	return marker, valid
 }
 
-func serviceRequire(reporter *diagnosticReporter, gs *grammar.Service) (*grammar.Require, bool) {
+func serviceRequire(reporter *_DiagnosticReporter, gs *grammar.Service) (*grammar.Require, bool) {
 	if len(gs.Sections) == 0 {
 		return nil, true
 	}
@@ -115,7 +115,7 @@ func serviceRequire(reporter *diagnosticReporter, gs *grammar.Service) (*grammar
 	return require, valid
 }
 
-func parseAuthMode(reporter *diagnosticReporter, marker *grammar.AuthMarker, defaultMode model.AuthMode) (model.AuthMode, bool) {
+func parseAuthMode(reporter *_DiagnosticReporter, marker *grammar.AuthMarker, defaultMode model.AuthMode) (model.AuthMode, bool) {
 	if marker == nil {
 		return defaultMode, true
 	}
@@ -129,7 +129,7 @@ func parseAuthMode(reporter *diagnosticReporter, marker *grammar.AuthMarker, def
 	return defaultMode, false
 }
 
-func parseServiceAudiences(reporter *diagnosticReporter, audiences []*grammar.ServiceAudience) ([]*model.ActorAudience, bool) {
+func parseServiceAudiences(reporter *_DiagnosticReporter, audiences []*grammar.ServiceAudience) ([]*model.ActorAudience, bool) {
 	if len(audiences) == 0 {
 		return []*model.ActorAudience{}, true
 	}

@@ -7,7 +7,7 @@ import (
 	"go.yorun.ai/skelc/internal/parser/grammar"
 )
 
-type decoratorMeta struct {
+type _DecoratorMeta struct {
 	Description      string
 	Example          string
 	HasExample       bool
@@ -18,7 +18,7 @@ type decoratorMeta struct {
 	examplePos       lexer.Position
 }
 
-type decoratorContext struct {
+type _DecoratorContext struct {
 	allowDesc       bool
 	allowExample    bool
 	allowSensitive  bool
@@ -27,8 +27,8 @@ type decoratorContext struct {
 	requireDesc     bool
 }
 
-func parseDecoratorMeta(reporter *diagnosticReporter, decorators []*grammar.Decorator, ctx decoratorContext) (decoratorMeta, bool) {
-	meta := decoratorMeta{}
+func parseDecoratorMeta(reporter *_DiagnosticReporter, decorators []*grammar.Decorator, ctx _DecoratorContext) (_DecoratorMeta, bool) {
+	meta := _DecoratorMeta{}
 	valid := true
 	for _, decorator := range decorators {
 		switch decorator.Name.Value {
@@ -102,8 +102,8 @@ func parseDecoratorMeta(reporter *diagnosticReporter, decorators []*grammar.Deco
 	return meta, valid
 }
 
-func parseAnnotations(reporter *diagnosticReporter, decorators []*grammar.Decorator) (decoratorMeta, bool) {
-	return parseDecoratorMeta(reporter, decorators, decoratorContext{
+func parseAnnotations(reporter *_DiagnosticReporter, decorators []*grammar.Decorator) (_DecoratorMeta, bool) {
+	return parseDecoratorMeta(reporter, decorators, _DecoratorContext{
 		allowDesc:    true,
 		allowExample: true,
 		requireDesc:  true,

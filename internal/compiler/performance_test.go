@@ -99,7 +99,7 @@ func BenchmarkParseDirectory(b *testing.B) {
 	directory := writeBenchmarkDirectory(b, 40)
 	b.ResetTimer()
 	for range b.N {
-		if _, err := compiler.Parse(compiler.Option{SkelIn: directory}); err != nil {
+		if _, err := compiler.Compile(compiler.Option{SkelIn: directory}); err != nil {
 			b.Fatal(err)
 		}
 	}

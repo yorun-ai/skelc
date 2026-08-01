@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"go.yorun.ai/skelc/internal/compiler"
-	optionvalidation "go.yorun.ai/skelc/internal/option"
+	"go.yorun.ai/skelc/internal/optionvalidation"
 )
 
 type _OptionValidationKey struct {

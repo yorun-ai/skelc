@@ -8,6 +8,7 @@ import (
 
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
+	"go.yorun.ai/skelc/internal/lsp/source"
 )
 
 func (s *Service) PrepareRename(_ context.Context, params *protocol.PrepareRenameParams) (protocol.PrepareRenameResult, error) {
@@ -50,7 +51,7 @@ func (s *Service) Rename(_ context.Context, params *protocol.RenameParams) (*pro
 	}
 	for documentURI := range changes {
 		slices.SortFunc(changes[documentURI], func(left, right protocol.TextEdit) int {
-			return comparePosition(left.Range.Start, right.Range.Start)
+			return source.ComparePosition(left.Range.Start, right.Range.Start)
 		})
 	}
 	return &protocol.WorkspaceEdit{Changes: changes}, nil

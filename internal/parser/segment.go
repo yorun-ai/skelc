@@ -1,4 +1,4 @@
-package compiler
+package parser
 
 import (
 	"bytes"
@@ -7,10 +7,11 @@ import (
 	"go.yorun.ai/skelc/internal/parser/grammar"
 )
 
-type _SourceSegment struct {
-	start int
-	end   int
-	line  int
+// SourceSegment is one independently recoverable top-level source fragment.
+type SourceSegment struct {
+	Start int
+	End   int
+	Line  int
 }
 
 type _SourceSegmentScanner struct {
@@ -18,7 +19,7 @@ type _SourceSegmentScanner struct {
 	tokens     []lexer.Token
 	identifier lexer.TokenType
 	elided     map[lexer.TokenType]bool
-	starts     []_SourceSegment
+	starts     []SourceSegment
 
 	depth                 int
 	hasDeclaration        bool
@@ -27,14 +28,16 @@ type _SourceSegmentScanner struct {
 	pendingDecoratorLine  int
 }
 
-func splitSourceSegments(path string, source []byte) []_SourceSegment {
+// SplitSourceSegments identifies top-level fragments without applying compiler
+// recovery or diagnostic policy.
+func SplitSourceSegments(path string, source []byte) []SourceSegment {
 	lex, err := grammar.LexerDefinition().Lex(path, bytes.NewReader(source))
 	if err != nil {
-		return []_SourceSegment{{end: len(source), line: 1}}
+		return []SourceSegment{{End: len(source), Line: 1}}
 	}
 	tokens, err := lexer.ConsumeAll(lex)
 	if err != nil {
-		return []_SourceSegment{{end: len(source), line: 1}}
+		return []SourceSegment{{End: len(source), Line: 1}}
 	}
 
 	symbols := grammar.LexerDefinition().Symbols()
@@ -46,20 +49,20 @@ func splitSourceSegments(path string, source []byte) []_SourceSegment {
 	}
 	scanner := &_SourceSegmentScanner{
 		source: source, tokens: tokens, identifier: symbols["Identifier"], elided: elided,
-		starts: []_SourceSegment{{line: 1}}, pendingDecoratorStart: -1,
+		starts: []SourceSegment{{Line: 1}}, pendingDecoratorStart: -1,
 	}
 	return scanner.scan()
 }
 
-func (s *_SourceSegmentScanner) scan() []_SourceSegment {
+func (s *_SourceSegmentScanner) scan() []SourceSegment {
 	for index, token := range s.tokens {
 		s.consume(index, token)
 	}
 	for index := range s.starts {
 		if index+1 < len(s.starts) {
-			s.starts[index].end = s.starts[index+1].start
+			s.starts[index].End = s.starts[index+1].Start
 		} else {
-			s.starts[index].end = len(s.source)
+			s.starts[index].End = len(s.source)
 		}
 	}
 	return s.starts
@@ -80,7 +83,7 @@ func (s *_SourceSegmentScanner) consumeFirstTokenOnLine(index int, token lexer.T
 	kind := topLevelTokenKind(s.tokens, index, s.identifier, s.elided)
 	if s.depth > 0 && kind == "decorator" {
 		if s.pendingDecoratorStart < 0 {
-			s.pendingDecoratorStart, _, _ = sourceLineOffsets(s.source, token.Pos.Line)
+			s.pendingDecoratorStart, _, _ = segmentLineOffsets(s.source, token.Pos.Line)
 			s.pendingDecoratorLine = token.Pos.Line
 		}
 		return
@@ -90,19 +93,38 @@ func (s *_SourceSegmentScanner) consumeFirstTokenOnLine(index int, token lexer.T
 		return
 	}
 	if s.hasDeclaration || s.depth > 0 {
-		start, _, _ := sourceLineOffsets(s.source, token.Pos.Line)
+		start, _, _ := segmentLineOffsets(s.source, token.Pos.Line)
 		line := token.Pos.Line
 		if s.depth > 0 && s.pendingDecoratorStart >= 0 {
 			start = s.pendingDecoratorStart
 			line = s.pendingDecoratorLine
 		}
-		s.starts = append(s.starts, _SourceSegment{start: start, line: line})
+		s.starts = append(s.starts, SourceSegment{Start: start, Line: line})
 	}
 	s.hasDeclaration = kind != "decorator"
 	if s.depth > 0 {
 		s.depth = 0
 	}
 	s.pendingDecoratorStart = -1
+}
+
+func segmentLineOffsets(source []byte, line int) (int, int, bool) {
+	if line <= 0 {
+		return 0, 0, false
+	}
+	start := 0
+	for current := 1; current < line; current++ {
+		index := bytes.IndexByte(source[start:], '\n')
+		if index < 0 {
+			return 0, 0, false
+		}
+		start += index + 1
+	}
+	end := len(source)
+	if index := bytes.IndexByte(source[start:], '\n'); index >= 0 {
+		end = start + index
+	}
+	return start, end, true
 }
 
 func (s *_SourceSegmentScanner) updateDepth(value string) {

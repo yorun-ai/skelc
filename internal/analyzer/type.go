@@ -14,17 +14,17 @@ var (
 	mapKeyScalarTypes = []model.Scalar{model.ScalarInt, model.ScalarString, model.ScalarUUID}
 )
 
-type refContext struct {
+type _RefContext struct {
 	enums                  map[string]*model.Enum
 	dataList               map[string]*model.Data
 	typeParameters         map[string]*model.TypeParameter
-	imports                map[string]*domainImport
+	imports                map[string]*_DomainImport
 	invalidData            map[*model.Data]bool
 	unavailable            map[string]bool
 	allowUnresolvedImports bool
 }
 
-func fixTypeRef(reporter *diagnosticReporter, t *model.Type, refCtx *refContext) bool {
+func fixTypeRef(reporter *_DiagnosticReporter, t *model.Type, refCtx *_RefContext) bool {
 	// 1. fix Enum/Data/TypeParameter type references
 	// 2. check map key type (int/string/uuid/Enum)
 
@@ -125,7 +125,7 @@ func fixTypeRef(reporter *diagnosticReporter, t *model.Type, refCtx *refContext)
 	return true
 }
 
-func checkTypeArguments(reporter *diagnosticReporter, t *model.Type, refName string) bool {
+func checkTypeArguments(reporter *_DiagnosticReporter, t *model.Type, refName string) bool {
 	referencePos := t.ReferencePos
 	if referencePos == (model.Position{}) {
 		referencePos = t.Pos

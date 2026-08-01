@@ -38,7 +38,7 @@ func (p *Analysis) loadImports(domainByName map[string]*Analysis) {
 			Alias:         alias,
 			ExplicitAlias: grammarImport.Alias != nil,
 		}
-		p.importsMap[alias] = &domainImport{Domain: importedDomain, Model: importModel}
+		p.importsMap[alias] = &_DomainImport{Domain: importedDomain, Model: importModel}
 		p.imports = append(p.imports, importModel)
 	}
 }

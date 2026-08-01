@@ -1,14 +1,28 @@
 package parser
 
 import (
+	"errors"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateSource(t *testing.T) {
 	if err := ValidateSource("/tmp/demo.skel", []byte("domain demo.user\n")); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestParseSourceReturnsNormalizedSyntaxError(t *testing.T) {
+	_, err := ParseSource("/workspace/demo.skel", []byte("domain demo\ndata User {"))
+	require.Error(t, err)
+	var syntaxError *SyntaxError
+	require.True(t, errors.As(err, &syntaxError))
+	assert.Equal(t, "/workspace/demo.skel", syntaxError.Position.File)
+	assert.True(t, syntaxError.UnexpectedEOF)
+	assert.False(t, syntaxError.Finalize)
 }
 
 func TestValidateSourceReturnsErrorForInvalidSyntax(t *testing.T) {

@@ -17,7 +17,7 @@ func TestParseTypeAndFixRef(t *testing.T) {
 	user := &model.Data{Name: "User"}
 
 	tp := parseTypeTest(t, refGrammarType("Page", refGrammarType("User")))
-	fixTypeRefTest(t, tp, &refContext{
+	fixTypeRefTest(t, tp, &_RefContext{
 		dataList: map[string]*model.Data{
 			"Page": page,
 			"User": user,
@@ -79,7 +79,7 @@ func TestParseTypeMapAndNullable(t *testing.T) {
 func TestFixRefReturnsErrorWhenDefinitionMissing(t *testing.T) {
 	typ := parseTypeTest(t, refGrammarType("User"))
 
-	expectFixTypeRefDiagnostic(t, "definition of User not found", typ, &refContext{})
+	expectFixTypeRefDiagnostic(t, "definition of User not found", typ, &_RefContext{})
 }
 
 func TestFixRefReturnsErrorWhenGenericTypeArgsMismatch(t *testing.T) {
@@ -92,7 +92,7 @@ func TestFixRefReturnsErrorWhenGenericTypeArgsMismatch(t *testing.T) {
 
 	typ := parseTypeTest(t, refGrammarType("Page", refGrammarType("User"), refGrammarType("Profile")))
 
-	expectFixTypeRefDiagnostic(t, "mismatched type arguments", typ, &refContext{
+	expectFixTypeRefDiagnostic(t, "mismatched type arguments", typ, &_RefContext{
 		dataList: map[string]*model.Data{
 			"Page":    page,
 			"User":    {Name: "User"},
@@ -111,7 +111,7 @@ func TestFixRefReturnsErrorWhenGenericTypeArgsMissing(t *testing.T) {
 
 	typ := parseTypeTest(t, refGrammarType("Page"))
 
-	expectFixTypeRefDiagnostic(t, "need type argument", typ, &refContext{
+	expectFixTypeRefDiagnostic(t, "need type argument", typ, &_RefContext{
 		dataList: map[string]*model.Data{
 			"Page": page,
 		},
@@ -121,13 +121,13 @@ func TestFixRefReturnsErrorWhenGenericTypeArgsMissing(t *testing.T) {
 func TestFixRefReturnsErrorWhenMapKeyIsNullable(t *testing.T) {
 	typ := parseTypeTest(t, mapType(nullableType(plainType(grammar.String)), plainType(grammar.Int)))
 
-	expectFixTypeRefDiagnostic(t, "incorrect key type, must not be nullable", typ, &refContext{})
+	expectFixTypeRefDiagnostic(t, "incorrect key type, must not be nullable", typ, &_RefContext{})
 }
 
 func TestFixRefAllowsUUIDMapKey(t *testing.T) {
 	typ := parseTypeTest(t, mapType(plainType(grammar.UUID), plainType(grammar.Int)))
 
-	fixTypeRefTest(t, typ, &refContext{})
+	fixTypeRefTest(t, typ, &_RefContext{})
 	if typ.Map.Key.Kind != model.TypeKindScalar || typ.Map.Key.Scalar != model.ScalarUUID {
 		t.Fatalf("unexpected map key: %+v", typ.Map.Key)
 	}
@@ -136,5 +136,5 @@ func TestFixRefAllowsUUIDMapKey(t *testing.T) {
 func TestFixRefReturnsErrorWhenMapKeyTypeIsUnsupported(t *testing.T) {
 	typ := parseTypeTest(t, mapType(plainType(grammar.Float), plainType(grammar.Int)))
 
-	expectFixTypeRefDiagnostic(t, "int/string/uuid or Enum expected", typ, &refContext{})
+	expectFixTypeRefDiagnostic(t, "int/string/uuid or Enum expected", typ, &_RefContext{})
 }

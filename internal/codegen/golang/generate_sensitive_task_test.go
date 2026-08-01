@@ -31,7 +31,7 @@ task RebuildIndexTask {
 		t.Fatalf("write task source: %v", err)
 	}
 
-	parsed, err := compiler.Parse(compiler.Option{SkelIn: inputDir})
+	parsed, err := compiler.Compile(compiler.Option{SkelIn: inputDir})
 	if err != nil {
 		t.Fatalf("parse Skel source: %v", err)
 	}

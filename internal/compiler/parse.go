@@ -22,7 +22,8 @@ type Result struct {
 	Diagnostics Diagnostics
 }
 
-func Parse(option Option) (Result, error) {
+// Compile loads, resolves, analyzes, and hashes one complete Skel input graph.
+func Compile(option Option) (Result, error) {
 	diagnostics := Diagnostics{}
 	importedDomains, err := parseImportedDomains(option.SkelImports, &diagnostics)
 	if err != nil {
@@ -41,9 +42,9 @@ func Parse(option Option) (Result, error) {
 	return Result{Domain: parsed, Diagnostics: diagnostics}, nil
 }
 
-// ParseImport loads one domain without requiring its dependencies. It supports
-// symbol tooling; Parse and Compile APIs perform complete graph analysis.
-func ParseImport(skelIn string) (Result, error) {
+// CompileImport loads one domain without requiring its dependencies. It
+// supports symbol tooling; Compile performs complete graph analysis.
+func CompileImport(skelIn string) (Result, error) {
 	diagnostics := Diagnostics{}
 	domain, err := parseSource(skelIn, nil, true, &diagnostics)
 	if err != nil {

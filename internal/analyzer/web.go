@@ -5,9 +5,9 @@ import (
 	"go.yorun.ai/skelc/model"
 )
 
-func parseWeb(reporter *diagnosticReporter, gw *grammar.Web, pub bool) (*model.Web, bool) {
+func parseWeb(reporter *_DiagnosticReporter, gw *grammar.Web, pub bool) (*model.Web, bool) {
 	valid := checkCaseAdvanced(reporter, "Web", "", "Web", caseTypeCamel, gw.Name)
-	meta, metaValid := parseDecoratorMeta(reporter, gw.Decorators, decoratorContext{
+	meta, metaValid := parseDecoratorMeta(reporter, gw.Decorators, _DecoratorContext{
 		allowDesc:       true,
 		allowDeprecated: true,
 	})
@@ -28,7 +28,7 @@ func parseWeb(reporter *diagnosticReporter, gw *grammar.Web, pub bool) (*model.W
 	}, valid
 }
 
-func parseWebAudiences(reporter *diagnosticReporter, audiences []*grammar.WebAudience) ([]*model.ActorAudience, bool) {
+func parseWebAudiences(reporter *_DiagnosticReporter, audiences []*grammar.WebAudience) ([]*model.ActorAudience, bool) {
 	serviceAudiences := make([]*grammar.ServiceAudience, 0, len(audiences))
 	for _, audience := range audiences {
 		serviceAudiences = append(serviceAudiences, &grammar.ServiceAudience{

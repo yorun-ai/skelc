@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"go.yorun.ai/skelc/internal/loader"
-	"go.yorun.ai/skelc/model"
 )
 
 // CheckResult contains the diagnostics produced by a check operation.
@@ -33,7 +32,7 @@ func checkWithAnalyzer(option Option, workspaceAnalyzer *WorkspaceAnalyzer) (Che
 		sources[index].Domain = expectedDomain
 		sources[index].ExpectedDomain = expectedDomain
 	}
-	structural := checkDirectoryStructure(loadResult, sources)
+	structural := checkDirectoryStructure(loadResult, sources, expectedDomain)
 	diagnostics, err := workspaceAnalyzer.analyze(context.Background(), sources, true)
 	if err != nil {
 		return CheckResult{}, err
@@ -61,35 +60,20 @@ func parseCheckSources(files []*loader.SourceFile) []Source {
 	return sources
 }
 
-func checkDirectoryStructure(loadResult loader.Result, sources []Source) Diagnostics {
+func checkDirectoryStructure(loadResult loader.Result, sources []Source, expectedDomain string) Diagnostics {
 	if !loadResult.IsDir {
 		return nil
 	}
 	diagnostics := Diagnostics{}
 	for _, source := range sources {
 		content := source.Parsed
-		if len(source.ParseDiagnostics) > 0 || content == nil || content.Domain == nil {
+		if len(source.ParseDiagnostics) > 0 || content == nil {
 			continue
 		}
-		position := model.Position{File: source.Path, Line: content.Pos.Line, Column: content.Pos.Column}
-		if content.Domain.Name != nil {
-			position = workspacePosition(content.Domain.Name.Pos)
-		}
-		if filepath.Base(source.Path) == loader.DomainFileName {
-			if len(content.Entries) > 0 {
-				diagnostics = append(diagnostics, Diagnostic{
-					Code: DiagnosticCodeDomainFileContent, Severity: DiagnosticSeverityError, Position: position,
-					Range:   sourceRangeAt(position, source.Content),
-					Message: source.Path + " can only contain domain declaration and @desc",
-				})
-			}
-			continue
-		}
-		if len(content.Domain.Decorators) > 0 {
+		if issue := inspectDirectorySource(source.Path, expectedDomain, content); issue != nil {
 			diagnostics = append(diagnostics, Diagnostic{
-				Code: DiagnosticCodeDomainDecorator, Severity: DiagnosticSeverityError, Position: position,
-				Range:   sourceRangeAt(position, source.Content),
-				Message: "domain decorator is only allowed in " + loader.DomainFileName + ": " + source.Path,
+				Code: issue.code, Severity: DiagnosticSeverityError, Position: issue.position,
+				Range: sourceRangeAt(issue.position, source.Content), Message: issue.message,
 			})
 		}
 	}

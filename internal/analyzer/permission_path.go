@@ -7,7 +7,7 @@ import (
 	"go.yorun.ai/skelc/model"
 )
 
-func resolveMethodArgumentJsonPath(reporter *diagnosticReporter, method *model.Method, path string) (*model.Type, bool) {
+func resolveMethodArgumentJsonPath(reporter *_DiagnosticReporter, method *model.Method, path string) (*model.Type, bool) {
 	parts, valid := parsePermissionCheckJsonPath(reporter, path)
 	if !valid || len(parts) == 0 {
 		return nil, false
@@ -26,7 +26,7 @@ type _PermissionCheckPathPart struct {
 	Wildcard bool
 }
 
-func parsePermissionCheckJsonPath(reporter *diagnosticReporter, path string) ([]_PermissionCheckPathPart, bool) {
+func parsePermissionCheckJsonPath(reporter *_DiagnosticReporter, path string) ([]_PermissionCheckPathPart, bool) {
 	rawParts := strings.Split(path, ".")
 	parts := make([]_PermissionCheckPathPart, 0, len(rawParts))
 	wildcardCount := 0
@@ -53,7 +53,7 @@ func parsePermissionCheckJsonPath(reporter *diagnosticReporter, path string) ([]
 	return parts, valid
 }
 
-func resolveJsonPathType(reporter *diagnosticReporter, type_ *model.Type, parts []_PermissionCheckPathPart, fullPath string) (*model.Type, bool) {
+func resolveJsonPathType(reporter *_DiagnosticReporter, type_ *model.Type, parts []_PermissionCheckPathPart, fullPath string) (*model.Type, bool) {
 	if len(parts) == 0 {
 		return type_, true
 	}
@@ -70,7 +70,7 @@ func resolveJsonPathType(reporter *diagnosticReporter, type_ *model.Type, parts 
 	return nil, false
 }
 
-func resolveJsonPathPartType(reporter *diagnosticReporter, type_ *model.Type, part _PermissionCheckPathPart, remainingParts []_PermissionCheckPathPart, fullPath string) (*model.Type, bool) {
+func resolveJsonPathPartType(reporter *_DiagnosticReporter, type_ *model.Type, part _PermissionCheckPathPart, remainingParts []_PermissionCheckPathPart, fullPath string) (*model.Type, bool) {
 	if !part.Wildcard {
 		return resolveJsonPathType(reporter, type_, remainingParts, fullPath)
 	}

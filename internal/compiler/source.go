@@ -11,8 +11,6 @@ import (
 	"go.yorun.ai/skelc/internal/parser/grammar"
 )
 
-const domainFileName = "domain.skel"
-
 func parseImportFile(sourceFile *loader.SourceFile) (*analyzer.Analysis, error) {
 	content, err := parseContent(sourceFile, true)
 	if err != nil {
@@ -44,7 +42,7 @@ func parseImportFiles(domainFile *loader.SourceFile, inputFiles []*loader.Source
 	if err := validateDirectoryDomains(domainName, parsedContents); err != nil {
 		return nil, err
 	}
-	analysis, diagnostics := analyzer.AnalyzeImport(buildMergedContent(domainFileContent, parsedContents))
+	analysis, diagnostics := analyzer.AnalyzeImport(mergeDomainContents(append([]*grammar.SkelContent{domainFileContent}, parsedContents...)))
 	return analysis, errors.Join(diagnostics...)
 }
 
@@ -61,7 +59,7 @@ func parseDomainFilesWithImports(domainFile *loader.SourceFile, inputFiles []*lo
 	if err := validateDirectoryDomains(domainName, parsedContents); err != nil {
 		return nil, err
 	}
-	analysis, diagnostics := analyzer.Analyze(buildMergedContent(domainFileContent, parsedContents), importedDomains)
+	analysis, diagnostics := analyzer.Analyze(mergeDomainContents(append([]*grammar.SkelContent{domainFileContent}, parsedContents...)), importedDomains)
 	return analysis, errors.Join(diagnostics...)
 }
 
@@ -70,8 +68,8 @@ func parseDomainFile(domainFile *loader.SourceFile) (*grammar.SkelContent, error
 	if err != nil {
 		return nil, err
 	}
-	if len(content.Entries) != 0 {
-		return nil, fmt.Errorf("%s can only contain domain declaration and @desc", content.Pos.Filename)
+	if issue := inspectDirectorySource(domainFile.FilePath, content.Domain.Name.String(), content); issue != nil {
+		return nil, errors.New(issue.strictMessage)
 	}
 	return content, nil
 }
@@ -93,45 +91,11 @@ func parseContentsExcept(inputFiles []*loader.SourceFile, excludedPath string) (
 
 func validateDirectoryDomains(domainName string, contents []*grammar.SkelContent) error {
 	for _, content := range contents {
-		if filepath.Base(content.Pos.Filename) == domainFileName {
-			if content.Domain == nil || content.Domain.Name == nil {
-				return fmt.Errorf("missing domain declaration in %s", content.Pos.Filename)
-			}
-			if content.Domain.Name.String() != domainName {
-				return fmt.Errorf("domain mismatch in %s: found=%s, expected=%s", content.Pos.Filename, content.Domain.Name.String(), domainName)
-			}
-			if len(content.Entries) != 0 {
-				return fmt.Errorf("%s can only contain domain declaration and @desc", content.Pos.Filename)
-			}
-			continue
-		}
-		if content.Domain == nil || content.Domain.Name == nil {
-			return fmt.Errorf("missing domain declaration in %s", content.Pos.Filename)
-		}
-		if content.Domain.Name.String() != domainName {
-			return fmt.Errorf("domain mismatch in %s: found=%s, expected=%s", content.Pos.Filename, content.Domain.Name.String(), domainName)
-		}
-		if len(content.Domain.Decorators) != 0 {
-			return fmt.Errorf("domain decorator is only allowed in %s: %s", domainFileName, content.Pos.Filename)
+		if issue := inspectDirectorySource(content.Pos.Filename, domainName, content); issue != nil {
+			return errors.New(issue.strictMessage)
 		}
 	}
 	return nil
-}
-
-func buildMergedContent(domainFileContent *grammar.SkelContent, contents []*grammar.SkelContent) *grammar.SkelContent {
-	merged := &grammar.SkelContent{
-		Domain:  domainFileContent.Domain,
-		Imports: append([]*grammar.ImportDecl{}, domainFileContent.Imports...),
-		Entries: make([]*grammar.SkelEntry, 0),
-	}
-	for _, content := range contents {
-		if content == domainFileContent {
-			continue
-		}
-		merged.Imports = append(merged.Imports, content.Imports...)
-		merged.Entries = append(merged.Entries, content.Entries...)
-	}
-	return merged
 }
 
 func parseContent(sourceFile *loader.SourceFile, requireDomain bool) (*grammar.SkelContent, error) {

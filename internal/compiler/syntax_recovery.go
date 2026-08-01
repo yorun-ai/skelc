@@ -5,8 +5,6 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/alecthomas/participle/v2"
-	"github.com/alecthomas/participle/v2/lexer"
 	"go.yorun.ai/skelc/internal/analyzer"
 	"go.yorun.ai/skelc/internal/parser"
 	"go.yorun.ai/skelc/internal/parser/grammar"
@@ -23,7 +21,7 @@ func ParseSourceRecovering(path string, source []byte) (*grammar.SkelContent, Di
 		return parsed.Content, nil
 	}
 
-	segments := splitSourceSegments(path, source)
+	segments := parser.SplitSourceSegments(path, source)
 	content := new(grammar.SkelContent)
 	diagnostics := Diagnostics{}
 	for _, segment := range segments {
@@ -40,16 +38,16 @@ func ParseSourceRecovering(path string, source []byte) (*grammar.SkelContent, Di
 	return content, diagnostics
 }
 
-func parseSourceSegmentRecovering(path string, source []byte, segment _SourceSegment, limit int) (*grammar.SkelContent, Diagnostics) {
-	working := append([]byte{}, source[segment.start:segment.end]...)
+func parseSourceSegmentRecovering(path string, source []byte, segment parser.SourceSegment, limit int) (*grammar.SkelContent, Diagnostics) {
+	working := append([]byte{}, source[segment.Start:segment.End]...)
 	diagnostics := Diagnostics{}
 	seen := map[string]bool{}
 	for len(diagnostics) < limit {
-		parsed, err := parser.ParseSourceFragment(path, working, segment.line, segment.start)
+		parsed, err := parser.ParseSourceFragment(path, working, segment.Line, segment.Start)
 		if err == nil {
 			return parsed.Content, diagnostics
 		}
-		diagnostic := syntaxDiagnostic(path, source, err, parsed.FinalizeError)
+		diagnostic := syntaxDiagnostic(path, source, err)
 		key := diagnostic.Position.String() + "\x00" + diagnostic.Message
 		if seen[key] {
 			return parsed.Content, diagnostics
@@ -57,12 +55,12 @@ func parseSourceSegmentRecovering(path string, source []byte, segment _SourceSeg
 		seen[key] = true
 		diagnostics = append(diagnostics, diagnostic)
 		localPosition := diagnostic.Position
-		localPosition.Line -= segment.line - 1
+		localPosition.Line -= segment.Line - 1
 		if !recoverSyntaxLine(&working, localPosition, diagnostic.Code == DiagnosticCodeSyntaxEOF) {
 			return parsed.Content, diagnostics
 		}
 	}
-	parsed, _ := parser.ParseSourceFragment(path, working, segment.line, segment.start)
+	parsed, _ := parser.ParseSourceFragment(path, working, segment.Line, segment.Start)
 	return parsed.Content, diagnostics
 }
 
@@ -70,7 +68,7 @@ func mergeRecoveredContent(path string, original []byte, target, source *grammar
 	if source == nil {
 		return nil
 	}
-	if target.Pos == (lexer.Position{}) {
+	if target.Pos.Filename == "" && target.Pos.Line == 0 && target.Pos.Column == 0 && target.Pos.Offset == 0 {
 		target.Pos = source.Pos
 	}
 	diagnostics := Diagnostics{}
@@ -78,12 +76,12 @@ func mergeRecoveredContent(path string, original []byte, target, source *grammar
 		target.Domain = source.Domain
 	} else if source.Domain != nil {
 		diagnostics = append(diagnostics, declarationOrderDiagnostic(
-			path, original, source.Domain.Pos, "domain declaration must be the first declaration in a file",
+			path, original, parser.SourcePosition(source.Domain.Pos), "domain declaration must be the first declaration in a file",
 		))
 	}
 	if len(source.Imports) > 0 && len(target.Entries) > 0 {
 		diagnostics = append(diagnostics, declarationOrderDiagnostic(
-			path, original, source.Imports[0].Pos, "import declaration must appear before type and endpoint declarations",
+			path, original, parser.SourcePosition(source.Imports[0].Pos), "import declaration must appear before type and endpoint declarations",
 		))
 	} else {
 		target.Imports = append(target.Imports, source.Imports...)
@@ -92,8 +90,8 @@ func mergeRecoveredContent(path string, original []byte, target, source *grammar
 	return diagnostics
 }
 
-func declarationOrderDiagnostic(path string, source []byte, position lexer.Position, message string) Diagnostic {
-	start := workspacePosition(position)
+func declarationOrderDiagnostic(path string, source []byte, position model.Position, message string) Diagnostic {
+	start := position
 	start.File = path
 	return Diagnostic{
 		Code: DiagnosticCodeSyntaxUnexpected, Severity: DiagnosticSeverityError,
@@ -101,20 +99,20 @@ func declarationOrderDiagnostic(path string, source []byte, position lexer.Posit
 	}
 }
 
-func syntaxDiagnostic(path string, source []byte, err error, finalize bool) Diagnostic {
+func syntaxDiagnostic(path string, source []byte, err error) Diagnostic {
 	position := model.Position{File: path, Line: 1, Column: 1}
 	message := err.Error()
 	code := DiagnosticCodeSyntaxUnexpected
-	var parseError participle.Error
-	if errors.As(err, &parseError) {
-		position = workspacePosition(parseError.Position())
-		message = parseError.Message()
+	var syntaxError *parser.SyntaxError
+	if errors.As(err, &syntaxError) {
+		if syntaxError.Position.Line > 0 {
+			position = syntaxError.Position
+		}
+		message = syntaxError.Message
 	}
-	var unexpectedToken *participle.UnexpectedTokenError
-	var unexpectedEOF *grammar.UnexpectedEOFError
-	if finalize {
+	if syntaxError != nil && syntaxError.Finalize {
 		code = DiagnosticCodeSyntaxFinalize
-	} else if errors.As(err, &unexpectedEOF) || errors.As(err, &unexpectedToken) && unexpectedToken.Unexpected.EOF() {
+	} else if syntaxError != nil && syntaxError.UnexpectedEOF {
 		code = DiagnosticCodeSyntaxEOF
 	}
 	diagnostic := Diagnostic{

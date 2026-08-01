@@ -33,14 +33,14 @@ type Analysis struct {
 	websMap      map[string]*model.Web
 	servicesMap  map[string]*model.Service
 	tasksMap     map[string]*model.Task
-	importsMap   map[string]*domainImport
+	importsMap   map[string]*_DomainImport
 
-	reporter    *diagnosticReporter
+	reporter    *_DiagnosticReporter
 	invalidData map[*model.Data]bool
 	unavailable map[string]bool
 }
 
-type domainImport struct {
+type _DomainImport struct {
 	Domain *Analysis
 	Model  *model.Import
 }
@@ -107,7 +107,7 @@ func newAnalysis(content *grammar.SkelContent) *Analysis {
 		websMap:      map[string]*model.Web{},
 		servicesMap:  map[string]*model.Service{},
 		tasksMap:     map[string]*model.Task{},
-		importsMap:   map[string]*domainImport{},
+		importsMap:   map[string]*_DomainImport{},
 
 		reporter:    newDiagnosticReporter(),
 		invalidData: map[*model.Data]bool{},

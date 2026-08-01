@@ -4,15 +4,14 @@ package analysis
 
 import (
 	"context"
-	"encoding/json"
 	"path/filepath"
 	"strings"
 
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
 	"go.yorun.ai/skelc/internal/compiler"
+	lspdiagnostic "go.yorun.ai/skelc/internal/lsp/diagnostic"
 	"go.yorun.ai/skelc/internal/lsp/index"
-	"go.yorun.ai/skelc/internal/lsp/source"
 )
 
 // SemanticSources converts indexed LSP documents into compiler sources.
@@ -52,59 +51,11 @@ func SemanticDiagnostics(ctx context.Context, workspaceAnalyzer *compiler.Worksp
 			continue
 		}
 		source := contents[filepath.Clean(diagnostic.Position.File)]
-		range_ := sourceRangeToProtocol(source, diagnostic.Range)
-		related := make([]protocol.DiagnosticRelatedInformation, 0, len(diagnostic.Related))
-		for _, information := range diagnostic.Related {
-			relatedURI, exists := paths[filepath.Clean(information.Range.Start.File)]
-			if !exists {
-				continue
-			}
-			related = append(related, protocol.DiagnosticRelatedInformation{
-				Location: protocol.Location{URI: relatedURI, Range: sourceRangeToProtocol(contents[filepath.Clean(information.Range.Start.File)], information.Range)},
-				Message:  information.Message,
-			})
-		}
-		result[documentURI] = append(result[documentURI], protocol.Diagnostic{
-			Range: range_, Severity: diagnosticSeverityToProtocol(diagnostic.Severity), RelatedInformation: related,
-			Code: protocol.String(diagnostic.Code), Source: protocol.NewOptional("skelc"),
-			Message: protocol.String(diagnostic.Message), Data: diagnosticSuggestionData(diagnostic.Suggestion),
-		})
+		result[documentURI] = append(result[documentURI], lspdiagnostic.ToProtocol(diagnostic, source, func(path string) (uri.URI, string, bool) {
+			cleaned := filepath.Clean(path)
+			relatedURI, exists := paths[cleaned]
+			return relatedURI, contents[cleaned], exists
+		}))
 	}
 	return result, nil
-}
-
-func sourceRangeToProtocol(content string, sourceRange compiler.SourceRange) protocol.Range {
-	buffer := source.New(content)
-	start := buffer.IdentifierRange(sourceRange.Start.Line, sourceRange.Start.Column, "").Start
-	end := buffer.IdentifierRange(sourceRange.End.Line, sourceRange.End.Column, "").Start
-	if comparePosition(end, start) <= 0 {
-		end = start
-		end.Character++
-	}
-	return protocol.Range{Start: start, End: end}
-}
-
-func diagnosticSeverityToProtocol(severity compiler.DiagnosticSeverity) protocol.DiagnosticSeverity {
-	if severity == compiler.DiagnosticSeverityWarning {
-		return protocol.DiagnosticSeverityWarning
-	}
-	return protocol.DiagnosticSeverityError
-}
-
-func diagnosticSuggestionData(suggestion *compiler.DiagnosticSuggestion) protocol.LSPAny {
-	if suggestion == nil {
-		return nil
-	}
-	content, err := json.Marshal(suggestion)
-	if err != nil {
-		return nil
-	}
-	return protocol.LSPAny(content)
-}
-
-func comparePosition(left, right protocol.Position) int {
-	if left.Line != right.Line {
-		return int(left.Line) - int(right.Line)
-	}
-	return int(left.Character) - int(right.Character)
 }

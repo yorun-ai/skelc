@@ -12,7 +12,7 @@ import (
 	"go.yorun.ai/skelc/internal/codegen/skeleton"
 	"go.yorun.ai/skelc/internal/codegen/typescript"
 	"go.yorun.ai/skelc/internal/compiler"
-	optionvalidation "go.yorun.ai/skelc/internal/option"
+	"go.yorun.ai/skelc/internal/optionvalidation"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/model"
 )
@@ -131,18 +131,6 @@ func validateGolangImports(domain *model.Domain, option golang.Option) error {
 	return nil
 }
 
-func validateTypeScriptImports(domain *model.Domain, option typescript.Option) error {
-	for _, domainImport := range domain.Imports() {
-		if domainImport == nil {
-			return fmt.Errorf("generated model contains nil import")
-		}
-		if option.Imports[domainImport.Name] == "" && option.ModuleScope == "" {
-			return fmt.Errorf("missing TypeScript import for domain %s; set Imports[%q] or ModuleScope", domainImport.Name, domainImport.Name)
-		}
-	}
-	return nil
-}
-
 func normalizeTypeScriptOption(option TypeScriptOption) (typescript.Option, error) {
 	if strings.TrimSpace(option.Out) == "" {
 		return typescript.Option{}, optionvalidation.NewValidationError(optionvalidation.FieldTypeScriptOutput, optionvalidation.RuleRequired, "TypeScript output is required")
@@ -183,6 +171,18 @@ func normalizeTypeScriptOption(option TypeScriptOption) (typescript.Option, erro
 		Imports:     imports,
 		ModuleScope: moduleScope,
 	}, nil
+}
+
+func validateTypeScriptImports(domain *model.Domain, option typescript.Option) error {
+	for _, domainImport := range domain.Imports() {
+		if domainImport == nil {
+			return fmt.Errorf("generated model contains nil import")
+		}
+		if option.Imports[domainImport.Name] == "" && option.ModuleScope == "" {
+			return fmt.Errorf("missing TypeScript import for domain %s; set Imports[%q] or ModuleScope", domainImport.Name, domainImport.Name)
+		}
+	}
+	return nil
 }
 
 func normalizeSkeletonOption(option SkeletonOption) (skeleton.Option, error) {

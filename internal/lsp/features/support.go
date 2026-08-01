@@ -47,14 +47,7 @@ func isIdentifierValue(value string) bool {
 }
 
 func containsPosition(r protocol.Range, position protocol.Position) bool {
-	return comparePosition(r.Start, position) <= 0 && comparePosition(position, r.End) < 0
-}
-
-func comparePosition(left, right protocol.Position) int {
-	if left.Line != right.Line {
-		return int(left.Line) - int(right.Line)
-	}
-	return int(left.Character) - int(right.Character)
+	return source.ContainsPosition(r, position)
 }
 
 func sortLocations(locations []protocol.Location) {
@@ -62,6 +55,6 @@ func sortLocations(locations []protocol.Location) {
 		if compared := strings.Compare(string(left.URI), string(right.URI)); compared != 0 {
 			return compared
 		}
-		return comparePosition(left.Range.Start, right.Range.Start)
+		return source.ComparePosition(left.Range.Start, right.Range.Start)
 	})
 }

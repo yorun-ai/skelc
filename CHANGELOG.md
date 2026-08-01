@@ -6,6 +6,11 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+### Added
+
+- Public diagnostic types and stable code constants through
+  `go.yorun.ai/skelc/diagnostic` and the root API
+
 ### Changed
 
 - Compiler validation and compatibility-hash failures now propagate explicit

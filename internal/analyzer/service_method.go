@@ -24,7 +24,7 @@ func buildArgumentMembers(args []*model.Argument) []*model.DataMember {
 	})
 }
 
-func parseMethods(reporter *diagnosticReporter, owner *grammar.Identifier, methods []*grammar.Method) ([]*model.Method, bool) {
+func parseMethods(reporter *_DiagnosticReporter, owner *grammar.Identifier, methods []*grammar.Method) ([]*model.Method, bool) {
 	parsedMethods := make([]*model.Method, 0, len(methods))
 	methodPos := map[string]lexer.Position{}
 	valid := true
@@ -49,9 +49,9 @@ func parseMethods(reporter *diagnosticReporter, owner *grammar.Identifier, metho
 	return parsedMethods, valid
 }
 
-func parseMethod(reporter *diagnosticReporter, gm *grammar.Method) (*model.Method, bool) {
+func parseMethod(reporter *_DiagnosticReporter, gm *grammar.Method) (*model.Method, bool) {
 	valid := checkCase(reporter, "Method", caseTypeLowerCamel, gm.Name)
-	meta, metaValid := parseDecoratorMeta(reporter, gm.Decorators, decoratorContext{
+	meta, metaValid := parseDecoratorMeta(reporter, gm.Decorators, _DecoratorContext{
 		allowDesc:       true,
 		allowDeprecated: true,
 	})
@@ -75,7 +75,7 @@ func parseMethod(reporter *diagnosticReporter, gm *grammar.Method) (*model.Metho
 	output := methodOutput(gm)
 
 	if input != nil {
-		inputMeta, inputValid := parseDecoratorMeta(reporter, input.Decorators, decoratorContext{
+		inputMeta, inputValid := parseDecoratorMeta(reporter, input.Decorators, _DecoratorContext{
 			allowDesc:      true,
 			allowSensitive: true,
 		})
@@ -97,7 +97,7 @@ func parseMethod(reporter *diagnosticReporter, gm *grammar.Method) (*model.Metho
 		}
 	}
 	if output != nil {
-		outputMeta, outputValid := parseDecoratorMeta(reporter, output.Decorators, decoratorContext{
+		outputMeta, outputValid := parseDecoratorMeta(reporter, output.Decorators, _DecoratorContext{
 			allowDesc:      true,
 			allowExample:   true,
 			allowSensitive: true,
@@ -135,9 +135,9 @@ func methodOutput(gm *grammar.Method) *grammar.MethodOutput {
 	return gm.Output
 }
 
-func parseArgument(reporter *diagnosticReporter, ga *grammar.Argument) (*model.Argument, bool) {
+func parseArgument(reporter *_DiagnosticReporter, ga *grammar.Argument) (*model.Argument, bool) {
 	valid := checkCase(reporter, "Argument", caseTypeLowerCamel, ga.Name)
-	meta, metaValid := parseDecoratorMeta(reporter, ga.Decorators, decoratorContext{
+	meta, metaValid := parseDecoratorMeta(reporter, ga.Decorators, _DecoratorContext{
 		allowDesc:       true,
 		allowExample:    true,
 		allowSensitive:  true,

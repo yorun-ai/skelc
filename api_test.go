@@ -2,12 +2,18 @@ package skelc_test
 
 import (
 	"fmt"
+	"go/ast"
+	stdparser "go/parser"
+	"go/token"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
 	"go.yorun.ai/skelc"
+	"go.yorun.ai/skelc/diagnostic"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -42,6 +48,117 @@ func TestParseExposesSemanticModel(t *testing.T) {
 	var domain *model.Domain = result.Domain
 	if domain.Name() != "demo.user" {
 		t.Fatalf("unexpected domain: %s", domain.Name())
+	}
+}
+
+func TestDiagnosticAliasesMatchPublicDiagnosticPackage(t *testing.T) {
+	if skelc.DiagnosticCodeSyntaxUnexpected != diagnostic.CodeSyntaxUnexpected {
+		t.Fatalf("syntax diagnostic code alias = %q, want %q", skelc.DiagnosticCodeSyntaxUnexpected, diagnostic.CodeSyntaxUnexpected)
+	}
+	if skelc.DiagnosticCodeSemanticDuplicate != diagnostic.CodeSemanticDuplicate {
+		t.Fatalf("semantic diagnostic code alias = %q, want %q", skelc.DiagnosticCodeSemanticDuplicate, diagnostic.CodeSemanticDuplicate)
+	}
+	if skelc.DiagnosticCodeLoaderUnsupported != diagnostic.CodeLoaderUnsupported {
+		t.Fatalf("loader diagnostic code alias = %q, want %q", skelc.DiagnosticCodeLoaderUnsupported, diagnostic.CodeLoaderUnsupported)
+	}
+	if skelc.DiagnosticSeverityWarning != diagnostic.SeverityWarning {
+		t.Fatalf("warning severity alias = %q, want %q", skelc.DiagnosticSeverityWarning, diagnostic.SeverityWarning)
+	}
+}
+
+func TestPublicPackagesRespectDependencyBoundaries(t *testing.T) {
+	const internalPrefix = "go.yorun.ai/skelc/internal/"
+	rules := []struct {
+		directory string
+		forbidden func(string) bool
+	}{
+		{
+			directory: "internal/parser",
+			forbidden: func(path string) bool {
+				return strings.HasPrefix(path, internalPrefix) && path != internalPrefix+"parser/grammar"
+			},
+		},
+		{
+			directory: "internal/analyzer",
+			forbidden: func(path string) bool {
+				for _, prefix := range []string{"compiler", "hasher", "loader", "lsp", "codegen"} {
+					if strings.HasPrefix(path, internalPrefix+prefix) {
+						return true
+					}
+				}
+				return false
+			},
+		},
+		{
+			directory: "internal/hasher",
+			forbidden: func(path string) bool { return strings.HasPrefix(path, internalPrefix) },
+		},
+		{
+			directory: "model",
+			forbidden: func(path string) bool { return strings.HasPrefix(path, internalPrefix) },
+		},
+		{
+			directory: "diagnostic",
+			forbidden: func(path string) bool { return strings.HasPrefix(path, internalPrefix) },
+		},
+		{
+			directory: "internal/codegen/common",
+			forbidden: targetCodegenImport,
+		},
+		{
+			directory: "internal/codegen/output",
+			forbidden: targetCodegenImport,
+		},
+	}
+
+	for _, rule := range rules {
+		t.Run(filepath.ToSlash(rule.directory), func(t *testing.T) {
+			inspectProductionImports(t, rule.directory, rule.forbidden)
+		})
+	}
+}
+
+func targetCodegenImport(path string) bool {
+	for _, target := range []string{"golang", "skeleton", "typescript"} {
+		if strings.HasPrefix(path, "go.yorun.ai/skelc/internal/codegen/"+target) {
+			return true
+		}
+	}
+	return false
+}
+
+func inspectProductionImports(t *testing.T, directory string, forbidden func(string) bool) {
+	t.Helper()
+	err := filepath.WalkDir(directory, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		file, err := stdparser.ParseFile(token.NewFileSet(), path, nil, stdparser.ImportsOnly)
+		if err != nil {
+			return err
+		}
+		for _, declaration := range file.Decls {
+			importDecl, ok := declaration.(*ast.GenDecl)
+			if !ok || importDecl.Tok != token.IMPORT {
+				continue
+			}
+			for _, spec := range importDecl.Specs {
+				pathValue, err := strconv.Unquote(spec.(*ast.ImportSpec).Path.Value)
+				if err != nil {
+					return err
+				}
+				if forbidden(pathValue) {
+					t.Errorf("%s imports forbidden dependency %s", path, pathValue)
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

@@ -8,18 +8,38 @@ import (
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
 	"go.yorun.ai/skelc/internal/parser/grammar"
+	"go.yorun.ai/skelc/model"
 )
 
 var sourceParser = participle.MustBuild[grammar.SkelContent](grammar.Options...)
 
-// SourceParseResult preserves partially parsed content and identifies whether
-// a failure came from syntax-tree finalization rather than token parsing.
+// SourceParseResult preserves partially parsed content.
 type SourceParseResult struct {
 	// Content is the complete or partially parsed syntax tree.
 	Content *grammar.SkelContent
-	// FinalizeError reports whether the returned error came from syntax-tree finalization.
-	FinalizeError bool
 }
+
+// SyntaxError normalizes parser-library failures for compiler recovery without
+// exposing Participle error types outside the parser package.
+type SyntaxError struct {
+	Position      model.Position
+	Message       string
+	UnexpectedEOF bool
+	Finalize      bool
+	cause         error
+}
+
+func (err *SyntaxError) Error() string {
+	if err.cause != nil {
+		return err.cause.Error()
+	}
+	if err.Position.Line > 0 {
+		return err.Position.String() + " " + err.Message
+	}
+	return err.Message
+}
+
+func (err *SyntaxError) Unwrap() error { return err.cause }
 
 // ParseSource parses and finalizes one Skel source file without resolving its
 // imports or performing domain-level semantic analysis.
@@ -40,13 +60,13 @@ func ParseSourcePartial(path string, source []byte) (SourceParseResult, error) {
 func ParseSourceFragment(path string, source []byte, line, offset int) (SourceParseResult, error) {
 	lex, err := grammar.LexerDefinition().Lex(path, bytes.NewReader(source))
 	if err != nil {
-		return SourceParseResult{}, err
+		return SourceParseResult{}, normalizeSyntaxError(err, false)
 	}
 	adjusted := &_OffsetLexer{lexer: lex, lineOffset: line - 1, byteOffset: offset}
 	symbols := grammar.LexerDefinition().Symbols()
 	peeking, err := lexer.Upgrade(adjusted, symbols["Whitespace"], symbols["LineComment"], symbols["BlockComment"])
 	if err != nil {
-		return SourceParseResult{}, err
+		return SourceParseResult{}, normalizeSyntaxError(err, false)
 	}
 	content, err := sourceParser.ParseFromLexer(peeking)
 	return finalizeSource(content, err)
@@ -64,19 +84,40 @@ func ValidateSource(path string, source []byte) error {
 func finalizeSource(content *grammar.SkelContent, parseErr error) (SourceParseResult, error) {
 	result := SourceParseResult{Content: content}
 	if parseErr != nil {
-		return result, parseErr
+		return result, normalizeSyntaxError(parseErr, false)
 	}
 	if err := content.Finalize(); err != nil {
-		result.FinalizeError = true
-		return result, err
+		return result, normalizeSyntaxError(err, true)
 	}
 	if content.Domain != nil {
 		if err := content.Domain.Finalize(); err != nil {
-			result.FinalizeError = true
-			return result, err
+			return result, normalizeSyntaxError(err, true)
 		}
 	}
 	return result, nil
+}
+
+func normalizeSyntaxError(err error, finalize bool) error {
+	if err == nil {
+		return nil
+	}
+	failure := &SyntaxError{Message: err.Error(), Finalize: finalize, cause: err}
+	var parseError participle.Error
+	if errors.As(err, &parseError) {
+		failure.Position = SourcePosition(parseError.Position())
+		failure.Message = parseError.Message()
+	}
+	var unexpectedToken *participle.UnexpectedTokenError
+	var unexpectedEOF *grammar.UnexpectedEOFError
+	failure.UnexpectedEOF = errors.As(err, &unexpectedEOF) ||
+		errors.As(err, &unexpectedToken) && unexpectedToken.Unexpected.EOF()
+	return failure
+}
+
+// SourcePosition converts the grammar's lexer position to skelc's public
+// parser-independent source position.
+func SourcePosition(position lexer.Position) model.Position {
+	return model.Position{File: position.Filename, Line: position.Line, Column: position.Column}
 }
 
 type _OffsetLexer struct {

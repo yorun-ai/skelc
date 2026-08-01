@@ -8,22 +8,22 @@ import (
 	"go.yorun.ai/skelc/internal/util/nameutil"
 )
 
-type caseType string
+type _CaseType string
 
 const (
-	caseTypeSnake          caseType = "snake_case"
-	caseTypeScreamingSnake caseType = "SCREAMING_SNAKE_CASE"
-	caseTypeCamel          caseType = "CamelCase"
-	caseTypeLowerCamel     caseType = "lowerCamelCase"
+	caseTypeSnake          _CaseType = "snake_case"
+	caseTypeScreamingSnake _CaseType = "SCREAMING_SNAKE_CASE"
+	caseTypeCamel          _CaseType = "CamelCase"
+	caseTypeLowerCamel     _CaseType = "lowerCamelCase"
 )
 
 var reservedKindSuffixes = []string{"Config", "Event", "Actor", "Service", "Web"}
 
-func checkCase(reporter *diagnosticReporter, kindName string, expectedCase caseType, ident *grammar.Identifier) bool {
+func checkCase(reporter *_DiagnosticReporter, kindName string, expectedCase _CaseType, ident *grammar.Identifier) bool {
 	return checkCaseAdvanced(reporter, kindName, "", "", expectedCase, ident)
 }
 
-func checkNotReservedKindSuffix(reporter *diagnosticReporter, kindName string, ident *grammar.Identifier) bool {
+func checkNotReservedKindSuffix(reporter *_DiagnosticReporter, kindName string, ident *grammar.Identifier) bool {
 	valid := true
 	for _, suffix := range reservedKindSuffixes {
 		valid = reporter.checkNot(strings.HasSuffix(ident.Value, suffix),
@@ -33,11 +33,11 @@ func checkNotReservedKindSuffix(reporter *diagnosticReporter, kindName string, i
 }
 
 func checkCaseAdvanced(
-	reporter *diagnosticReporter,
+	reporter *_DiagnosticReporter,
 	kindName string,
 	prefix string,
 	suffix string,
-	expectedCase caseType,
+	expectedCase _CaseType,
 	ident *grammar.Identifier,
 ) bool {
 	name := ident.Value
@@ -70,7 +70,7 @@ func checkCaseAdvanced(
 	return valid
 }
 
-func matchesCase(value string, expected caseType) bool {
+func matchesCase(value string, expected _CaseType) bool {
 	switch expected {
 	case caseTypeSnake:
 		return nameutil.IsSnakeCase(value)
@@ -85,7 +85,7 @@ func matchesCase(value string, expected caseType) bool {
 	}
 }
 
-func convertCase(value string, expected caseType) string {
+func convertCase(value string, expected _CaseType) string {
 	switch expected {
 	case caseTypeSnake:
 		return nameutil.ToSnake(value)

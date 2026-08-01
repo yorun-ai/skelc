@@ -1,6 +1,6 @@
-// Package option defines the validation contract shared by the public API and
+// Package optionvalidation defines the validation contract shared by the public API and
 // CLI adapters without depending on either package.
-package option
+package optionvalidation
 
 // Field identifies one normalized generation option.
 type Field string

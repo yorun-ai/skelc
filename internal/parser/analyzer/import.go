@@ -26,7 +26,7 @@ func (p *Analysis) loadImports(domainByName map[string]*Analysis) {
 			continue
 		}
 		if previous, exists := p.importsMap[alias]; exists {
-			p.reporter.check(previous.Model.Name == domainName,
+			p.reporter.checkDuplicate(previous.Model.Name == domainName,
 				"%s duplicated import alias %s found, already used by %s",
 				grammarImport.Pos, alias, previous.Model.Name)
 			continue
@@ -52,27 +52,27 @@ func (p *Analysis) checkDuplicated(name string, namePos model.Position) bool {
 	message := `%s duplicated identifier "%s" found, also present at %s`
 	valid := true
 	if previous := p.enumsMap[name]; previous != nil {
-		p.reporter.reportf(message, namePos, name, previous.Pos)
+		p.reporter.reportDuplicatef(message, namePos, name, previous.Pos)
 		valid = false
 	}
 	if previous := p.dataMap[name]; previous != nil {
-		p.reporter.reportf(message, namePos, name, previous.Pos)
+		p.reporter.reportDuplicatef(message, namePos, name, previous.Pos)
 		valid = false
 	}
 	if previous := p.actorsMap[name]; previous != nil {
-		p.reporter.reportf(message, namePos, name, previous.Pos)
+		p.reporter.reportDuplicatef(message, namePos, name, previous.Pos)
 		valid = false
 	}
 	if previous := p.servicesMap[name]; previous != nil {
-		p.reporter.reportf(message, namePos, name, previous.Pos)
+		p.reporter.reportDuplicatef(message, namePos, name, previous.Pos)
 		valid = false
 	}
 	if previous := p.websMap[name]; previous != nil {
-		p.reporter.reportf(message, namePos, name, previous.Pos)
+		p.reporter.reportDuplicatef(message, namePos, name, previous.Pos)
 		valid = false
 	}
 	if previous := p.tasksMap[name]; previous != nil {
-		p.reporter.reportf(message, namePos, name, previous.Pos)
+		p.reporter.reportDuplicatef(message, namePos, name, previous.Pos)
 		valid = false
 	}
 	return valid
@@ -80,7 +80,7 @@ func (p *Analysis) checkDuplicated(name string, namePos model.Position) bool {
 
 func (p *Analysis) checkDuplicatedResource(name string, namePos model.Position) bool {
 	if previous := p.resourcesMap[name]; previous != nil {
-		p.reporter.reportf(`%s duplicated resource "%s" found, also present at %s`, namePos, name, previous.Pos)
+		p.reporter.reportDuplicatef(`%s duplicated resource "%s" found, also present at %s`, namePos, name, previous.Pos)
 		return false
 	}
 	return true
@@ -110,7 +110,7 @@ func (p *Analysis) checkActorGeneratedNames() {
 func (p *Analysis) checkGeneratedIdentifier(name string, namePos model.Position, generated map[string]model.Position) {
 	valid := p.checkDuplicated(name, namePos)
 	if previous, duplicated := generated[name]; duplicated {
-		p.reporter.reportf(`%s duplicated identifier "%s" found, also present at %s`, namePos, name, previous)
+		p.reporter.reportDuplicatef(`%s duplicated identifier "%s" found, also present at %s`, namePos, name, previous)
 		valid = false
 	}
 	if valid {

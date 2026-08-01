@@ -13,6 +13,8 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ### Fixed
 
+- Semantic diagnostic codes and naming suggestions are now assigned from
+  structured analyzer metadata instead of parsed from human-readable messages
 - `format` stages all changed files before committing them and restores files
   already replaced if a later write fails
 - Multi-target generation stages every output before committing and restores

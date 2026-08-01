@@ -17,7 +17,7 @@ func resolveMethodArgumentJsonPath(reporter *diagnosticReporter, method *model.M
 			return resolveJsonPathPartType(reporter, arg.Type, parts[0], parts[1:], path)
 		}
 	}
-	reporter.reportf(`require check argument path %s references undefined input argument "%s"`, path, parts[0].Name)
+	reporter.reportReferencef(`require check argument path %s references undefined input argument "%s"`, path, parts[0].Name)
 	return nil, false
 }
 
@@ -66,7 +66,7 @@ func resolveJsonPathType(reporter *diagnosticReporter, type_ *model.Type, parts 
 			return resolveJsonPathPartType(reporter, member.Type, parts[0], parts[1:], fullPath)
 		}
 	}
-	reporter.reportf(`require check argument path %s references undefined data member "%s"`, fullPath, parts[0].Name)
+	reporter.reportReferencef(`require check argument path %s references undefined data member "%s"`, fullPath, parts[0].Name)
 	return nil, false
 }
 

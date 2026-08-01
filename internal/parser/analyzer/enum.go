@@ -36,7 +36,7 @@ func parseEnum(reporter *diagnosticReporter, ge *grammar.Enum) (*model.Enum, boo
 		valid = itemValid && valid
 		duplicatedPosition, duplicated := itemPositionByName[item.Name]
 		if duplicated {
-			reporter.reportf("%s duplicated EnumItem %s found, also present at %s", item.Pos, item.Name, duplicatedPosition)
+			reporter.reportDuplicatef("%s duplicated EnumItem %s found, also present at %s", item.Pos, item.Name, duplicatedPosition)
 			valid = false
 			continue
 		}

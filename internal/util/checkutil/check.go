@@ -14,16 +14,25 @@ const CodeValidation = "validation"
 // Error preserves the existing human-readable message, while Position and
 // Code let tool integrations avoid parsing that message.
 type Failure struct {
-	Code     string
-	Position model.Position
-	Message  string
-	Cause    error
-	Related  []RelatedLocation
+	Code       string
+	Position   model.Position
+	Message    string
+	Cause      error
+	Related    []RelatedLocation
+	Suggestion *Suggestion
 }
 
+// RelatedLocation points to another source location relevant to a failure.
 type RelatedLocation struct {
 	Position model.Position
 	Message  string
+}
+
+// Suggestion describes an optional structured edit for a failure.
+type Suggestion struct {
+	Message     string
+	Replacement string
+	Replace     bool
 }
 
 func (f *Failure) Error() string { return f.Message }

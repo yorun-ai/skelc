@@ -34,7 +34,7 @@ func parseMethods(reporter *diagnosticReporter, owner *grammar.Identifier, metho
 		valid = methodValid && valid
 		duplicatedPosition, duplicated := methodPos[method.Name]
 		if duplicated {
-			reporter.reportf("%s duplicated method %s found, also present at %s", method.Pos, method.Name, duplicatedPosition)
+			reporter.reportDuplicatef("%s duplicated method %s found, also present at %s", method.Pos, method.Name, duplicatedPosition)
 			valid = false
 			continue
 		}
@@ -88,7 +88,7 @@ func parseMethod(reporter *diagnosticReporter, gm *grammar.Method) (*model.Metho
 			valid = argumentValid && valid
 			duplicatedPosition, duplicated := argPos[arg.Name]
 			if duplicated {
-				reporter.reportf("%s duplicated Argument %s found, also present at %s", arg.Pos, arg.Name, duplicatedPosition)
+				reporter.reportDuplicatef("%s duplicated Argument %s found, also present at %s", arg.Pos, arg.Name, duplicatedPosition)
 				valid = false
 				continue
 			}

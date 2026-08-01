@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
@@ -13,30 +12,10 @@ import (
 	"go.yorun.ai/skelc/model"
 )
 
-type _SourceSegment struct {
-	start int
-	end   int
-	line  int
-}
-
 type _OffsetLexer struct {
 	lexer      lexer.Lexer
 	lineOffset int
 	byteOffset int
-}
-
-type _SourceSegmentScanner struct {
-	source     []byte
-	tokens     []lexer.Token
-	identifier lexer.TokenType
-	elided     map[lexer.TokenType]bool
-	starts     []_SourceSegment
-
-	depth                 int
-	hasDeclaration        bool
-	lastLine              int
-	pendingDecoratorStart int
-	pendingDecoratorLine  int
 }
 
 // ParseSourceRecovering returns the declarations that can be recovered from a
@@ -84,135 +63,12 @@ func parseSourceSegmentRecovering(path string, source []byte, segment _SourceSeg
 		diagnostics = append(diagnostics, diagnostic)
 		localPosition := diagnostic.Position
 		localPosition.Line -= segment.line - 1
-		if !recoverSyntaxLine(&working, localPosition, diagnostic.Message) {
+		if !recoverSyntaxLine(&working, localPosition, diagnostic.Code == DiagnosticCodeSyntaxEOF) {
 			return content, diagnostics
 		}
 	}
 	content, _, _ := parseSourceFragment(path, working, segment.line, segment.start)
 	return content, diagnostics
-}
-
-func splitSourceSegments(path string, source []byte) []_SourceSegment {
-	lex, err := grammar.LexerDefinition().Lex(path, bytes.NewReader(source))
-	if err != nil {
-		return []_SourceSegment{{end: len(source), line: 1}}
-	}
-	tokens, err := lexer.ConsumeAll(lex)
-	if err != nil {
-		return []_SourceSegment{{end: len(source), line: 1}}
-	}
-
-	symbols := grammar.LexerDefinition().Symbols()
-	elided := map[lexer.TokenType]bool{
-		symbols["Whitespace"]:   true,
-		symbols["LineComment"]:  true,
-		symbols["BlockComment"]: true,
-		symbols["Newline"]:      true,
-	}
-	scanner := &_SourceSegmentScanner{
-		source: source, tokens: tokens, identifier: symbols["Identifier"], elided: elided,
-		starts: []_SourceSegment{{line: 1}}, pendingDecoratorStart: -1,
-	}
-	return scanner.scan()
-}
-
-func (s *_SourceSegmentScanner) scan() []_SourceSegment {
-	for index, token := range s.tokens {
-		s.consume(index, token)
-	}
-	for index := range s.starts {
-		if index+1 < len(s.starts) {
-			s.starts[index].end = s.starts[index+1].start
-		} else {
-			s.starts[index].end = len(s.source)
-		}
-	}
-	return s.starts
-}
-
-func (s *_SourceSegmentScanner) consume(index int, token lexer.Token) {
-	if token.EOF() || s.elided[token.Type] {
-		return
-	}
-	if token.Pos.Line != s.lastLine {
-		s.consumeFirstTokenOnLine(index, token)
-		s.lastLine = token.Pos.Line
-	}
-	s.updateDepth(token.Value)
-}
-
-func (s *_SourceSegmentScanner) consumeFirstTokenOnLine(index int, token lexer.Token) {
-	kind := topLevelTokenKind(s.tokens, index, s.identifier, s.elided)
-	if s.depth > 0 && kind == "decorator" {
-		if s.pendingDecoratorStart < 0 {
-			s.pendingDecoratorStart, _, _ = sourceLineOffsets(s.source, token.Pos.Line)
-			s.pendingDecoratorLine = token.Pos.Line
-		}
-		return
-	}
-	if kind == "" {
-		s.pendingDecoratorStart = -1
-		return
-	}
-	if s.hasDeclaration || s.depth > 0 {
-		start, _, _ := sourceLineOffsets(s.source, token.Pos.Line)
-		line := token.Pos.Line
-		if s.depth > 0 && s.pendingDecoratorStart >= 0 {
-			start = s.pendingDecoratorStart
-			line = s.pendingDecoratorLine
-		}
-		s.starts = append(s.starts, _SourceSegment{start: start, line: line})
-	}
-	s.hasDeclaration = kind != "decorator"
-	if s.depth > 0 {
-		s.depth = 0
-	}
-	s.pendingDecoratorStart = -1
-}
-
-func (s *_SourceSegmentScanner) updateDepth(value string) {
-	switch value {
-	case "{":
-		s.depth++
-	case "}":
-		if s.depth > 0 {
-			s.depth--
-		}
-	}
-}
-
-func topLevelTokenKind(tokens []lexer.Token, index int, identifier lexer.TokenType, elided map[lexer.TokenType]bool) string {
-	value := tokens[index].Value
-	if value == "@" {
-		return "decorator"
-	}
-	line := tokens[index].Pos.Line
-	if value == "pub" {
-		index = nextSignificantToken(tokens, index+1, line, elided)
-		if index < 0 {
-			return ""
-		}
-		value = tokens[index].Value
-	}
-	for _, keyword := range []string{"domain", "import", "enum", "data", "config", "actor", "resource", "service", "web", "event", "task"} {
-		next := nextSignificantToken(tokens, index+1, line, elided)
-		if value == keyword && next >= 0 && tokens[next].Type == identifier {
-			return keyword
-		}
-	}
-	return ""
-}
-
-func nextSignificantToken(tokens []lexer.Token, index, line int, elided map[lexer.TokenType]bool) int {
-	for ; index < len(tokens); index++ {
-		if tokens[index].EOF() || tokens[index].Pos.Line != line {
-			return -1
-		}
-		if !elided[tokens[index].Type] {
-			return index
-		}
-	}
-	return -1
 }
 
 func mergeRecoveredContent(path string, original []byte, target, source *grammar.SkelContent) Diagnostics {
@@ -315,9 +171,11 @@ func syntaxDiagnostic(path string, source []byte, err error, finalize bool) Diag
 		position = workspacePosition(parseError.Position())
 		message = parseError.Message()
 	}
+	var unexpectedToken *participle.UnexpectedTokenError
+	var unexpectedEOF *grammar.UnexpectedEOFError
 	if finalize {
 		code = DiagnosticCodeSyntaxFinalize
-	} else if strings.Contains(strings.ToLower(message), "eof") {
+	} else if errors.As(err, &unexpectedEOF) || errors.As(err, &unexpectedToken) && unexpectedToken.Unexpected.EOF() {
 		code = DiagnosticCodeSyntaxEOF
 	}
 	diagnostic := Diagnostic{
@@ -354,11 +212,11 @@ func expectedSyntaxReplacement(message string) string {
 	return value
 }
 
-func recoverSyntaxLine(source *[]byte, position model.Position, message string) bool {
+func recoverSyntaxLine(source *[]byte, position model.Position, unexpectedEOF bool) bool {
 	if position.Line <= 0 {
 		return false
 	}
-	if strings.Contains(strings.ToLower(message), "eof") {
+	if unexpectedEOF {
 		if start, end, found := unclosedDecoratorOffsets(*source); found {
 			blankBytes((*source)[start:end])
 			return true
@@ -404,31 +262,6 @@ func unclosedDecoratorOffsets(source []byte) (int, int, bool) {
 	return 0, 0, false
 }
 
-func sourceLineOffsets(source []byte, line int) (int, int, bool) {
-	if line <= 0 {
-		return 0, 0, false
-	}
-	start := 0
-	for current := 1; current < line; current++ {
-		index := bytes.IndexByte(source[start:], '\n')
-		if index < 0 {
-			return 0, 0, false
-		}
-		start += index + 1
-	}
-	if start > len(source) {
-		return 0, 0, false
-	}
-	end := len(source)
-	if index := bytes.IndexByte(source[start:], '\n'); index >= 0 {
-		end = start + index
-	}
-	if end > start && source[end-1] == '\r' {
-		end--
-	}
-	return start, end, true
-}
-
 func blankBytes(value []byte) {
 	for index := range value {
 		if value[index] != '\r' && value[index] != '\n' {
@@ -460,59 +293,4 @@ func looksLikeTopLevelDeclaration(line string) bool {
 		}
 	}
 	return false
-}
-
-func sourceRangeAt(start model.Position, source []byte) SourceRange {
-	end := start
-	if start.Line <= 0 || start.Column <= 0 {
-		return SourceRange{Start: start, End: end}
-	}
-	lineStart, lineEnd, ok := sourceLineOffsets(source, start.Line)
-	if !ok {
-		return SourceRange{Start: start, End: end}
-	}
-	offset := lineStart
-	for range start.Column - 1 {
-		if offset >= lineEnd {
-			break
-		}
-		_, width := utf8.DecodeRune(source[offset:lineEnd])
-		offset += width
-	}
-	for offset < lineEnd && (source[offset] == ' ' || source[offset] == '\t') {
-		offset++
-	}
-	endOffset := offset
-	if endOffset < lineEnd && isSourceIdentifierByte(source[endOffset]) {
-		for endOffset < lineEnd && isSourceIdentifierByte(source[endOffset]) {
-			endOffset++
-		}
-		for endOffset+1 < lineEnd && source[endOffset] == '.' && isSourceIdentifierByte(source[endOffset+1]) {
-			endOffset++
-			for endOffset < lineEnd && isSourceIdentifierByte(source[endOffset]) {
-				endOffset++
-			}
-		}
-	} else {
-		for endOffset < lineEnd {
-			value, width := utf8.DecodeRune(source[endOffset:lineEnd])
-			if strings.ContainsRune(" \t,.:;(){}[]<>?=@", value) {
-				break
-			}
-			endOffset += width
-		}
-	}
-	if endOffset == offset && endOffset < lineEnd {
-		_, width := utf8.DecodeRune(source[endOffset:lineEnd])
-		endOffset += width
-	}
-	end.Column = 1 + utf8.RuneCount(source[lineStart:endOffset])
-	if end.Column <= start.Column {
-		end.Column = start.Column + 1
-	}
-	return SourceRange{Start: start, End: end}
-}
-
-func isSourceIdentifierByte(value byte) bool {
-	return value == '_' || value >= 'a' && value <= 'z' || value >= 'A' && value <= 'Z' || value >= '0' && value <= '9'
 }

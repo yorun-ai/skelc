@@ -102,7 +102,7 @@ func parseDataLike(reporter *diagnosticReporter, gs *grammar.Data, kind model.Da
 		valid = parameterValid && valid
 		duplicatedPosition, duplicated := typeParamPos[typeParameter.Name]
 		if duplicated {
-			reporter.reportf("%s duplicated TypeParameter %s found, also present at %s", typeParameter.Pos, typeParameter.Name, duplicatedPosition)
+			reporter.reportDuplicatef("%s duplicated TypeParameter %s found, also present at %s", typeParameter.Pos, typeParameter.Name, duplicatedPosition)
 			valid = false
 			continue
 		}
@@ -118,7 +118,7 @@ func parseDataLike(reporter *diagnosticReporter, gs *grammar.Data, kind model.Da
 			member.Pos, skelmeta.SensitiveMarkerFieldName()) && valid
 		duplicatedPosition, duplicated := memberPos[member.Name]
 		if duplicated {
-			reporter.reportf("%s duplicated DataMember %s found, also present at %s", member.Pos, member.Name, duplicatedPosition)
+			reporter.reportDuplicatef("%s duplicated DataMember %s found, also present at %s", member.Pos, member.Name, duplicatedPosition)
 			valid = false
 			continue
 		}

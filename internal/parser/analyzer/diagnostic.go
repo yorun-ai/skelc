@@ -13,6 +13,15 @@ import (
 // source from flooding editor and command-line output.
 const MaxDiagnosticsPerDomain = 50
 
+// Semantic diagnostic codes are assigned where analyzer failures originate so
+// downstream integrations never need to classify human-readable messages.
+const (
+	DiagnosticCodeValidation = "semantic.validation"
+	DiagnosticCodeDuplicate  = "semantic.duplicate"
+	DiagnosticCodeNaming     = "semantic.naming"
+	DiagnosticCodeReference  = "semantic.reference"
+)
+
 type diagnosticReporter struct {
 	errors []error
 	seen   map[string]bool
@@ -23,10 +32,22 @@ func newDiagnosticReporter() *diagnosticReporter {
 }
 
 func (r *diagnosticReporter) check(condition bool, message string, args ...any) bool {
+	return r.checkCode(DiagnosticCodeValidation, condition, message, args...)
+}
+
+func (r *diagnosticReporter) checkDuplicate(condition bool, message string, args ...any) bool {
+	return r.checkCode(DiagnosticCodeDuplicate, condition, message, args...)
+}
+
+func (r *diagnosticReporter) checkReference(condition bool, message string, args ...any) bool {
+	return r.checkCode(DiagnosticCodeReference, condition, message, args...)
+}
+
+func (r *diagnosticReporter) checkCode(code string, condition bool, message string, args ...any) bool {
 	if condition {
 		return true
 	}
-	r.report(checkutil.NewFailuref(message, args...))
+	r.report(newDiagnosticFailure(code, message, args...))
 	return false
 }
 
@@ -34,16 +55,41 @@ func (r *diagnosticReporter) checkNot(condition bool, message string, args ...an
 	return r.check(!condition, message, args...)
 }
 
+func (r *diagnosticReporter) checkNotDuplicate(condition bool, message string, args ...any) bool {
+	return r.checkDuplicate(!condition, message, args...)
+}
+
 func (r *diagnosticReporter) reportf(message string, args ...any) {
-	failure := checkutil.NewFailuref(message, args...)
-	if strings.Contains(strings.ToLower(message), "duplicated") {
-		failure.Code = "semantic.duplicate"
-		positions := diagnosticArgumentPositions(args)
-		if len(positions) > 1 {
-			failure.Related = []checkutil.RelatedLocation{{Position: positions[len(positions)-1], Message: "first declaration"}}
-		}
+	r.report(newDiagnosticFailure(DiagnosticCodeValidation, message, args...))
+}
+
+func (r *diagnosticReporter) reportDuplicatef(message string, args ...any) {
+	failure := newDiagnosticFailure(DiagnosticCodeDuplicate, message, args...)
+	positions := diagnosticArgumentPositions(args)
+	if len(positions) > 1 {
+		failure.Related = []checkutil.RelatedLocation{{Position: positions[len(positions)-1], Message: "first declaration"}}
 	}
 	r.report(failure)
+}
+
+func (r *diagnosticReporter) reportReferencef(message string, args ...any) {
+	r.report(newDiagnosticFailure(DiagnosticCodeReference, message, args...))
+}
+
+func (r *diagnosticReporter) reportNamingf(replacement string, message string, args ...any) {
+	failure := newDiagnosticFailure(DiagnosticCodeNaming, message, args...)
+	failure.Suggestion = &checkutil.Suggestion{
+		Message:     "replace with " + replacement,
+		Replacement: replacement,
+		Replace:     true,
+	}
+	r.report(failure)
+}
+
+func newDiagnosticFailure(code string, message string, args ...any) *checkutil.Failure {
+	failure := checkutil.NewFailuref(message, args...)
+	failure.Code = code
+	return failure
 }
 
 func diagnosticArgumentPositions(args []any) []model.Position {

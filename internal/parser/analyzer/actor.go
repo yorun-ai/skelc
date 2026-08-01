@@ -122,7 +122,7 @@ func actorAuthSection(reporter *diagnosticReporter, ga *grammar.Actor) (*grammar
 			continue
 		}
 		if auth != nil {
-			reporter.reportf("%s duplicated actor auth found, also present at %s", section.Auth.Pos, authPos)
+			reporter.reportDuplicatef("%s duplicated actor auth found, also present at %s", section.Auth.Pos, authPos)
 			valid = false
 			continue
 		}
@@ -149,7 +149,7 @@ func actorPermissionDeclared(reporter *diagnosticReporter, ga *grammar.Actor) (b
 			continue
 		}
 		if permission != nil {
-			reporter.reportf("%s duplicated actor permission found, also present at %s", section.Permission.Pos, permissionPos)
+			reporter.reportDuplicatef("%s duplicated actor permission found, also present at %s", section.Permission.Pos, permissionPos)
 			valid = false
 			continue
 		}
@@ -172,7 +172,7 @@ func parseActorVias(reporter *diagnosticReporter, owner *grammar.Identifier, gra
 		valid = viaValid && valid
 		duplicatedPosition, duplicated := viaPos[via.Name]
 		if duplicated {
-			reporter.reportf("%s duplicated actor via %s found, also present at %s", via.Pos, via.Name, duplicatedPosition)
+			reporter.reportDuplicatef("%s duplicated actor via %s found, also present at %s", via.Pos, via.Name, duplicatedPosition)
 			valid = false
 			continue
 		}

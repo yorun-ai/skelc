@@ -83,7 +83,7 @@ func serviceAuthMarker(reporter *diagnosticReporter, gs *grammar.Service) (*gram
 			continue
 		}
 		if marker != nil {
-			reporter.reportf("%s duplicated service auth marker found, also present at %s", section.Auth.Pos, markerPos)
+			reporter.reportDuplicatef("%s duplicated service auth marker found, also present at %s", section.Auth.Pos, markerPos)
 			valid = false
 			continue
 		}
@@ -105,7 +105,7 @@ func serviceRequire(reporter *diagnosticReporter, gs *grammar.Service) (*grammar
 			continue
 		}
 		if require != nil {
-			reporter.reportf("%s duplicated service require found, also present at %s", section.Require.Pos, requirePos)
+			reporter.reportDuplicatef("%s duplicated service require found, also present at %s", section.Require.Pos, requirePos)
 			valid = false
 			continue
 		}
@@ -148,9 +148,9 @@ func parseServiceAudiences(reporter *diagnosticReporter, audiences []*grammar.Se
 		duplicatedPosition, duplicated := audiencePos[key]
 		if duplicated {
 			if via != "" {
-				reporter.reportf("%s duplicated service audience %s via %s found, also present at %s", actorIdent.Pos, name, via, duplicatedPosition)
+				reporter.reportDuplicatef("%s duplicated service audience %s via %s found, also present at %s", actorIdent.Pos, name, via, duplicatedPosition)
 			} else {
-				reporter.reportf("%s duplicated service audience %s found, also present at %s", actorIdent.Pos, name, duplicatedPosition)
+				reporter.reportDuplicatef("%s duplicated service audience %s found, also present at %s", actorIdent.Pos, name, duplicatedPosition)
 			}
 			valid = false
 			continue

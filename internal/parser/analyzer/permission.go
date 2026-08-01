@@ -113,10 +113,10 @@ func (p *Analysis) normalizeRequireExpr(expr *model.PermissionExpr, allowChecks 
 func (p *Analysis) normalizeRequireItem(item *model.PermissionCheckInvocation, allowChecks bool, method *model.Method, ownerPos model.Position) (*model.PermissionExpr, bool) {
 	resourceRef := item.ResourceSkelName
 	resource, action := p.findResourceAction(resourceRef, item.ActionName)
-	if !p.reporter.check(resource != nil, `%s require references undefined resource "%s"`, ownerPos, resourceRef) {
+	if !p.reporter.checkReference(resource != nil, `%s require references undefined resource "%s"`, ownerPos, resourceRef) {
 		return nil, false
 	}
-	if !p.reporter.check(action != nil, `%s require references undefined action "%s"`, ownerPos, item.ActionName) {
+	if !p.reporter.checkReference(action != nil, `%s require references undefined action "%s"`, ownerPos, item.ActionName) {
 		return nil, false
 	}
 	if !p.reporter.check(!p.isImportedResourceRef(resourceRef) || resource.Pub,
@@ -135,7 +135,7 @@ func (p *Analysis) normalizeRequireItem(item *model.PermissionCheckInvocation, a
 		return nil, false
 	}
 	check := findResourceCheck(resource, action, item.CheckName)
-	if !p.reporter.check(check != nil, `%s require references undefined check "%s"`, ownerPos, item.CheckName) {
+	if !p.reporter.checkReference(check != nil, `%s require references undefined check "%s"`, ownerPos, item.CheckName) {
 		return nil, false
 	}
 	checkArguments := resourceCheckArguments(check)

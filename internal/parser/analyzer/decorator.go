@@ -34,7 +34,7 @@ func parseDecoratorMeta(reporter *diagnosticReporter, decorators []*grammar.Deco
 		switch decorator.Name.Value {
 		case "desc":
 			accepted := reporter.check(ctx.allowDesc, "%s unexpected decorator %s", decorator.Name.Pos, "@"+decorator.Name.Value)
-			accepted = reporter.check(meta.Description == "", "%s duplicated decorator @desc", decorator.Name.Pos) && accepted
+			accepted = reporter.checkDuplicate(meta.Description == "", "%s duplicated decorator @desc", decorator.Name.Pos) && accepted
 			accepted = reporter.check(decorator.Value != nil, "%s decorator @desc requires a string argument", decorator.Name.Pos) && accepted
 			valid = accepted && valid
 			if !accepted {
@@ -49,7 +49,7 @@ func parseDecoratorMeta(reporter *diagnosticReporter, decorators []*grammar.Deco
 			meta.Description = description
 		case "example":
 			accepted := reporter.check(ctx.allowExample, "%s unexpected decorator %s", decorator.Name.Pos, "@"+decorator.Name.Value)
-			accepted = reporter.checkNot(meta.HasExample, "%s duplicated decorator @example", decorator.Name.Pos) && accepted
+			accepted = reporter.checkNotDuplicate(meta.HasExample, "%s duplicated decorator @example", decorator.Name.Pos) && accepted
 			accepted = reporter.check(decorator.Value != nil && decorator.Value.Raw != "",
 				"%s decorator @example requires a value", decorator.Name.Pos) && accepted
 			valid = accepted && valid
@@ -61,7 +61,7 @@ func parseDecoratorMeta(reporter *diagnosticReporter, decorators []*grammar.Deco
 			meta.examplePos = decorator.Name.Pos
 		case "sensitive":
 			accepted := reporter.check(ctx.allowSensitive, "%s unexpected decorator %s", decorator.Name.Pos, "@"+decorator.Name.Value)
-			accepted = reporter.checkNot(meta.Sensitive, "%s duplicated decorator @sensitive", decorator.Name.Pos) && accepted
+			accepted = reporter.checkNotDuplicate(meta.Sensitive, "%s duplicated decorator @sensitive", decorator.Name.Pos) && accepted
 			accepted = reporter.check(decorator.Value == nil,
 				"%s decorator @sensitive does not accept an argument", decorator.Name.Pos) && accepted
 			valid = accepted && valid
@@ -70,7 +70,7 @@ func parseDecoratorMeta(reporter *diagnosticReporter, decorators []*grammar.Deco
 			}
 		case "deprecated":
 			accepted := reporter.check(ctx.allowDeprecated, "%s unexpected decorator %s", decorator.Name.Pos, "@"+decorator.Name.Value)
-			accepted = reporter.checkNot(meta.hasDeprecated, "%s duplicated decorator @deprecated", decorator.Name.Pos) && accepted
+			accepted = reporter.checkNotDuplicate(meta.hasDeprecated, "%s duplicated decorator @deprecated", decorator.Name.Pos) && accepted
 			meta.hasDeprecated = true
 			accepted = reporter.check(decorator.Value != nil,
 				"%s decorator @deprecated requires a deprecation reason", decorator.Name.Pos) && accepted

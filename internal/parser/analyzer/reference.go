@@ -147,7 +147,7 @@ func parseType(reporter *diagnosticReporter, s *grammar.Type) (*model.Type, bool
 		case grammar.SkelPermissionCode:
 			t.Kind = model.TypeKindSkelPermissionCode
 		default:
-			reporter.reportf("%s unknown PlainType %s", s.Pos, *s.Plain)
+			reporter.reportReferencef("%s unknown PlainType %s", s.Pos, *s.Plain)
 			valid = false
 		}
 
@@ -186,7 +186,7 @@ func parseType(reporter *diagnosticReporter, s *grammar.Type) (*model.Type, bool
 		t.TypeArguments = typeArgs
 
 	default:
-		reporter.reportf("%s unknown Type %+v", s.Pos, s)
+		reporter.reportReferencef("%s unknown Type %+v", s.Pos, s)
 		valid = false
 	}
 

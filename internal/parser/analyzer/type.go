@@ -45,12 +45,12 @@ func fixTypeRef(reporter *diagnosticReporter, t *model.Type, refCtx *refContext)
 				}
 				return valid
 			}
-			if !reporter.check(import_ != nil, "%s import alias %s not found", t.Pos, refQualifier) {
+			if !reporter.checkReference(import_ != nil, "%s import alias %s not found", t.Pos, refQualifier) {
 				return false
 			}
 			enum, enumOK := import_.Domain.enumsMap[refName]
 			dataType, dataOK := import_.Domain.dataMap[refName]
-			if !reporter.check(enumOK || dataOK, "%s definition of %s.%s not found", t.Pos, refQualifier, refName) {
+			if !reporter.checkReference(enumOK || dataOK, "%s definition of %s.%s not found", t.Pos, refQualifier, refName) {
 				return false
 			}
 			if enumOK {
@@ -89,7 +89,7 @@ func fixTypeRef(reporter *diagnosticReporter, t *model.Type, refCtx *refContext)
 		if dataOK && refCtx.invalidData[dataType] {
 			return false
 		}
-		if !reporter.check(enumOK || dataOK || paramOK, "%s definition of %s not found", t.Pos, refName) {
+		if !reporter.checkReference(enumOK || dataOK || paramOK, "%s definition of %s not found", t.Pos, refName) {
 			return false
 		}
 		if enumOK {

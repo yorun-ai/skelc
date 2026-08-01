@@ -58,7 +58,7 @@ func parseResource(reporter *diagnosticReporter, ge *grammar.Resource, pub bool)
 		valid = checkValid && valid
 		duplicatedPosition, duplicated := checkPos[check.Name]
 		if duplicated {
-			reporter.reportf("%s duplicated resource check %s found, also present at %s", grammarCheck.Name.Pos, check.Name, duplicatedPosition)
+			reporter.reportDuplicatef("%s duplicated resource check %s found, also present at %s", grammarCheck.Name.Pos, check.Name, duplicatedPosition)
 			valid = false
 			continue
 		}
@@ -73,7 +73,7 @@ func parseResource(reporter *diagnosticReporter, ge *grammar.Resource, pub bool)
 		valid = actionValid && valid
 		duplicatedPosition, duplicated := actionPos[action.Name]
 		if duplicated {
-			reporter.reportf("%s duplicated resource action %s found, also present at %s", action.Pos, action.Name, duplicatedPosition)
+			reporter.reportDuplicatef("%s duplicated resource action %s found, also present at %s", action.Pos, action.Name, duplicatedPosition)
 			valid = false
 			continue
 		}
@@ -109,13 +109,13 @@ func parseResourceAction(reporter *diagnosticReporter, ga *grammar.ResourceActio
 		check, checkValid := parseResourceCheck(reporter, ga.Name.Value, grammarCheck)
 		valid = checkValid && valid
 		if duplicatedPosition, duplicated := resourceCheckPos[check.Name]; duplicated {
-			reporter.reportf("%s duplicated resource action check %s found, also present at %s", grammarCheck.Name.Pos, check.Name, duplicatedPosition)
+			reporter.reportDuplicatef("%s duplicated resource action check %s found, also present at %s", grammarCheck.Name.Pos, check.Name, duplicatedPosition)
 			valid = false
 			continue
 		}
 		duplicatedPosition, duplicated := checkPos[check.Name]
 		if duplicated {
-			reporter.reportf("%s duplicated resource action check %s found, also present at %s", grammarCheck.Name.Pos, check.Name, duplicatedPosition)
+			reporter.reportDuplicatef("%s duplicated resource action check %s found, also present at %s", grammarCheck.Name.Pos, check.Name, duplicatedPosition)
 			valid = false
 			continue
 		}
@@ -165,7 +165,7 @@ func parseResourceCheck(reporter *diagnosticReporter, actionName string, gc *gra
 				valid = reporter.check(arg.Name != "code", `%s resource check argument name "code" is reserved`, grammarArgument.Name.Pos) && valid
 			}
 			if duplicatedPosition, duplicated := argPos[arg.Name]; duplicated {
-				reporter.reportf("%s duplicated Argument %s found, also present at %s", arg.Pos, arg.Name, duplicatedPosition)
+				reporter.reportDuplicatef("%s duplicated Argument %s found, also present at %s", arg.Pos, arg.Name, duplicatedPosition)
 				valid = false
 				continue
 			}

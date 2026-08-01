@@ -64,7 +64,7 @@ func checkCaseAdvanced(
 	valid = reporter.check(body != "", "%s missing body after trimming prefix & suffix: found=%s", pos, name) && valid
 	if !matchesCase(body, expectedCase) {
 		expectedName := fmt.Sprintf("%s%s%s", prefix, convertCase(body, expectedCase), suffix)
-		reporter.reportf("%s incorrect case: found=%s, expected=%s (%s -> %s)", pos, name, expectedName, kindName, expectedFormat)
+		reporter.reportNamingf(expectedName, "%s incorrect case: found=%s, expected=%s (%s -> %s)", pos, name, expectedName, kindName, expectedFormat)
 		valid = false
 	}
 	return valid

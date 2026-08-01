@@ -39,7 +39,7 @@ func parseTaskTriggers(reporter *diagnosticReporter, owner *grammar.Identifier, 
 		valid = triggerValid && valid
 		duplicatedPosition, duplicated := triggerPos[trigger.Name]
 		if duplicated {
-			reporter.reportf("%s duplicated task trigger %s found, also present at %s", trigger.Pos, trigger.Name, duplicatedPosition)
+			reporter.reportDuplicatef("%s duplicated task trigger %s found, also present at %s", trigger.Pos, trigger.Name, duplicatedPosition)
 			valid = false
 			continue
 		}
@@ -89,7 +89,7 @@ func parseTaskTrigger(reporter *diagnosticReporter, gt *grammar.TaskTrigger) (*m
 		valid = argumentValid && valid
 		duplicatedPosition, duplicated := argPos[arg.Name]
 		if duplicated {
-			reporter.reportf("%s duplicated Argument %s found, also present at %s", arg.Pos, arg.Name, duplicatedPosition)
+			reporter.reportDuplicatef("%s duplicated Argument %s found, also present at %s", arg.Pos, arg.Name, duplicatedPosition)
 			valid = false
 			continue
 		}

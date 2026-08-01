@@ -1,4 +1,4 @@
-package lsp
+package features
 
 import (
 	"testing"
@@ -9,8 +9,8 @@ import (
 	"go.lsp.dev/uri"
 )
 
-func TestServerHoverShowsQualifiedDeclaration(t *testing.T) {
-	server := newServer()
+func TestServiceHoverShowsQualifiedDeclaration(t *testing.T) {
+	server := newFixture()
 	userURI := uri.File("/workspace/user.skel")
 	orderURI := uri.File("/workspace/order.skel")
 	server.putDocument(userURI, "domain demo.user\n@desc(\"Account data\")\ndata User {}\n", 1, true)
@@ -29,8 +29,8 @@ func TestServerHoverShowsQualifiedDeclaration(t *testing.T) {
 	assert.Contains(t, content.Value, "Account data")
 }
 
-func TestServerHoverShowsDeprecation(t *testing.T) {
-	server := newServer()
+func TestServiceHoverShowsDeprecation(t *testing.T) {
+	server := newFixture()
 	userURI := uri.File("/workspace/user.skel")
 	orderURI := uri.File("/workspace/order.skel")
 	server.putDocument(userURI, "domain demo.user\n@deprecated(\"Use Profile instead\")\ndata User {}\n", 1, true)
@@ -47,8 +47,8 @@ func TestServerHoverShowsDeprecation(t *testing.T) {
 	assert.Contains(t, hover.Contents.(*protocol.MarkupContent).Value, "Deprecated: Use Profile instead")
 }
 
-func TestServerSuppressesCompletionInCommentsAndHoversBuiltInTypes(t *testing.T) {
-	server := newServer()
+func TestServiceSuppressesCompletionInCommentsAndHoversBuiltInTypes(t *testing.T) {
+	server := newFixture()
 	documentURI := uri.File("/workspace/user.skel")
 	server.putDocument(documentURI, "domain demo\n// string\ndata User { id: int }\n", 1, true)
 

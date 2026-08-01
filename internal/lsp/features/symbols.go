@@ -1,4 +1,4 @@
-package lsp
+package features
 
 import (
 	"context"
@@ -7,14 +7,13 @@ import (
 
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
+	"go.yorun.ai/skelc/internal/lsp/index"
 )
 
-func (s *_Server) Symbols(_ context.Context, params *protocol.WorkspaceSymbolParams) (protocol.WorkspaceSymbolResult, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+func (s *Service) Symbols(_ context.Context, params *protocol.WorkspaceSymbolParams) (protocol.WorkspaceSymbolResult, error) {
 	query := strings.ToLower(strings.TrimSpace(params.Query))
 	result := protocol.SymbolInformationSlice{}
-	for _, document := range s.documents {
+	for _, document := range s.Snapshot.Documents() {
 		appendWorkspaceSymbols(&result, document.URI, document.Symbols, "", query)
 	}
 	slices.SortFunc(result, func(left, right protocol.SymbolInformation) int {
@@ -29,7 +28,7 @@ func (s *_Server) Symbols(_ context.Context, params *protocol.WorkspaceSymbolPar
 	return result, nil
 }
 
-func documentSymbols(symbols []_Symbol) protocol.DocumentSymbolSlice {
+func documentSymbols(symbols []index.Symbol) protocol.DocumentSymbolSlice {
 	result := make(protocol.DocumentSymbolSlice, 0, len(symbols))
 	for _, symbol := range symbols {
 		detail := symbol.Detail
@@ -45,13 +44,13 @@ func documentSymbols(symbols []_Symbol) protocol.DocumentSymbolSlice {
 	return result
 }
 
-func selectionRange(symbol _Symbol) protocol.Range {
+func selectionRange(symbol index.Symbol) protocol.Range {
 	range_ := symbol.Range
 	range_.End = protocol.Position{Line: range_.Start.Line, Character: range_.Start.Character + uint32(utf16Length(symbol.Name))}
 	return range_
 }
 
-func appendWorkspaceSymbols(result *protocol.SymbolInformationSlice, documentURI uri.URI, symbols []_Symbol, container, query string) {
+func appendWorkspaceSymbols(result *protocol.SymbolInformationSlice, documentURI uri.URI, symbols []index.Symbol, container, query string) {
 	for _, symbol := range symbols {
 		if query == "" || strings.Contains(strings.ToLower(symbol.Name), query) {
 			var tags []protocol.SymbolTag

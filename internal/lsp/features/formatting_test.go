@@ -1,4 +1,4 @@
-package lsp
+package features
 
 import (
 	"testing"
@@ -9,8 +9,8 @@ import (
 	"go.lsp.dev/uri"
 )
 
-func TestServerFormatsValidDocuments(t *testing.T) {
-	server := newServer()
+func TestServiceFormatsValidDocuments(t *testing.T) {
+	server := newFixture()
 	documentURI := uri.File("/workspace/user.skel")
 	server.putDocument(documentURI, "domain demo\ndata User {\nid: int\n}\n", 1, true)
 
@@ -22,8 +22,8 @@ func TestServerFormatsValidDocuments(t *testing.T) {
 	assert.Equal(t, "domain demo\n\ndata User {\n    id: int\n}\n", edits[0].NewText)
 }
 
-func TestServerDoesNotFormatInvalidDocuments(t *testing.T) {
-	server := newServer()
+func TestServiceDoesNotFormatInvalidDocuments(t *testing.T) {
+	server := newFixture()
 	documentURI := uri.File("/workspace/user.skel")
 	server.putDocument(documentURI, "domain demo\ndata User {", 1, true)
 

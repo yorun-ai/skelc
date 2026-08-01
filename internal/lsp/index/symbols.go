@@ -1,4 +1,4 @@
-package lsp
+package index
 
 import (
 	"strings"
@@ -33,8 +33,8 @@ func entryDefinition(entry *grammar.SkelEntry) (string, lexer.Position, protocol
 	}
 }
 
-func entrySymbol(source string, entry *grammar.SkelEntry, name, detail, description string, deprecated bool, kind protocol.SymbolKind, range_ protocol.Range) _Symbol {
-	children := []_Symbol{}
+func entrySymbol(source string, entry *grammar.SkelEntry, name, detail, description string, deprecated bool, kind protocol.SymbolKind, range_ protocol.Range) Symbol {
+	children := []Symbol{}
 	switch {
 	case entry.Enum != nil:
 		for _, item := range entry.Enum.Items {
@@ -65,7 +65,7 @@ func entrySymbol(source string, entry *grammar.SkelEntry, name, detail, descript
 				children = append(children, resourceCheckSymbol(source, section.Check))
 			}
 			if section.Action != nil {
-				actionChildren := make([]_Symbol, 0, len(section.Action.Checks))
+				actionChildren := make([]Symbol, 0, len(section.Action.Checks))
 				for _, check := range section.Action.Checks {
 					actionChildren = append(actionChildren, resourceCheckSymbol(source, check))
 				}
@@ -78,7 +78,7 @@ func entrySymbol(source string, entry *grammar.SkelEntry, name, detail, descript
 				continue
 			}
 			method := section.Method
-			methodChildren := []_Symbol{}
+			methodChildren := []Symbol{}
 			if method.Input != nil {
 				methodChildren = argumentSymbols(source, method.Input.Arguments)
 			}
@@ -91,33 +91,33 @@ func entrySymbol(source string, entry *grammar.SkelEntry, name, detail, descript
 		}
 	case entry.Task != nil:
 		for _, trigger := range entry.Task.Triggers {
-			triggerChildren := []_Symbol{}
+			triggerChildren := []Symbol{}
 			if trigger.Input != nil {
 				triggerChildren = argumentSymbols(source, trigger.Input.Arguments)
 			}
 			children = append(children, newDecoratedSymbol(source, trigger.Name, "trigger", trigger.Decorators, protocol.SymbolKindEvent, triggerChildren))
 		}
 	}
-	return finishSymbol(_Symbol{Name: name, Detail: detail, Description: description, Deprecated: deprecated, Kind: kind, Range: range_, Children: children})
+	return finishSymbol(Symbol{Name: name, Detail: detail, Description: description, Deprecated: deprecated, Kind: kind, Range: range_, Children: children})
 }
 
-func dataMemberSymbols(source string, members []*grammar.DataMember) []_Symbol {
-	symbols := make([]_Symbol, 0, len(members))
+func dataMemberSymbols(source string, members []*grammar.DataMember) []Symbol {
+	symbols := make([]Symbol, 0, len(members))
 	for _, member := range members {
 		symbols = append(symbols, newDecoratedSymbol(source, member.Name, "field", member.Decorators, protocol.SymbolKindField, nil))
 	}
 	return symbols
 }
 
-func argumentSymbols(source string, arguments []*grammar.Argument) []_Symbol {
-	symbols := make([]_Symbol, 0, len(arguments))
+func argumentSymbols(source string, arguments []*grammar.Argument) []Symbol {
+	symbols := make([]Symbol, 0, len(arguments))
 	for _, argument := range arguments {
 		symbols = append(symbols, newDecoratedSymbol(source, argument.Name, "parameter", argument.Decorators, protocol.SymbolKindVariable, nil))
 	}
 	return symbols
 }
 
-func resourceCheckSymbol(source string, check *grammar.ResourceCheck) _Symbol {
+func resourceCheckSymbol(source string, check *grammar.ResourceCheck) Symbol {
 	var arguments []*grammar.Argument
 	if check.Input != nil {
 		arguments = check.Input.Arguments
@@ -126,22 +126,22 @@ func resourceCheckSymbol(source string, check *grammar.ResourceCheck) _Symbol {
 	return newDecoratedSymbol(source, check.Name, "check", check.Decorators, protocol.SymbolKindFunction, children)
 }
 
-func newDecoratedSymbol(source string, name *grammar.Identifier, detail string, decorators []*grammar.Decorator, kind protocol.SymbolKind, children []_Symbol) _Symbol {
+func newDecoratedSymbol(source string, name *grammar.Identifier, detail string, decorators []*grammar.Decorator, kind protocol.SymbolKind, children []Symbol) Symbol {
 	description, deprecated := documentationFromDecoratorGroups(decorators)
 	return newSymbol(source, name, detail, description, deprecated, kind, children)
 }
 
-func newSymbol(source string, name *grammar.Identifier, detail, description string, deprecated bool, kind protocol.SymbolKind, children []_Symbol) _Symbol {
+func newSymbol(source string, name *grammar.Identifier, detail, description string, deprecated bool, kind protocol.SymbolKind, children []Symbol) Symbol {
 	range_ := identifierRange(source, name.Pos, name.Value)
-	return finishSymbol(_Symbol{Name: name.Value, Detail: detail, Description: description, Deprecated: deprecated, Kind: kind, Range: range_, Children: children})
+	return finishSymbol(Symbol{Name: name.Value, Detail: detail, Description: description, Deprecated: deprecated, Kind: kind, Range: range_, Children: children})
 }
 
-func sectionSymbol(source, name string, pos lexer.Position, children []_Symbol) _Symbol {
+func sectionSymbol(source, name string, pos lexer.Position, children []Symbol) Symbol {
 	range_ := identifierRange(source, pos, name)
-	return finishSymbol(_Symbol{Name: name, Detail: "actor auth section", Kind: protocol.SymbolKindObject, Range: range_, Children: children})
+	return finishSymbol(Symbol{Name: name, Detail: "actor auth section", Kind: protocol.SymbolKindObject, Range: range_, Children: children})
 }
 
-func finishSymbol(symbol _Symbol) _Symbol {
+func finishSymbol(symbol Symbol) Symbol {
 	for _, child := range symbol.Children {
 		if comparePosition(child.Range.End, symbol.Range.End) > 0 {
 			symbol.Range.End = child.Range.End

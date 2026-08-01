@@ -1,26 +1,23 @@
-package lsp
+package features
 
 import (
 	"context"
 	"slices"
 
 	"go.lsp.dev/protocol"
+	"go.yorun.ai/skelc/internal/lsp/index"
 )
 
-func (s *_Server) Hover(_ context.Context, params *protocol.HoverParams) (*protocol.Hover, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	document := s.documents[params.TextDocument.URI]
+func (s *Service) Hover(_ context.Context, params *protocol.HoverParams) (*protocol.Hover, error) {
+	snapshot := s.Snapshot
+	document := snapshot.Document(params.TextDocument.URI)
 	if document == nil {
 		return nil, nil
 	}
 	if occurrence, ok := occurrenceAt(document, params.Position); ok {
-		for _, candidate := range s.documents {
-			for _, definition := range candidate.Definitions {
-				if definition.Key == occurrence.Key {
-					return hoverResult(occurrence.Range, definition.Detail, definition.Key, definition.Description), nil
-				}
-			}
+		for _, location := range snapshot.Definitions(occurrence.Key) {
+			definition := location.Definition
+			return hoverResult(occurrence.Range, definition.Detail, definition.Key, definition.Description), nil
 		}
 	}
 	if symbol, ok := symbolAt(document.Symbols, params.Position); ok {
@@ -46,7 +43,7 @@ func hoverResult(range_ protocol.Range, detail, name, description string) *proto
 	return &protocol.Hover{Contents: &protocol.MarkupContent{Kind: protocol.MarkupKindMarkdown, Value: value}, Range: &range_}
 }
 
-func symbolAt(symbols []_Symbol, position protocol.Position) (_Symbol, bool) {
+func symbolAt(symbols []index.Symbol, position protocol.Position) (index.Symbol, bool) {
 	for _, symbol := range symbols {
 		selection := selectionRange(symbol)
 		if containsPosition(selection, position) {
@@ -56,5 +53,5 @@ func symbolAt(symbols []_Symbol, position protocol.Position) (_Symbol, bool) {
 			return child, true
 		}
 	}
-	return _Symbol{}, false
+	return index.Symbol{}, false
 }

@@ -1,29 +1,30 @@
-package lsp
+package features
 
 import (
 	"strings"
 
 	"go.lsp.dev/protocol"
+	"go.yorun.ai/skelc/internal/lsp/index"
 	"go.yorun.ai/skelc/internal/parser"
 	"go.yorun.ai/skelc/internal/parser/grammar"
 )
 
-type decoratorAllowance uint8
+type _DecoratorAllowance uint8
 
 const (
-	allowDesc decoratorAllowance = 1 << iota
+	allowDesc _DecoratorAllowance = 1 << iota
 	allowExample
 	allowSensitive
 	allowDeprecated
 )
 
-type decoratorTarget struct {
+type _DecoratorTarget struct {
 	offset    int
-	allowance decoratorAllowance
-	existing  decoratorAllowance
+	allowance _DecoratorAllowance
+	existing  _DecoratorAllowance
 }
 
-func allowedDecoratorsAt(document *_Document, position protocol.Position) []string {
+func allowedDecoratorsAt(document *index.Document, position protocol.Position) []string {
 	offset := positionOffset(document.Source, position)
 	prefixStart := offset
 	for prefixStart > 0 {
@@ -47,7 +48,7 @@ func allowedDecoratorsAt(document *_Document, position protocol.Position) []stri
 	}
 
 	targets := collectDecoratorTargets(content, sanitized)
-	var selected *decoratorTarget
+	var selected *_DecoratorTarget
 	for index := range targets {
 		target := &targets[index]
 		if target.offset < offset || !decoratorGapOnly(sanitized[offset:target.offset]) {
@@ -73,19 +74,19 @@ func allowedDecoratorsAt(document *_Document, position protocol.Position) []stri
 	return decorators
 }
 
-func collectDecoratorTargets(content *grammar.SkelContent, source string) []decoratorTarget {
-	targets := make([]decoratorTarget, 0)
-	add := func(offset int, allowance decoratorAllowance, decorators []*grammar.Decorator) {
+func collectDecoratorTargets(content *grammar.SkelContent, source string) []_DecoratorTarget {
+	targets := make([]_DecoratorTarget, 0)
+	add := func(offset int, allowance _DecoratorAllowance, decorators []*grammar.Decorator) {
 		if offset >= 0 {
-			targets = append(targets, decoratorTarget{
+			targets = append(targets, _DecoratorTarget{
 				offset: offset, allowance: allowance, existing: existingDecorators(decorators),
 			})
 		}
 	}
-	addKeyword := func(offset int, keyword string, allowance decoratorAllowance, decorators []*grammar.Decorator) {
+	addKeyword := func(offset int, keyword string, allowance _DecoratorAllowance, decorators []*grammar.Decorator) {
 		add(keywordOffsetBefore(source, offset, keyword), allowance, decorators)
 	}
-	addBlockKeyword := func(offset int, keyword string, allowance decoratorAllowance, decorators []*grammar.Decorator) {
+	addBlockKeyword := func(offset int, keyword string, allowance _DecoratorAllowance, decorators []*grammar.Decorator) {
 		add(keywordOffsetAfterDecorators(source, offset, keyword), allowance, decorators)
 	}
 	addMembers := func(members []*grammar.DataMember) {
@@ -149,17 +150,17 @@ func collectDecoratorTargets(content *grammar.SkelContent, source string) []deco
 			}
 		case entry.Service != nil:
 			addKeyword(identifierOffset(entry.Service.Name), "service", allowDesc|allowDeprecated, entry.Service.Decorators)
-			methods := make([]decoratedMethod, 0)
+			methods := make([]_DecoratedMethod, 0)
 			if len(entry.Service.Sections) > 0 {
 				for _, section := range entry.Service.Sections {
 					if section.Method != nil {
 						decorators := append(append([]*grammar.Decorator{}, section.Decorators...), section.Method.Decorators...)
-						methods = append(methods, decoratedMethod{method: section.Method, decorators: decorators})
+						methods = append(methods, _DecoratedMethod{method: section.Method, decorators: decorators})
 					}
 				}
 			} else {
 				for _, method := range entry.Service.Methods {
-					methods = append(methods, decoratedMethod{method: method, decorators: method.Decorators})
+					methods = append(methods, _DecoratedMethod{method: method, decorators: method.Decorators})
 				}
 			}
 			for _, decorated := range methods {
@@ -179,14 +180,14 @@ func collectDecoratorTargets(content *grammar.SkelContent, source string) []deco
 	return targets
 }
 
-type decoratedMethod struct {
+type _DecoratedMethod struct {
 	method     *grammar.Method
 	decorators []*grammar.Decorator
 }
 
 func addResourceCheckTarget(
-	addKeyword func(int, string, decoratorAllowance, []*grammar.Decorator),
-	addBlockKeyword func(int, string, decoratorAllowance, []*grammar.Decorator),
+	addKeyword func(int, string, _DecoratorAllowance, []*grammar.Decorator),
+	addBlockKeyword func(int, string, _DecoratorAllowance, []*grammar.Decorator),
 	addArguments func([]*grammar.Argument),
 	check *grammar.ResourceCheck,
 ) {
@@ -195,7 +196,7 @@ func addResourceCheckTarget(
 }
 
 func addMethodTargets(
-	addBlockKeyword func(int, string, decoratorAllowance, []*grammar.Decorator),
+	addBlockKeyword func(int, string, _DecoratorAllowance, []*grammar.Decorator),
 	addArguments func([]*grammar.Argument),
 	input *grammar.MethodInput,
 	output *grammar.MethodOutput,
@@ -295,7 +296,7 @@ func isIdentifierByte(value byte) bool {
 		value >= '0' && value <= '9'
 }
 
-func decoratorBit(decorator string) decoratorAllowance {
+func decoratorBit(decorator string) _DecoratorAllowance {
 	switch decorator {
 	case "desc":
 		return allowDesc
@@ -310,8 +311,8 @@ func decoratorBit(decorator string) decoratorAllowance {
 	}
 }
 
-func existingDecorators(decorators []*grammar.Decorator) decoratorAllowance {
-	var existing decoratorAllowance
+func existingDecorators(decorators []*grammar.Decorator) _DecoratorAllowance {
+	var existing _DecoratorAllowance
 	for _, decorator := range decorators {
 		if decorator != nil && decorator.Name != nil {
 			existing |= decoratorBit(decorator.Name.Value)

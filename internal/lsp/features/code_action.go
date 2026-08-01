@@ -1,4 +1,4 @@
-package lsp
+package features
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"go.yorun.ai/skelc/internal/parser"
 )
 
-func (s *_Server) CodeAction(_ context.Context, params *protocol.CodeActionParams) ([]protocol.CommandOrCodeAction, error) {
+func (s *Service) CodeAction(_ context.Context, params *protocol.CodeActionParams) ([]protocol.CommandOrCodeAction, error) {
 	actions := []protocol.CommandOrCodeAction{}
 	for _, diagnostic := range params.Context.Diagnostics {
 		if len(diagnostic.Data) == 0 {

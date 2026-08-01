@@ -25,6 +25,20 @@ type _OffsetLexer struct {
 	byteOffset int
 }
 
+type _SourceSegmentScanner struct {
+	source     []byte
+	tokens     []lexer.Token
+	identifier lexer.TokenType
+	elided     map[lexer.TokenType]bool
+	starts     []_SourceSegment
+
+	depth                 int
+	hasDeclaration        bool
+	lastLine              int
+	pendingDecoratorStart int
+	pendingDecoratorLine  int
+}
+
 // ParseSourceRecovering returns the declarations that can be recovered from a
 // source together with independent syntax diagnostics in source order. The
 // initial token pass isolates top-level declarations so recovery reparses only
@@ -95,61 +109,76 @@ func splitSourceSegments(path string, source []byte) []_SourceSegment {
 		symbols["BlockComment"]: true,
 		symbols["Newline"]:      true,
 	}
-	starts := []_SourceSegment{{line: 1}}
-	depth := 0
-	hasDeclaration := false
-	lastLine := 0
-	pendingDecoratorStart := -1
-	pendingDecoratorLine := 0
-	for index, token := range tokens {
-		if token.EOF() || elided[token.Type] {
-			continue
-		}
-		firstOnLine := token.Pos.Line != lastLine
-		lastLine = token.Pos.Line
-		if firstOnLine {
-			kind := topLevelTokenKind(tokens, index, symbols["Identifier"], elided)
-			if depth > 0 && kind == "decorator" {
-				if pendingDecoratorStart < 0 {
-					pendingDecoratorStart, _, _ = sourceLineOffsets(source, token.Pos.Line)
-					pendingDecoratorLine = token.Pos.Line
-				}
-			} else if kind != "" {
-				if hasDeclaration || depth > 0 {
-					start, _, _ := sourceLineOffsets(source, token.Pos.Line)
-					line := token.Pos.Line
-					if depth > 0 && pendingDecoratorStart >= 0 {
-						start = pendingDecoratorStart
-						line = pendingDecoratorLine
-					}
-					starts = append(starts, _SourceSegment{start: start, line: line})
-				}
-				hasDeclaration = kind != "decorator"
-				if depth > 0 {
-					depth = 0
-				}
-				pendingDecoratorStart = -1
-			} else {
-				pendingDecoratorStart = -1
-			}
-		}
-		switch token.Value {
-		case "{":
-			depth++
-		case "}":
-			if depth > 0 {
-				depth--
-			}
-		}
+	scanner := &_SourceSegmentScanner{
+		source: source, tokens: tokens, identifier: symbols["Identifier"], elided: elided,
+		starts: []_SourceSegment{{line: 1}}, pendingDecoratorStart: -1,
 	}
-	for index := range starts {
-		if index+1 < len(starts) {
-			starts[index].end = starts[index+1].start
+	return scanner.scan()
+}
+
+func (s *_SourceSegmentScanner) scan() []_SourceSegment {
+	for index, token := range s.tokens {
+		s.consume(index, token)
+	}
+	for index := range s.starts {
+		if index+1 < len(s.starts) {
+			s.starts[index].end = s.starts[index+1].start
 		} else {
-			starts[index].end = len(source)
+			s.starts[index].end = len(s.source)
 		}
 	}
-	return starts
+	return s.starts
+}
+
+func (s *_SourceSegmentScanner) consume(index int, token lexer.Token) {
+	if token.EOF() || s.elided[token.Type] {
+		return
+	}
+	if token.Pos.Line != s.lastLine {
+		s.consumeFirstTokenOnLine(index, token)
+		s.lastLine = token.Pos.Line
+	}
+	s.updateDepth(token.Value)
+}
+
+func (s *_SourceSegmentScanner) consumeFirstTokenOnLine(index int, token lexer.Token) {
+	kind := topLevelTokenKind(s.tokens, index, s.identifier, s.elided)
+	if s.depth > 0 && kind == "decorator" {
+		if s.pendingDecoratorStart < 0 {
+			s.pendingDecoratorStart, _, _ = sourceLineOffsets(s.source, token.Pos.Line)
+			s.pendingDecoratorLine = token.Pos.Line
+		}
+		return
+	}
+	if kind == "" {
+		s.pendingDecoratorStart = -1
+		return
+	}
+	if s.hasDeclaration || s.depth > 0 {
+		start, _, _ := sourceLineOffsets(s.source, token.Pos.Line)
+		line := token.Pos.Line
+		if s.depth > 0 && s.pendingDecoratorStart >= 0 {
+			start = s.pendingDecoratorStart
+			line = s.pendingDecoratorLine
+		}
+		s.starts = append(s.starts, _SourceSegment{start: start, line: line})
+	}
+	s.hasDeclaration = kind != "decorator"
+	if s.depth > 0 {
+		s.depth = 0
+	}
+	s.pendingDecoratorStart = -1
+}
+
+func (s *_SourceSegmentScanner) updateDepth(value string) {
+	switch value {
+	case "{":
+		s.depth++
+	case "}":
+		if s.depth > 0 {
+			s.depth--
+		}
+	}
 }
 
 func topLevelTokenKind(tokens []lexer.Token, index int, identifier lexer.TokenType, elided map[lexer.TokenType]bool) string {

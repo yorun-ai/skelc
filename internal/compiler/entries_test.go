@@ -1,4 +1,4 @@
-package parser
+package compiler
 
 import (
 	"go.yorun.ai/skelc/model"

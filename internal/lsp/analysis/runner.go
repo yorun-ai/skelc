@@ -7,8 +7,8 @@ import (
 
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
+	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/internal/lsp/workspace"
-	"go.yorun.ai/skelc/internal/parser"
 )
 
 // Result is the semantic diagnostics produced for one workspace revision.
@@ -19,17 +19,17 @@ type Result struct {
 
 // Runner debounces workspace analysis and cancels superseded work.
 type Runner struct {
-	mu         sync.Mutex
-	delay      time.Duration
-	generation uint64
-	timer      *time.Timer
-	cancel     context.CancelFunc
-	analyzer   *parser.WorkspaceAnalyzer
+	mu                sync.Mutex
+	delay             time.Duration
+	generation        uint64
+	timer             *time.Timer
+	cancel            context.CancelFunc
+	workspaceAnalyzer *compiler.WorkspaceAnalyzer
 }
 
 // NewRunner creates a semantic analysis runner.
 func NewRunner(delay time.Duration) *Runner {
-	return &Runner{delay: delay, analyzer: parser.NewWorkspaceAnalyzer()}
+	return &Runner{delay: delay, workspaceAnalyzer: compiler.NewWorkspaceAnalyzer()}
 }
 
 // Schedule replaces pending analysis with analysis of snapshot.
@@ -68,7 +68,7 @@ func (r *Runner) Stop() {
 
 func (r *Runner) run(ctx context.Context, generation uint64, snapshot workspace.Snapshot, accept func(Result)) {
 	sources, paths := SemanticSources(snapshot.DocumentsMap())
-	diagnostics, err := SemanticDiagnostics(ctx, r.analyzer, sources, paths)
+	diagnostics, err := SemanticDiagnostics(ctx, r.workspaceAnalyzer, sources, paths)
 	if err != nil {
 		return
 	}

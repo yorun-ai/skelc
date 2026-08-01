@@ -6,14 +6,14 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
-	"go.yorun.ai/skelc/internal/parser"
+	"go.yorun.ai/skelc/internal/compiler"
 )
 
 func TestCodeActionBuildsQuickFixFromSuggestion(t *testing.T) {
 	diagnostic := protocol.Diagnostic{
 		Range:   protocol.Range{Start: protocol.Position{Line: 2, Character: 8}, End: protocol.Position{Line: 2, Character: 14}},
 		Message: protocol.String("incorrect case"),
-		Data:    diagnosticSuggestionData(&parser.DiagnosticSuggestion{Message: "replace with userId", Replacement: "userId", Replace: true}),
+		Data:    diagnosticSuggestionData(&compiler.DiagnosticSuggestion{Message: "replace with userId", Replacement: "userId", Replace: true}),
 	}
 	documentURI := uri.File("/workspace/user.skel")
 	actions, err := newFixture().CodeAction(t.Context(), &protocol.CodeActionParams{

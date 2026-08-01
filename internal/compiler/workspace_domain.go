@@ -1,4 +1,4 @@
-package parser
+package compiler
 
 import (
 	"context"
@@ -9,8 +9,8 @@ import (
 	"slices"
 	"strings"
 
+	"go.yorun.ai/skelc/internal/analyzer"
 	"go.yorun.ai/skelc/internal/loader"
-	"go.yorun.ai/skelc/internal/parser/analyzer"
 	"go.yorun.ai/skelc/internal/parser/grammar"
 )
 

@@ -4,8 +4,8 @@ import (
 	"strings"
 
 	"go.lsp.dev/protocol"
+	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/internal/lsp/index"
-	"go.yorun.ai/skelc/internal/parser"
 	"go.yorun.ai/skelc/internal/parser/grammar"
 )
 
@@ -42,7 +42,7 @@ func allowedDecoratorsAt(document *index.Document, position protocol.Position) [
 	sanitized := document.Source[:decoratorStart] +
 		strings.Repeat(" ", offset-decoratorStart) +
 		document.Source[offset:]
-	content, _ := parser.ParseSourceRecovering(document.Path, []byte(sanitized))
+	content, _ := compiler.ParseSourceRecovering(document.Path, []byte(sanitized))
 	if content == nil {
 		return nil
 	}

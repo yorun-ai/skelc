@@ -6,24 +6,24 @@ import (
 	"strings"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/compiler"
 	optionvalidation "go.yorun.ai/skelc/internal/option"
-	"go.yorun.ai/skelc/internal/parser"
 )
 
 func TestNormalizeCheckOption(t *testing.T) {
-	parserOption := parser.Option{SkelIn: "./demo"}
+	compilerOption := compiler.Option{SkelIn: "./demo"}
 
-	if err := normalizeParserOption(&parserOption); err != nil {
+	if err := normalizeCompilerOption(&compilerOption); err != nil {
 		t.Fatal(err)
 	}
-	if !filepath.IsAbs(parserOption.SkelIn) {
-		t.Fatalf("expected absolute skel-in, got %q", parserOption.SkelIn)
+	if !filepath.IsAbs(compilerOption.SkelIn) {
+		t.Fatalf("expected absolute skel-in, got %q", compilerOption.SkelIn)
 	}
 }
 
 func TestNormalizeCheckOptionRequiresInput(t *testing.T) {
-	parserOption := parser.Option{}
-	expectOptionError(t, normalizeParserOption(&parserOption), "missing flag skel-in")
+	compilerOption := compiler.Option{}
+	expectOptionError(t, normalizeCompilerOption(&compilerOption), "missing flag skel-in")
 }
 
 func TestFormatGenerationErrorUsesTypedValidationContract(t *testing.T) {

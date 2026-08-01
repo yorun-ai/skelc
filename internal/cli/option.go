@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"go.yorun.ai/skelc/internal/compiler"
 	optionvalidation "go.yorun.ai/skelc/internal/option"
-	"go.yorun.ai/skelc/internal/parser"
 )
 
 type _OptionValidationKey struct {
@@ -47,7 +47,7 @@ func formatGenerationError(err error) error {
 	return errors.New(message)
 }
 
-func normalizeParserOption(option *parser.Option) error {
+func normalizeCompilerOption(option *compiler.Option) error {
 	if option.SkelIn == "" {
 		return fmt.Errorf("missing flag skel-in")
 	}

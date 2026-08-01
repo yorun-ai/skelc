@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	ucli "github.com/urfave/cli/v3"
-	"go.yorun.ai/skelc/internal/parser"
+	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/internal/util/logutil"
 )
 
@@ -40,11 +40,11 @@ const (
 )
 
 type _LogEntry struct {
-	Level    string                    `json:"level"`
-	Code     string                    `json:"code,omitempty"`
-	Severity parser.DiagnosticSeverity `json:"severity,omitempty"`
-	Range    parser.SourceRange        `json:"range,omitempty"`
-	Message  string                    `json:"message"`
+	Level    string                      `json:"level"`
+	Code     string                      `json:"code,omitempty"`
+	Severity compiler.DiagnosticSeverity `json:"severity,omitempty"`
+	Range    compiler.SourceRange        `json:"range,omitempty"`
+	Message  string                      `json:"message"`
 }
 
 func Main() {
@@ -108,7 +108,7 @@ func runCLICommand(command *ucli.Command, args []string) (result Result) {
 
 	err := command.Run(context.Background(), args)
 	if err != nil {
-		if diagnostics, ok := err.(interface{ DiagnosticEntries() parser.Diagnostics }); ok {
+		if diagnostics, ok := err.(interface{ DiagnosticEntries() compiler.Diagnostics }); ok {
 			return Result{
 				ExitCode: ExitCodeError, Stdout: stdout.String(),
 				Stderr: formatDiagnostics(diagnostics.DiagnosticEntries(), rawLogFormat),
@@ -135,12 +135,12 @@ func runCLICommand(command *ucli.Command, args []string) (result Result) {
 	return Result{ExitCode: ExitCodeSuccess, Stdout: stdout.String(), Stderr: stderr.String()}
 }
 
-func formatDiagnostics(diagnostics parser.Diagnostics, format string) string {
+func formatDiagnostics(diagnostics compiler.Diagnostics, format string) string {
 	if format != logFormatJSONL {
 		var output strings.Builder
 		for _, diagnostic := range diagnostics {
 			level := logutil.LevelError
-			if diagnostic.Severity == parser.DiagnosticSeverityWarning {
+			if diagnostic.Severity == compiler.DiagnosticSeverityWarning {
 				level = logutil.LevelWarn
 			}
 			formatted := logutil.Format(logutil.Entry{Level: level, Message: diagnostic.Error()}, format)
@@ -154,12 +154,12 @@ func formatDiagnostics(diagnostics parser.Diagnostics, format string) string {
 	var output strings.Builder
 	for _, diagnostic := range diagnostics {
 		level := logLevelError
-		if diagnostic.Severity == parser.DiagnosticSeverityWarning {
+		if diagnostic.Severity == compiler.DiagnosticSeverityWarning {
 			level = logLevelWarn
 		}
 		entry := struct {
 			Level string `json:"level"`
-			parser.Diagnostic
+			compiler.Diagnostic
 		}{Level: level, Diagnostic: diagnostic}
 		content, err := json.Marshal(entry)
 		if err != nil {
@@ -183,12 +183,12 @@ func formatErrors(errors []error, format string) string {
 	return output.String()
 }
 
-func printDiagnostics(cmd *ucli.Command, diagnostics []parser.Diagnostic) {
+func printDiagnostics(cmd *ucli.Command, diagnostics []compiler.Diagnostic) {
 	for _, diagnostic := range diagnostics {
-		if diagnostic.Severity != parser.DiagnosticSeverityWarning {
+		if diagnostic.Severity != compiler.DiagnosticSeverityWarning {
 			continue
 		}
-		_, _ = fmt.Fprint(cmd.Root().Writer, formatDiagnostics(parser.Diagnostics{diagnostic}, commandLogFormat(cmd)))
+		_, _ = fmt.Fprint(cmd.Root().Writer, formatDiagnostics(compiler.Diagnostics{diagnostic}, commandLogFormat(cmd)))
 	}
 }
 

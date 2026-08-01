@@ -1,4 +1,4 @@
-package parser
+package compiler
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"go.yorun.ai/skelc/model"
 )
 
+// CheckResult contains the diagnostics produced by a check operation.
 type CheckResult struct {
 	Diagnostics Diagnostics
 }

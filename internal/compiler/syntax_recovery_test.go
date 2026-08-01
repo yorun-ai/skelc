@@ -1,4 +1,4 @@
-package parser
+package compiler
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.yorun.ai/skelc/internal/parser/analyzer"
+	"go.yorun.ai/skelc/internal/analyzer"
 	"go.yorun.ai/skelc/model"
 )
 

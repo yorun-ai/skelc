@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 
 	"go.lsp.dev/protocol"
+	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/internal/lsp/source"
-	"go.yorun.ai/skelc/internal/parser"
 )
 
-func diagnosticSuggestionData(suggestion *parser.DiagnosticSuggestion) protocol.LSPAny {
+func diagnosticSuggestionData(suggestion *compiler.DiagnosticSuggestion) protocol.LSPAny {
 	if suggestion == nil {
 		return nil
 	}
@@ -19,7 +19,7 @@ func diagnosticSuggestionData(suggestion *parser.DiagnosticSuggestion) protocol.
 	return protocol.LSPAny(content)
 }
 
-func sourceRangeToProtocol(content string, sourceRange parser.SourceRange) protocol.Range {
+func sourceRangeToProtocol(content string, sourceRange compiler.SourceRange) protocol.Range {
 	buffer := source.New(content)
 	start := buffer.IdentifierRange(sourceRange.Start.Line, sourceRange.Start.Column, "").Start
 	end := buffer.IdentifierRange(sourceRange.End.Line, sourceRange.End.Column, "").Start
@@ -30,8 +30,8 @@ func sourceRangeToProtocol(content string, sourceRange parser.SourceRange) proto
 	return protocol.Range{Start: start, End: end}
 }
 
-func diagnosticSeverityToProtocol(severity parser.DiagnosticSeverity) protocol.DiagnosticSeverity {
-	if severity == parser.DiagnosticSeverityWarning {
+func diagnosticSeverityToProtocol(severity compiler.DiagnosticSeverity) protocol.DiagnosticSeverity {
+	if severity == compiler.DiagnosticSeverityWarning {
 		return protocol.DiagnosticSeverityWarning
 	}
 	return protocol.DiagnosticSeverityError

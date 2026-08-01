@@ -1,4 +1,4 @@
-package parser_test
+package compiler_test
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/internal/formatter"
 	"go.yorun.ai/skelc/internal/parser"
 	"go.yorun.ai/skelc/internal/parser/grammar"
@@ -73,7 +74,7 @@ func BenchmarkParseSourceRecoveringManyDeclarations(b *testing.B) {
 	b.SetBytes(int64(len(input)))
 	b.ResetTimer()
 	for range b.N {
-		content, diagnostics := parser.ParseSourceRecovering("benchmark.skel", input)
+		content, diagnostics := compiler.ParseSourceRecovering("benchmark.skel", input)
 		if content == nil || len(content.Entries) != 50 || len(diagnostics) != 50 {
 			b.Fatalf("unexpected recovery result: entries=%d diagnostics=%d", len(content.Entries), len(diagnostics))
 		}
@@ -84,7 +85,7 @@ func BenchmarkCheck(b *testing.B) {
 	directory := writeBenchmarkDirectory(b, 40)
 	b.ResetTimer()
 	for range b.N {
-		result, err := parser.Check(parser.Option{SkelIn: directory})
+		result, err := compiler.Check(compiler.Option{SkelIn: directory})
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -98,7 +99,7 @@ func BenchmarkParseDirectory(b *testing.B) {
 	directory := writeBenchmarkDirectory(b, 40)
 	b.ResetTimer()
 	for range b.N {
-		if _, err := parser.Parse(parser.Option{SkelIn: directory}); err != nil {
+		if _, err := compiler.Parse(compiler.Option{SkelIn: directory}); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -122,7 +123,7 @@ func BenchmarkWorkspaceAnalysis(b *testing.B) {
 	sources := benchmarkWorkspaceSources(40)
 	b.ResetTimer()
 	for range b.N {
-		if diagnostics := parser.AnalyzeWorkspace(sources); len(diagnostics) != 0 {
+		if diagnostics := compiler.AnalyzeWorkspace(sources); len(diagnostics) != 0 {
 			b.Fatal(diagnostics)
 		}
 	}
@@ -130,7 +131,7 @@ func BenchmarkWorkspaceAnalysis(b *testing.B) {
 
 func BenchmarkIncrementalWorkspaceAnalysis(b *testing.B) {
 	sources := benchmarkWorkspaceSources(40)
-	analyzer := parser.NewWorkspaceAnalyzer()
+	analyzer := compiler.NewWorkspaceAnalyzer()
 	if diagnostics := analyzer.Analyze(sources); len(diagnostics) != 0 {
 		b.Fatal(diagnostics)
 	}
@@ -142,8 +143,8 @@ func BenchmarkIncrementalWorkspaceAnalysis(b *testing.B) {
 	}
 }
 
-func benchmarkWorkspaceSources(count int) []parser.Source {
-	sources := make([]parser.Source, 0, count)
+func benchmarkWorkspaceSources(count int) []compiler.Source {
+	sources := make([]compiler.Source, 0, count)
 	for index := range count {
 		name := fmt.Sprintf("benchmark.d%d", index)
 		content := "domain " + name + "\npub data Value { id: string }\n"
@@ -151,7 +152,7 @@ func benchmarkWorkspaceSources(count int) []parser.Source {
 			previous := fmt.Sprintf("benchmark.d%d", index-1)
 			content = "domain " + name + "\nimport " + previous + "\npub data Value { previous: d" + fmt.Sprint(index-1) + ".Value }\n"
 		}
-		sources = append(sources, parser.Source{Path: fmt.Sprintf("/benchmark/%d.skel", index), Content: []byte(content)})
+		sources = append(sources, compiler.Source{Path: fmt.Sprintf("/benchmark/%d.skel", index), Content: []byte(content)})
 	}
 	return sources
 }
@@ -176,6 +177,6 @@ func FuzzParserFormatterAnalyzer(f *testing.F) {
 				t.Fatalf("formatter changed valid syntax: %v", formattedErr)
 			}
 		}
-		_ = parser.AnalyzeWorkspace([]parser.Source{{Path: "/fuzz/input.skel", Content: source}})
+		_ = compiler.AnalyzeWorkspace([]compiler.Source{{Path: "/fuzz/input.skel", Content: source}})
 	})
 }

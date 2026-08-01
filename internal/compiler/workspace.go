@@ -1,4 +1,4 @@
-package parser
+package compiler
 
 import (
 	"context"
@@ -44,6 +44,8 @@ type WorkspaceAnalyzer struct {
 	stats   WorkspaceAnalysisStats
 }
 
+// WorkspaceAnalysisStats reports syntax and semantic cache usage from the most
+// recent workspace analysis.
 type WorkspaceAnalysisStats struct {
 	ParsedSources   int
 	ReusedSources   int
@@ -51,6 +53,7 @@ type WorkspaceAnalysisStats struct {
 	ReusedDomains   int
 }
 
+// NewWorkspaceAnalyzer creates an incremental workspace analyzer.
 func NewWorkspaceAnalyzer() *WorkspaceAnalyzer {
 	return &WorkspaceAnalyzer{parses: map[string]_CachedWorkspaceParse{}, domains: map[string]_CachedWorkspaceDomain{}}
 }
@@ -63,11 +66,13 @@ func AnalyzeWorkspace(sources []Source) []Diagnostic {
 	return NewWorkspaceAnalyzer().Analyze(sources)
 }
 
+// Analyze analyzes a workspace snapshot without cancellation.
 func (w *WorkspaceAnalyzer) Analyze(sources []Source) []Diagnostic {
 	diagnostics, _ := w.AnalyzeContext(context.Background(), sources)
 	return diagnostics
 }
 
+// AnalyzeContext analyzes a workspace snapshot and honors cancellation.
 func (w *WorkspaceAnalyzer) AnalyzeContext(ctx context.Context, sources []Source) ([]Diagnostic, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -75,6 +80,7 @@ func (w *WorkspaceAnalyzer) AnalyzeContext(ctx context.Context, sources []Source
 	return w.analyze(ctx, sources, false)
 }
 
+// Stats returns cache usage from the most recent analysis.
 func (w *WorkspaceAnalyzer) Stats() WorkspaceAnalysisStats {
 	w.mu.Lock()
 	defer w.mu.Unlock()

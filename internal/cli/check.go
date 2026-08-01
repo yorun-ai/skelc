@@ -2,10 +2,10 @@ package cli
 
 import (
 	"context"
-
 	"fmt"
+
 	ucli "github.com/urfave/cli/v3"
-	"go.yorun.ai/skelc/internal/parser"
+	"go.yorun.ai/skelc/internal/compiler"
 )
 
 const (
@@ -26,7 +26,7 @@ func newCheckCommand() *ucli.Command {
 			if err != nil {
 				return err
 			}
-			result, err := parser.Check(option)
+			result, err := compiler.Check(option)
 			if err != nil {
 				return err
 			}
@@ -39,12 +39,12 @@ func newCheckCommand() *ucli.Command {
 	}
 }
 
-func parseCheckCommand(cmd *ucli.Command) (parser.Option, error) {
+func parseCheckCommand(cmd *ucli.Command) (compiler.Option, error) {
 	if cmd.Args().Len() != 0 {
-		return parser.Option{}, fmt.Errorf("unexpected args for %s", commandCheck)
+		return compiler.Option{}, fmt.Errorf("unexpected args for %s", commandCheck)
 	}
-	parserOption := parser.Option{
+	compilerOption := compiler.Option{
 		SkelIn: cmd.String(flagCheckSkelIn),
 	}
-	return parserOption, normalizeParserOption(&parserOption)
+	return compilerOption, normalizeCompilerOption(&compilerOption)
 }

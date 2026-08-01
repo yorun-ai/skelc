@@ -16,7 +16,7 @@ import (
 	"go.yorun.ai/skelc/internal/codegen/golang"
 	"go.yorun.ai/skelc/internal/codegen/skeleton"
 	"go.yorun.ai/skelc/internal/codegen/typescript"
-	"go.yorun.ai/skelc/internal/parser"
+	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -45,15 +45,15 @@ type ParseResult struct {
 	Diagnostics []Diagnostic
 }
 
-type Diagnostic = parser.Diagnostic
-type DiagnosticSeverity = parser.DiagnosticSeverity
-type SourceRange = parser.SourceRange
-type DiagnosticRelatedInformation = parser.DiagnosticRelatedInformation
-type DiagnosticSuggestion = parser.DiagnosticSuggestion
+type Diagnostic = compiler.Diagnostic
+type DiagnosticSeverity = compiler.DiagnosticSeverity
+type SourceRange = compiler.SourceRange
+type DiagnosticRelatedInformation = compiler.DiagnosticRelatedInformation
+type DiagnosticSuggestion = compiler.DiagnosticSuggestion
 
 const (
-	DiagnosticSeverityError   = parser.DiagnosticSeverityError
-	DiagnosticSeverityWarning = parser.DiagnosticSeverityWarning
+	DiagnosticSeverityError   = compiler.DiagnosticSeverityError
+	DiagnosticSeverityWarning = compiler.DiagnosticSeverityWarning
 )
 
 // CompileResult contains structured non-fatal diagnostics produced while loading and parsing Skel sources.
@@ -120,7 +120,7 @@ func Parse(input Input) (ParseResult, error) {
 	if err != nil {
 		return ParseResult{}, err
 	}
-	parsed, parseErr := parser.Parse(option)
+	parsed, parseErr := compiler.Parse(option)
 	if parseErr != nil {
 		return ParseResult{}, parseErr
 	}
@@ -162,7 +162,7 @@ func CompileGolang(input Input, option GolangOption) (CompileResult, error) {
 	if err != nil {
 		return CompileResult{}, err
 	}
-	parsed, err := parser.Parse(parserOption)
+	parsed, err := compiler.Parse(parserOption)
 	if err != nil {
 		return CompileResult{}, err
 	}
@@ -206,7 +206,7 @@ func CompileTypeScript(input Input, option TypeScriptOption) (CompileResult, err
 	if err != nil {
 		return CompileResult{}, err
 	}
-	parsed, err := parser.Parse(parserOption)
+	parsed, err := compiler.Parse(parserOption)
 	if err != nil {
 		return CompileResult{}, err
 	}
@@ -247,7 +247,7 @@ func CompileSkeleton(input Input, option SkeletonOption) (CompileResult, error) 
 	if err != nil {
 		return CompileResult{}, err
 	}
-	parsed, err := parser.Parse(parserOption)
+	parsed, err := compiler.Parse(parserOption)
 	if err != nil {
 		return CompileResult{}, err
 	}

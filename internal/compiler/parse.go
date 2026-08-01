@@ -1,4 +1,4 @@
-package parser
+package compiler
 
 import (
 	"errors"
@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"slices"
 
+	"go.yorun.ai/skelc/internal/analyzer"
+	"go.yorun.ai/skelc/internal/hasher"
 	"go.yorun.ai/skelc/internal/loader"
-	"go.yorun.ai/skelc/internal/parser/analyzer"
-	"go.yorun.ai/skelc/internal/parser/hasher"
 	"go.yorun.ai/skelc/model"
 )
 

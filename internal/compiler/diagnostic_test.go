@@ -1,11 +1,11 @@
-package parser
+package compiler
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.yorun.ai/skelc/internal/parser/analyzer"
+	"go.yorun.ai/skelc/internal/analyzer"
 	"go.yorun.ai/skelc/internal/util/checkutil"
 )
 

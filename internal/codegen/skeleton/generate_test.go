@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	skelparser "go.yorun.ai/skelc/internal/parser"
+	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -327,7 +327,7 @@ func parseDomainForTest(t *testing.T, domainPath string, domainContent string, i
 	if err := os.WriteFile(filepath.Join(dir, filepath.Base(inputPath)), []byte(inputContent), 0o644); err != nil {
 		t.Fatalf("write input fixture: %v", err)
 	}
-	parsed, err := skelparser.Parse(skelparser.Option{SkelIn: dir, SkelImports: imports})
+	parsed, err := compiler.Parse(compiler.Option{SkelIn: dir, SkelImports: imports})
 	if err != nil {
 		t.Fatalf("parse test domain: %v", err)
 	}
@@ -345,7 +345,7 @@ func readGeneratedFileForTest(t *testing.T, path string) string {
 
 func assertGeneratedSkelParses(t *testing.T, outputDir string) {
 	t.Helper()
-	if _, err := skelparser.Parse(skelparser.Option{SkelIn: outputDir}); err != nil {
+	if _, err := compiler.Parse(compiler.Option{SkelIn: outputDir}); err != nil {
 		t.Fatalf("parse generated skel: %v", err)
 	}
 }

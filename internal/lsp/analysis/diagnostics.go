@@ -10,18 +10,18 @@ import (
 
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
+	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/internal/lsp/index"
 	"go.yorun.ai/skelc/internal/lsp/source"
-	"go.yorun.ai/skelc/internal/parser"
 )
 
 // SemanticSources converts indexed LSP documents into compiler sources.
-func SemanticSources(documents map[uri.URI]*index.Document) ([]parser.Source, map[string]uri.URI) {
-	sources := make([]parser.Source, 0, len(documents))
+func SemanticSources(documents map[uri.URI]*index.Document) ([]compiler.Source, map[string]uri.URI) {
+	sources := make([]compiler.Source, 0, len(documents))
 	paths := make(map[string]uri.URI, len(documents))
 	for documentURI, document := range documents {
 		path := filepath.Clean(document.Path)
-		sources = append(sources, parser.Source{
+		sources = append(sources, compiler.Source{
 			Path: path, Domain: document.Domain, Root: filepath.Dir(path),
 			Content: []byte(document.Source), Parsed: document.Parsed,
 			ParseDiagnostics: document.ParseDiagnostics,
@@ -33,13 +33,13 @@ func SemanticSources(documents map[uri.URI]*index.Document) ([]parser.Source, ma
 
 // SemanticDiagnostics analyzes sources and converts compiler diagnostics to
 // their LSP representation.
-func SemanticDiagnostics(ctx context.Context, analyzer *parser.WorkspaceAnalyzer, sources []parser.Source, paths map[string]uri.URI) (map[uri.URI][]protocol.Diagnostic, error) {
+func SemanticDiagnostics(ctx context.Context, workspaceAnalyzer *compiler.WorkspaceAnalyzer, sources []compiler.Source, paths map[string]uri.URI) (map[uri.URI][]protocol.Diagnostic, error) {
 	result := map[uri.URI][]protocol.Diagnostic{}
 	contents := make(map[string]string, len(sources))
 	for _, source := range sources {
 		contents[filepath.Clean(source.Path)] = string(source.Content)
 	}
-	diagnostics, err := analyzer.AnalyzeContext(ctx, sources)
+	diagnostics, err := workspaceAnalyzer.AnalyzeContext(ctx, sources)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func SemanticDiagnostics(ctx context.Context, analyzer *parser.WorkspaceAnalyzer
 	return result, nil
 }
 
-func sourceRangeToProtocol(content string, sourceRange parser.SourceRange) protocol.Range {
+func sourceRangeToProtocol(content string, sourceRange compiler.SourceRange) protocol.Range {
 	buffer := source.New(content)
 	start := buffer.IdentifierRange(sourceRange.Start.Line, sourceRange.Start.Column, "").Start
 	end := buffer.IdentifierRange(sourceRange.End.Line, sourceRange.End.Column, "").Start
@@ -84,14 +84,14 @@ func sourceRangeToProtocol(content string, sourceRange parser.SourceRange) proto
 	return protocol.Range{Start: start, End: end}
 }
 
-func diagnosticSeverityToProtocol(severity parser.DiagnosticSeverity) protocol.DiagnosticSeverity {
-	if severity == parser.DiagnosticSeverityWarning {
+func diagnosticSeverityToProtocol(severity compiler.DiagnosticSeverity) protocol.DiagnosticSeverity {
+	if severity == compiler.DiagnosticSeverityWarning {
 		return protocol.DiagnosticSeverityWarning
 	}
 	return protocol.DiagnosticSeverityError
 }
 
-func diagnosticSuggestionData(suggestion *parser.DiagnosticSuggestion) protocol.LSPAny {
+func diagnosticSuggestionData(suggestion *compiler.DiagnosticSuggestion) protocol.LSPAny {
 	if suggestion == nil {
 		return nil
 	}

@@ -6,8 +6,8 @@ import (
 
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
+	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/internal/lsp/source"
-	"go.yorun.ai/skelc/internal/parser"
 	"go.yorun.ai/skelc/internal/parser/grammar"
 )
 
@@ -21,7 +21,7 @@ type Document struct {
 	Definitions      []Definition
 	Symbols          []Symbol
 	Occurrences      []Occurrence
-	ParseDiagnostics parser.Diagnostics
+	ParseDiagnostics compiler.Diagnostics
 	Parsed           *grammar.SkelContent
 }
 
@@ -57,7 +57,7 @@ func Build(documentURI uri.URI, path, content string, version int32) *Document {
 	}
 	document := &Document{URI: documentURI, Path: path, Source: content, Version: version, Imports: map[string]string{}}
 	tokens := source.New(content).IdentifierTokens()
-	parsed, diagnostics := parser.ParseSourceRecovering(path, []byte(content))
+	parsed, diagnostics := compiler.ParseSourceRecovering(path, []byte(content))
 	document.Parsed = parsed
 	document.ParseDiagnostics = diagnostics
 	if len(diagnostics) > 0 {

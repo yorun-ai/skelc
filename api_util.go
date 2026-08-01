@@ -11,25 +11,25 @@ import (
 	gomodule "go.yorun.ai/skelc/internal/codegen/golang/module"
 	"go.yorun.ai/skelc/internal/codegen/skeleton"
 	"go.yorun.ai/skelc/internal/codegen/typescript"
+	"go.yorun.ai/skelc/internal/compiler"
 	optionvalidation "go.yorun.ai/skelc/internal/option"
-	"go.yorun.ai/skelc/internal/parser"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/model"
 )
 
-func normalizeInput(input Input) (parser.Option, error) {
+func normalizeInput(input Input) (compiler.Option, error) {
 	if strings.TrimSpace(input.SkelIn) == "" {
-		return parser.Option{}, optionvalidation.NewValidationError(optionvalidation.FieldSkelInput, optionvalidation.RuleRequired, "skel input is required")
+		return compiler.Option{}, optionvalidation.NewValidationError(optionvalidation.FieldSkelInput, optionvalidation.RuleRequired, "skel input is required")
 	}
 	skelIn, err := absolutePath(input.SkelIn)
 	if err != nil {
-		return parser.Option{}, err
+		return compiler.Option{}, err
 	}
 	imports, err := normalizePathMap(input.SkelImports)
 	if err != nil {
-		return parser.Option{}, err
+		return compiler.Option{}, err
 	}
-	return parser.Option{SkelIn: skelIn, SkelImports: imports}, nil
+	return compiler.Option{SkelIn: skelIn, SkelImports: imports}, nil
 }
 
 func normalizeGolangOption(option GolangOption) (golang.Option, error) {

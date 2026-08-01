@@ -1,4 +1,4 @@
-package parser
+package compiler
 
 import (
 	"path/filepath"
@@ -64,17 +64,6 @@ func TestParseReturnsErrorWhenDomainFileDeclaresEntries(t *testing.T) {
 	)
 	_, err := parseDomainFilesWithImports(findDomainFileForTest(t, files), files, nil)
 	expectErrorContains(t, err, "can only contain domain declaration and @desc")
-}
-
-func TestValidateSource(t *testing.T) {
-	if err := ValidateSource("/tmp/demo.skel", []byte("domain demo.user\n")); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestValidateSourceReturnsErrorForInvalidSyntax(t *testing.T) {
-	err := ValidateSource("/tmp/demo.skel", []byte("domain {\n"))
-	expectErrorContains(t, err, "parse /tmp/demo.skel failed")
 }
 
 func validationFilesForTest(t *testing.T, domain, source string) []*loader.SourceFile {

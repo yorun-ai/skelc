@@ -1,4 +1,4 @@
-package parser
+package compiler
 
 import (
 	"errors"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
-	"go.yorun.ai/skelc/internal/parser/analyzer"
+	"go.yorun.ai/skelc/internal/analyzer"
 	"go.yorun.ai/skelc/internal/util/checkutil"
 	"go.yorun.ai/skelc/model"
 )

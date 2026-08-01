@@ -1,4 +1,4 @@
-package parser
+package compiler
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.yorun.ai/skelc/internal/parser/analyzer"
+	"go.yorun.ai/skelc/internal/analyzer"
 )
 
 func TestAnalyzeWorkspaceValidatesCrossDomainTypes(t *testing.T) {

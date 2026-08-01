@@ -12,6 +12,7 @@ package skelc
 import (
 	"fmt"
 
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/codegen/golang"
 	"go.yorun.ai/skelc/internal/codegen/skeleton"
 	"go.yorun.ai/skelc/internal/codegen/typescript"
@@ -143,19 +144,11 @@ func generateGolang(domain *model.Domain, option golang.Option) error {
 	if err := validateGolangImports(domain, option); err != nil {
 		return err
 	}
-	outputs, outputErr := stageManagedOutputs(option.Out, option.PubOut)
-	if outputErr != nil {
-		return outputErr
-	}
-	defer abortManagedOutputs(outputs)
-	option.Out = outputs[0].StageDir()
-	if option.PubOut != "" {
-		option.PubOut = outputs[1].StageDir()
-	}
-	if err := golang.Generate(domain, option); err != nil {
-		return err
-	}
-	return commitManagedOutputs(outputs)
+	return common.RunManagedOutputs([]string{option.Out, option.PubOut}, func(staged []string) error {
+		option.Out = staged[0]
+		option.PubOut = staged[1]
+		return golang.Generate(domain, option)
+	})
 }
 
 // CompileGolang parses input and generates Go source or a standalone Go module.
@@ -196,16 +189,10 @@ func generateTypeScript(domain *model.Domain, option typescript.Option) error {
 	if err := validateTypeScriptImports(domain, option); err != nil {
 		return err
 	}
-	outputs, outputErr := stageManagedOutputs(option.Out)
-	if outputErr != nil {
-		return outputErr
-	}
-	defer abortManagedOutputs(outputs)
-	option.Out = outputs[0].StageDir()
-	if err := typescript.Generate(domain, option); err != nil {
-		return err
-	}
-	return commitManagedOutputs(outputs)
+	return common.RunManagedOutputs([]string{option.Out}, func(staged []string) error {
+		option.Out = staged[0]
+		return typescript.Generate(domain, option)
+	})
 }
 
 // CompileTypeScript parses input and generates TypeScript source. Parsing
@@ -243,16 +230,10 @@ func GenerateSkeleton(domain *model.Domain, option SkeletonOption) error {
 }
 
 func generateSkeleton(domain *model.Domain, option skeleton.Option) error {
-	outputs, outputErr := stageManagedOutputs(option.Out)
-	if outputErr != nil {
-		return outputErr
-	}
-	defer abortManagedOutputs(outputs)
-	option.Out = outputs[0].StageDir()
-	if err := skeleton.Generate(domain, option); err != nil {
-		return err
-	}
-	return commitManagedOutputs(outputs)
+	return common.RunManagedOutputs([]string{option.Out}, func(staged []string) error {
+		option.Out = staged[0]
+		return skeleton.Generate(domain, option)
+	})
 }
 
 // CompileSkeleton parses input and generates a Skel contract. Parsing completes

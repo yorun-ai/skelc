@@ -7,7 +7,6 @@ import (
 	"slices"
 	"strings"
 
-	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/codegen/golang"
 	gomodule "go.yorun.ai/skelc/internal/codegen/golang/module"
 	"go.yorun.ai/skelc/internal/codegen/skeleton"
@@ -222,32 +221,6 @@ func checkNoTrailingSlash(value, label string, field optionvalidation.Field) err
 		return optionvalidation.NewValidationError(field, optionvalidation.RuleNoTrailingSlash, label+" must not end with /")
 	}
 	return nil
-}
-
-func stageManagedOutputs(paths ...string) ([]*common.ManagedOutput, error) {
-	outputs := make([]*common.ManagedOutput, 0, len(paths))
-	for _, path := range paths {
-		if path == "" {
-			continue
-		}
-		output, err := common.NewManagedOutput(path)
-		if err != nil {
-			abortManagedOutputs(outputs)
-			return nil, err
-		}
-		outputs = append(outputs, output)
-	}
-	return outputs, nil
-}
-
-func commitManagedOutputs(outputs []*common.ManagedOutput) error {
-	return common.CommitManagedOutputs(outputs)
-}
-
-func abortManagedOutputs(outputs []*common.ManagedOutput) {
-	for _, output := range outputs {
-		output.Abort()
-	}
 }
 
 func absolutePath(path string) (string, error) {

@@ -165,6 +165,12 @@ type _CachedWorkspaceDomain struct {
 	analysis    *analyzer.Analysis
 }
 
+type _WorkspaceImportResolution struct {
+	analyses      []*analyzer.Analysis
+	valid         bool
+	hasUnresolved bool
+}
+
 // WorkspaceAnalyzer caches syntax trees and successful domain analyses across
 // workspace snapshots. A changed domain invalidates only itself and reverse
 // dependents whose import fingerprints consequently change.
@@ -411,13 +417,32 @@ func (w *WorkspaceAnalyzer) analyzeWorkspaceDomain(
 	}
 
 	domain.state = workspaceDomainVisiting
-	imports := make([]*analyzer.Analysis, 0, len(domain.merged.Imports))
+	imports, completed := w.resolveWorkspaceDomainImports(ctx, domain, domainsByName, diagnostics, allowMissingImports)
+	if !completed {
+		return false
+	}
+	if !imports.valid {
+		domain.state = workspaceDomainFailed
+		return false
+	}
+	return w.analyzeResolvedWorkspaceDomain(domain, imports, domainsByName, diagnostics)
+}
+
+func (w *WorkspaceAnalyzer) resolveWorkspaceDomainImports(
+	ctx context.Context,
+	domain *_WorkspaceDomain,
+	domainsByName map[string][]*_WorkspaceDomain,
+	diagnostics *[]Diagnostic,
+	allowMissingImports bool,
+) (_WorkspaceImportResolution, bool) {
+	resolution := _WorkspaceImportResolution{
+		analyses: make([]*analyzer.Analysis, 0, len(domain.merged.Imports)),
+		valid:    true,
+	}
 	seenImports := map[string]bool{}
-	importsValid := true
-	hasUnresolvedImports := false
 	for _, importDecl := range domain.merged.Imports {
 		if ctx.Err() != nil {
-			return false
+			return resolution, false
 		}
 		name := importDecl.Domain.String()
 		if seenImports[name] {
@@ -425,12 +450,12 @@ func (w *WorkspaceAnalyzer) analyzeWorkspaceDomain(
 		}
 		seenImports[name] = true
 		if domain.root != "" {
-			hasUnresolvedImports = true
+			resolution.hasUnresolved = true
 			continue
 		}
 		candidates := domainsByName[name]
 		if len(candidates) > 1 {
-			hasUnresolvedImports = true
+			resolution.hasUnresolved = true
 			continue
 		}
 		var imported *_WorkspaceDomain
@@ -438,32 +463,39 @@ func (w *WorkspaceAnalyzer) analyzeWorkspaceDomain(
 			imported = candidates[0]
 		}
 		if imported != nil && (imported.invalid || imported.syntaxInvalid) {
-			importsValid = false
+			resolution.valid = false
 			continue
 		}
 		if imported == nil || imported.merged == nil {
 			if allowMissingImports {
-				hasUnresolvedImports = true
+				resolution.hasUnresolved = true
 				continue
 			}
 			*diagnostics = append(*diagnostics, Diagnostic{
 				Code: DiagnosticCodeImportMissing, Severity: DiagnosticSeverityError, Position: workspacePosition(importDecl.Pos),
 				Message: fmt.Sprintf("skel import %s not found in the workspace", name),
 			})
-			importsValid = false
+			resolution.valid = false
 			continue
 		}
 		if !w.analyzeWorkspaceDomain(ctx, imported, domainsByName, diagnostics, allowMissingImports) {
-			importsValid = false
+			if ctx.Err() != nil {
+				return resolution, false
+			}
+			resolution.valid = false
 			continue
 		}
-		imports = append(imports, imported.analysis)
+		resolution.analyses = append(resolution.analyses, imported.analysis)
 	}
-	if !importsValid {
-		domain.state = workspaceDomainFailed
-		return false
-	}
+	return resolution, true
+}
 
+func (w *WorkspaceAnalyzer) analyzeResolvedWorkspaceDomain(
+	domain *_WorkspaceDomain,
+	imports _WorkspaceImportResolution,
+	domainsByName map[string][]*_WorkspaceDomain,
+	diagnostics *[]Diagnostic,
+) bool {
 	domain.fingerprint = workspaceDomainFingerprint(domain, domainsByName)
 	if cached, ok := w.domains[domain.key]; ok && cached.fingerprint == domain.fingerprint {
 		w.stats.ReusedDomains++
@@ -474,10 +506,10 @@ func (w *WorkspaceAnalyzer) analyzeWorkspaceDomain(
 	var analysis *analyzer.Analysis
 	var analysisErrors []error
 	w.stats.AnalyzedDomains++
-	if hasUnresolvedImports {
+	if imports.hasUnresolved {
 		analysis, analysisErrors = analyzer.AnalyzeImport(domain.merged)
 	} else {
-		analysis, analysisErrors = analyzer.Analyze(domain.merged, imports)
+		analysis, analysisErrors = analyzer.Analyze(domain.merged, imports.analyses)
 	}
 	if len(analysisErrors) > 0 {
 		for _, analysisError := range analysisErrors {

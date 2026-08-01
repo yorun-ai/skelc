@@ -27,6 +27,34 @@ type _OutputCommit struct {
 	targetExisted bool
 }
 
+// RunManagedOutputs stages every non-empty target, runs generate with matching
+// staging paths, and commits all outputs as one transaction. A generation or
+// commit failure leaves target outputs unchanged.
+func RunManagedOutputs(targets []string, generate func([]string) error) error {
+	stagePaths := make([]string, len(targets))
+	outputs := make([]*ManagedOutput, 0, len(targets))
+	defer func() {
+		for _, output := range outputs {
+			output.Abort()
+		}
+	}()
+	for index, target := range targets {
+		if target == "" {
+			continue
+		}
+		output, err := NewManagedOutput(target)
+		if err != nil {
+			return err
+		}
+		outputs = append(outputs, output)
+		stagePaths[index] = output.StageDir()
+	}
+	if err := generate(stagePaths); err != nil {
+		return err
+	}
+	return CommitManagedOutputs(outputs)
+}
+
 func (o *ManagedOutput) Commit() error {
 	if o == nil || o.stageRoot == "" {
 		return errors.New("output staging transaction is closed")

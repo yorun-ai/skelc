@@ -9,6 +9,42 @@ import (
 	"testing"
 )
 
+func TestRunManagedOutputsStagesAlignedOutputsAndCommits(t *testing.T) {
+	root := t.TempDir()
+	firstTarget := filepath.Join(root, "regular")
+	secondTarget := filepath.Join(root, "public")
+	if err := RunManagedOutputs([]string{firstTarget, "", secondTarget}, func(staged []string) error {
+		if len(staged) != 3 || staged[0] == "" || staged[1] != "" || staged[2] == "" {
+			t.Fatalf("unexpected staged paths: %q", staged)
+		}
+		if staged[0] == firstTarget || staged[2] == secondTarget {
+			t.Fatal("generator received target path instead of staging path")
+		}
+		writeOutputTestFile(t, filepath.Join(staged[0], "generated.go"), "regular")
+		writeOutputTestFile(t, filepath.Join(staged[2], "generated.go"), "public")
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	assertOutputTestContent(t, filepath.Join(firstTarget, "generated.go"), "regular")
+	assertOutputTestContent(t, filepath.Join(secondTarget, "generated.go"), "public")
+}
+
+func TestRunManagedOutputsAbortsOnGenerationFailure(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "generated")
+	writeOutputTestFile(t, filepath.Join(target, "existing.go"), "existing")
+	expected := errors.New("injected generation failure")
+	err := RunManagedOutputs([]string{target}, func(staged []string) error {
+		writeOutputTestFile(t, filepath.Join(staged[0], "new.go"), "new")
+		return expected
+	})
+	if !errors.Is(err, expected) {
+		t.Fatalf("expected generation failure, got %v", err)
+	}
+	assertOutputTestContent(t, filepath.Join(target, "existing.go"), "existing")
+	assertOutputTestMissing(t, filepath.Join(target, "new.go"))
+}
+
 func TestManagedOutputPreservesUnmanagedFilesAndRemovesUnchangedStaleFiles(t *testing.T) {
 	target := filepath.Join(t.TempDir(), "generated")
 	writeOutputTestFile(t, filepath.Join(target, "user.go"), "user")

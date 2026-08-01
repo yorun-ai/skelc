@@ -29,6 +29,12 @@ func (p *Analysis) normalizeWithMissingImports(allowMissingImports bool) {
 		unavailable:            p.unavailable,
 		allowUnresolvedImports: allowMissingImports,
 	}
+	p.normalizeDeclaredData(refs)
+	p.normalizeOwnedTypes(refs, allowMissingImports)
+	p.validateNormalizedData(allowMissingImports)
+}
+
+func (p *Analysis) normalizeDeclaredData(refs *refContext) {
 	for _, name := range slices.Sorted(maps.Keys(p.dataMap)) {
 		dataType := p.dataMap[name]
 		if !p.normalizeDataType(dataType, refs) {
@@ -37,7 +43,9 @@ func (p *Analysis) normalizeWithMissingImports(allowMissingImports bool) {
 		}
 	}
 	p.propagateInvalidData()
+}
 
+func (p *Analysis) normalizeOwnedTypes(refs *refContext, allowMissingImports bool) {
 	for _, name := range slices.Sorted(maps.Keys(p.actorsMap)) {
 		actor := p.actorsMap[name]
 		p.normalizeDataType(actor.AuthCredential, refs)
@@ -77,6 +85,9 @@ func (p *Analysis) normalizeWithMissingImports(allowMissingImports bool) {
 			}
 		}
 	}
+}
+
+func (p *Analysis) validateNormalizedData(allowMissingImports bool) {
 	allData := sliceutil.Filter(sortData(p.dataMap), func(dataType *model.Data) bool {
 		return !p.invalidData[dataType]
 	})

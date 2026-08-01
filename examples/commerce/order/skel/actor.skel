@@ -1,0 +1,20 @@
+domain commerce.order
+
+@desc("Customer entering through generated clients or OpenAPI")
+pub actor CustomerActor {
+    via client {}
+    via openapi {}
+
+    auth {
+        @sensitive
+        credential {
+            token: string
+        }
+
+        info {
+            userId: uuid
+        }
+    }
+
+    permission {}
+}

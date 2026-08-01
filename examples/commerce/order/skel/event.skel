@@ -1,0 +1,10 @@
+domain commerce.order
+
+@desc("Published after an order is accepted")
+pub event OrderPlacedEvent {
+    payload {
+        orderId: uuid
+        customerId: uuid
+        placedAt: timestamp
+    }
+}

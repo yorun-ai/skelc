@@ -1,0 +1,2 @@
+@desc("User identity contracts for the commerce example")
+domain identity.user

@@ -25,4 +25,5 @@
 /tmp/
 /temp/
 /examples/quickstart/generated/
+/examples/commerce/generated/
 *.log

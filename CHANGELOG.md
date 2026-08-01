@@ -6,6 +6,22 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+### Changed
+
+- Compiler validation and compatibility-hash failures now propagate explicit
+  errors instead of relying on panic-based checks
+
+### Fixed
+
+- `format` stages all changed files before committing them and restores files
+  already replaced if a later write fails
+- Multi-target generation stages every output before committing and restores
+  all affected targets when a commit fails
+- `@deprecated` completion inserts its required reason and uses a snippet
+  placeholder when the language client supports snippets
+
+## [0.10.3] - 2026-07-30
+
 ### Fixed
 
 - Language-server semantic analysis now matches `check`: it merges same-domain

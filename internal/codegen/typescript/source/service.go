@@ -50,15 +50,15 @@ type Service struct {
 	WireMethods  []*_WireMethod
 }
 
-type serviceNames struct {
+type _ServiceNames struct {
 	Name        string
 	FactoryName string
 	SpecName    string
 }
 
-func buildServiceNames(serviceName string) *serviceNames {
+func buildServiceNames(serviceName string) *_ServiceNames {
 	name := nameutil.ToCamel(serviceName)
-	return &serviceNames{
+	return &_ServiceNames{
 		Name:        name,
 		FactoryName: fmt.Sprintf("create%s", name),
 		SpecName:    fmt.Sprintf("%sSpec", name),

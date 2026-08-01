@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.yorun.ai/skelc/internal/parser"
+	"go.yorun.ai/skelc/internal/compiler"
 )
 
 func TestRunSkelcCheck(t *testing.T) {
@@ -127,7 +127,7 @@ data User {
 		if err := json.Unmarshal([]byte(line), entry); err != nil {
 			t.Fatal(err)
 		}
-		if !strings.HasPrefix(entry.Code, "syntax.") || entry.Severity != parser.DiagnosticSeverityError {
+		if !strings.HasPrefix(entry.Code, "syntax.") || entry.Severity != compiler.DiagnosticSeverityError {
 			t.Fatalf("unexpected structured diagnostic: %+v", entry)
 		}
 		if entry.Range.End.Column <= entry.Range.Start.Column {

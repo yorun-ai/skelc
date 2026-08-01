@@ -108,6 +108,30 @@ pnpm build
 
 Update both when a change affects both language semantics and command behavior.
 
+## Releases
+
+Keep unreleased user-visible changes under the `[Unreleased]` heading in
+[CHANGELOG.md](CHANGELOG.md). Before creating a tag, move those entries to a
+heading in the form `## [VERSION] - YYYY-MM-DD`, add a fresh `[Unreleased]`
+heading, merge that release-preparation change, and tag the exact commit that
+contains it. The release workflow rejects a tag whose version has no matching
+changelog heading.
+
+Batch non-urgent changes into a planned weekly release instead of tagging each
+merged pull request. Additional releases in the same week are reserved for
+security issues, data-loss risks, release regressions, or compatibility defects
+that should not wait for the next release train. Record the reason for an
+out-of-cycle patch in its GitHub release notes.
+
+Before publishing a release, confirm that:
+
+- the release commit is on `main` and required checks pass
+- `CHANGELOG.md` contains the version and release date, with no released entry
+  left under `[Unreleased]`
+- coordinated documentation and dependency-version changes are merged
+- release notes describe compatibility impact and any required regeneration
+- the tag points to the reviewed release commit
+
 ## VS Code Extension
 
 The extension is maintained in the independent

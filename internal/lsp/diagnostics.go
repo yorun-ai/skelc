@@ -5,6 +5,7 @@ import (
 
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
+	lspdiagnostic "go.yorun.ai/skelc/internal/lsp/diagnostic"
 )
 
 func (s *_Server) publishDiagnostics(ctx context.Context, documentURI uri.URI) error {
@@ -24,11 +25,7 @@ func (s *_Server) publishDiagnosticsWithClient(ctx context.Context, client proto
 	diagnostics := semantic
 	if document != nil {
 		for _, diagnostic := range document.ParseDiagnostics {
-			diagnostics = append(diagnostics, protocol.Diagnostic{
-				Range: sourceRangeToProtocol(document.Source, diagnostic.Range), Severity: diagnosticSeverityToProtocol(diagnostic.Severity),
-				Code: protocol.String(diagnostic.Code), Source: protocol.NewOptional("skelc"),
-				Message: protocol.String(diagnostic.Message), Data: diagnosticSuggestionData(diagnostic.Suggestion),
-			})
+			diagnostics = append(diagnostics, lspdiagnostic.ToProtocol(diagnostic, document.Source, nil))
 		}
 	}
 	params := &protocol.PublishDiagnosticsParams{URI: documentURI, Diagnostics: diagnostics}

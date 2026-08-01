@@ -8,6 +8,7 @@ import (
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
 	"go.yorun.ai/skelc/internal/lsp/index"
+	"go.yorun.ai/skelc/internal/lsp/source"
 )
 
 func (s *Service) Symbols(_ context.Context, params *protocol.WorkspaceSymbolParams) (protocol.WorkspaceSymbolResult, error) {
@@ -23,7 +24,7 @@ func (s *Service) Symbols(_ context.Context, params *protocol.WorkspaceSymbolPar
 		if compared := strings.Compare(string(left.Location.URI), string(right.Location.URI)); compared != 0 {
 			return compared
 		}
-		return comparePosition(left.Location.Range.Start, right.Location.Range.Start)
+		return source.ComparePosition(left.Location.Range.Start, right.Location.Range.Start)
 	})
 	return result, nil
 }

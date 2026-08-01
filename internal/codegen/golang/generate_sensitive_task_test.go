@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"go.yorun.ai/skelc/internal/codegen/golang"
-	skelparser "go.yorun.ai/skelc/internal/parser"
+	"go.yorun.ai/skelc/internal/compiler"
 )
 
 func TestGenerateSensitiveTaskInputEndToEnd(t *testing.T) {
@@ -31,7 +31,7 @@ task RebuildIndexTask {
 		t.Fatalf("write task source: %v", err)
 	}
 
-	parsed, err := skelparser.Parse(skelparser.Option{SkelIn: inputDir})
+	parsed, err := compiler.Compile(compiler.Option{SkelIn: inputDir})
 	if err != nil {
 		t.Fatalf("parse Skel source: %v", err)
 	}

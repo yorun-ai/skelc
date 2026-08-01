@@ -12,11 +12,12 @@ package skelc
 import (
 	"fmt"
 
-	"go.yorun.ai/skelc/internal/codegen/common"
+	"go.yorun.ai/skelc/diagnostic"
 	"go.yorun.ai/skelc/internal/codegen/golang"
+	"go.yorun.ai/skelc/internal/codegen/output"
 	"go.yorun.ai/skelc/internal/codegen/skeleton"
 	"go.yorun.ai/skelc/internal/codegen/typescript"
-	"go.yorun.ai/skelc/internal/parser"
+	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -45,21 +46,55 @@ type ParseResult struct {
 	Diagnostics []Diagnostic
 }
 
-type Diagnostic = parser.Diagnostic
-type DiagnosticSeverity = parser.DiagnosticSeverity
-type SourceRange = parser.SourceRange
-type DiagnosticRelatedInformation = parser.DiagnosticRelatedInformation
-type DiagnosticSuggestion = parser.DiagnosticSuggestion
+type Diagnostic = diagnostic.Diagnostic
+type Diagnostics = diagnostic.Diagnostics
+type DiagnosticSeverity = diagnostic.Severity
+type SourceRange = diagnostic.SourceRange
+type DiagnosticRelatedInformation = diagnostic.RelatedInformation
+type DiagnosticSuggestion = diagnostic.Suggestion
 
 const (
-	DiagnosticSeverityError   = parser.DiagnosticSeverityError
-	DiagnosticSeverityWarning = parser.DiagnosticSeverityWarning
+	DiagnosticSeverityError   = diagnostic.SeverityError
+	DiagnosticSeverityWarning = diagnostic.SeverityWarning
+
+	DiagnosticCodeSyntaxUnexpected   = diagnostic.CodeSyntaxUnexpected
+	DiagnosticCodeSyntaxEOF          = diagnostic.CodeSyntaxEOF
+	DiagnosticCodeSyntaxFinalize     = diagnostic.CodeSyntaxFinalize
+	DiagnosticCodeSemanticValidation = diagnostic.CodeSemanticValidation
+	DiagnosticCodeSemanticDuplicate  = diagnostic.CodeSemanticDuplicate
+	DiagnosticCodeSemanticNaming     = diagnostic.CodeSemanticNaming
+	DiagnosticCodeSemanticReference  = diagnostic.CodeSemanticReference
+	DiagnosticCodeSemanticWarning    = diagnostic.CodeSemanticWarning
+	DiagnosticCodeImportMissing      = diagnostic.CodeImportMissing
+	DiagnosticCodeImportCycle        = diagnostic.CodeImportCycle
+	DiagnosticCodeDomainMissing      = diagnostic.CodeDomainMissing
+	DiagnosticCodeDomainMismatch     = diagnostic.CodeDomainMismatch
+	DiagnosticCodeDomainFileContent  = diagnostic.CodeDomainFileContent
+	DiagnosticCodeDomainDecorator    = diagnostic.CodeDomainDecorator
+	DiagnosticCodeLoaderDirectory    = diagnostic.CodeLoaderDirectory
+	DiagnosticCodeLoaderHiddenFile   = diagnostic.CodeLoaderHiddenFile
+	DiagnosticCodeLoaderUnsupported  = diagnostic.CodeLoaderUnsupported
 )
 
 // CompileResult contains structured non-fatal diagnostics produced while loading and parsing Skel sources.
 type CompileResult struct {
 	// Diagnostics contains non-fatal diagnostics produced while parsing.
 	Diagnostics []Diagnostic
+}
+
+// Parse loads and validates a Skel contract for use by custom generators and
+// tools. All direct and transitive imported domains must be declared in
+// Input.SkelImports.
+func Parse(input Input) (ParseResult, error) {
+	option, err := normalizeInput(input)
+	if err != nil {
+		return ParseResult{}, err
+	}
+	parsed, parseErr := compiler.Compile(option)
+	if parseErr != nil {
+		return ParseResult{}, parseErr
+	}
+	return ParseResult{Domain: parsed.Domain, Diagnostics: parsed.Diagnostics}, nil
 }
 
 // GolangOption configures Go generation.
@@ -112,21 +147,6 @@ type SkeletonOption struct {
 	Out string
 }
 
-// Parse loads and validates a Skel contract for use by custom generators and
-// tools. All direct and transitive imported domains must be declared in
-// Input.SkelImports.
-func Parse(input Input) (ParseResult, error) {
-	option, err := normalizeInput(input)
-	if err != nil {
-		return ParseResult{}, err
-	}
-	parsed, parseErr := parser.Parse(option)
-	if parseErr != nil {
-		return ParseResult{}, parseErr
-	}
-	return ParseResult{Domain: parsed.Domain, Diagnostics: parsed.Diagnostics}, nil
-}
-
 // GenerateGolang generates Go source or a standalone Go module from a parsed
 // domain. Only files owned by the previous skelc manifest may be removed.
 func GenerateGolang(domain *model.Domain, option GolangOption) error {
@@ -144,7 +164,7 @@ func generateGolang(domain *model.Domain, option golang.Option) error {
 	if err := validateGolangImports(domain, option); err != nil {
 		return err
 	}
-	return common.RunManagedOutputs([]string{option.Out, option.PubOut}, func(staged []string) error {
+	return output.RunManagedOutputs([]string{option.Out, option.PubOut}, func(staged []string) error {
 		option.Out = staged[0]
 		option.PubOut = staged[1]
 		return golang.Generate(domain, option)
@@ -154,7 +174,7 @@ func generateGolang(domain *model.Domain, option golang.Option) error {
 // CompileGolang parses input and generates Go source or a standalone Go module.
 // Parsing completes before any generated output is committed.
 func CompileGolang(input Input, option GolangOption) (CompileResult, error) {
-	parserOption, err := normalizeInput(input)
+	compilerOption, err := normalizeInput(input)
 	if err != nil {
 		return CompileResult{}, err
 	}
@@ -162,7 +182,7 @@ func CompileGolang(input Input, option GolangOption) (CompileResult, error) {
 	if err != nil {
 		return CompileResult{}, err
 	}
-	parsed, err := parser.Parse(parserOption)
+	parsed, err := compiler.Compile(compilerOption)
 	if err != nil {
 		return CompileResult{}, err
 	}
@@ -189,7 +209,7 @@ func generateTypeScript(domain *model.Domain, option typescript.Option) error {
 	if err := validateTypeScriptImports(domain, option); err != nil {
 		return err
 	}
-	return common.RunManagedOutputs([]string{option.Out}, func(staged []string) error {
+	return output.RunManagedOutputs([]string{option.Out}, func(staged []string) error {
 		option.Out = staged[0]
 		return typescript.Generate(domain, option)
 	})
@@ -198,7 +218,7 @@ func generateTypeScript(domain *model.Domain, option typescript.Option) error {
 // CompileTypeScript parses input and generates TypeScript source. Parsing
 // completes before generated output is committed.
 func CompileTypeScript(input Input, option TypeScriptOption) (CompileResult, error) {
-	parserOption, err := normalizeInput(input)
+	compilerOption, err := normalizeInput(input)
 	if err != nil {
 		return CompileResult{}, err
 	}
@@ -206,7 +226,7 @@ func CompileTypeScript(input Input, option TypeScriptOption) (CompileResult, err
 	if err != nil {
 		return CompileResult{}, err
 	}
-	parsed, err := parser.Parse(parserOption)
+	parsed, err := compiler.Compile(compilerOption)
 	if err != nil {
 		return CompileResult{}, err
 	}
@@ -230,7 +250,7 @@ func GenerateSkeleton(domain *model.Domain, option SkeletonOption) error {
 }
 
 func generateSkeleton(domain *model.Domain, option skeleton.Option) error {
-	return common.RunManagedOutputs([]string{option.Out}, func(staged []string) error {
+	return output.RunManagedOutputs([]string{option.Out}, func(staged []string) error {
 		option.Out = staged[0]
 		return skeleton.Generate(domain, option)
 	})
@@ -239,7 +259,7 @@ func generateSkeleton(domain *model.Domain, option skeleton.Option) error {
 // CompileSkeleton parses input and generates a Skel contract. Parsing completes
 // before generated output is committed.
 func CompileSkeleton(input Input, option SkeletonOption) (CompileResult, error) {
-	parserOption, err := normalizeInput(input)
+	compilerOption, err := normalizeInput(input)
 	if err != nil {
 		return CompileResult{}, err
 	}
@@ -247,7 +267,7 @@ func CompileSkeleton(input Input, option SkeletonOption) (CompileResult, error) 
 	if err != nil {
 		return CompileResult{}, err
 	}
-	parsed, err := parser.Parse(parserOption)
+	parsed, err := compiler.Compile(compilerOption)
 	if err != nil {
 		return CompileResult{}, err
 	}

@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
+	lspsource "go.yorun.ai/skelc/internal/lsp/source"
 )
 
 func TestIndexDocumentDefinitionsAndReferences(t *testing.T) {
@@ -68,5 +69,5 @@ service UserService {
 	assert.Equal(t, "getUser", method.Name)
 	require.Len(t, method.Children, 1)
 	assert.Equal(t, "userId", method.Children[0].Name)
-	assert.LessOrEqual(t, comparePosition(method.Children[0].Range.End, method.Range.End), 0)
+	assert.LessOrEqual(t, lspsource.ComparePosition(method.Children[0].Range.End, method.Range.End), 0)
 }

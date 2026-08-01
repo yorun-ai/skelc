@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/internal/parser"
 	"go.yorun.ai/skelc/internal/parser/grammar"
 )
@@ -139,7 +140,7 @@ func parseDomainHash(t *testing.T, name string, source []byte) string {
 	if err := os.WriteFile(path, source, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	result, err := parser.Parse(parser.Option{SkelIn: path})
+	result, err := compiler.Compile(compiler.Option{SkelIn: path})
 	if err != nil {
 		t.Fatalf("parse %s: %v", name, err)
 	}

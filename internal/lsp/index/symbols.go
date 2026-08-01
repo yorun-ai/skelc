@@ -5,6 +5,7 @@ import (
 
 	"github.com/alecthomas/participle/v2/lexer"
 	"go.lsp.dev/protocol"
+	"go.yorun.ai/skelc/internal/lsp/source"
 	"go.yorun.ai/skelc/internal/parser/grammar"
 )
 
@@ -143,7 +144,7 @@ func sectionSymbol(source, name string, pos lexer.Position, children []Symbol) S
 
 func finishSymbol(symbol Symbol) Symbol {
 	for _, child := range symbol.Children {
-		if comparePosition(child.Range.End, symbol.Range.End) > 0 {
+		if source.ComparePosition(child.Range.End, symbol.Range.End) > 0 {
 			symbol.Range.End = child.Range.End
 		}
 	}

@@ -250,7 +250,7 @@ func (v *DecoratorValue) Parse(lex *lexer.PeekingLexer) error {
 	for {
 		token := lex.Peek()
 		if token.EOF() {
-			return participle.Errorf(token.Pos, "unexpected EOF in decorator value")
+			return &UnexpectedEOFError{Pos: token.Pos, Context: "decorator value"}
 		}
 		if token.Value == ")" && depth == 0 {
 			break

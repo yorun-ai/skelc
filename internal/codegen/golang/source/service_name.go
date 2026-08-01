@@ -10,7 +10,7 @@ func er(name string) string {
 	return fmt.Sprintf("%sER", name)
 }
 
-type serviceNames struct {
+type _ServiceNames struct {
 	Name                    string
 	SpecName                string
 	BaseName                string
@@ -29,8 +29,8 @@ type serviceNames struct {
 	ERClientCtorName        string
 }
 
-func buildServiceNames(serviceName string) *serviceNames {
-	names := &serviceNames{
+func buildServiceNames(serviceName string) *_ServiceNames {
+	names := &_ServiceNames{
 		Name: nameutil.ToCamel(serviceName),
 	}
 	names.SpecName = fmt.Sprintf("_%sSpec", names.Name)

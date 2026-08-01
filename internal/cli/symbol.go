@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	ucli "github.com/urfave/cli/v3"
-	"go.yorun.ai/skelc/internal/parser"
+	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -50,7 +50,7 @@ func newSymbolListCommand() *ucli.Command {
 			if err != nil {
 				return err
 			}
-			result, err := parser.ParseImport(option.SkelIn)
+			result, err := compiler.CompileImport(option.SkelIn)
 			if err != nil {
 				return err
 			}
@@ -81,14 +81,14 @@ func newSymbolFlags(outputFormatUsage string) []ucli.Flag {
 	}
 }
 
-func parseSymbolListCommand(cmd *ucli.Command) (parser.Option, error) {
+func parseSymbolListCommand(cmd *ucli.Command) (compiler.Option, error) {
 	if cmd.Args().Len() != 0 {
-		return parser.Option{}, fmt.Errorf("unexpected args for %s %s", commandSymbol, commandSymbolList)
+		return compiler.Option{}, fmt.Errorf("unexpected args for %s %s", commandSymbol, commandSymbolList)
 	}
-	parserOption := parser.Option{
+	compilerOption := compiler.Option{
 		SkelIn: cmd.String(flagSymbolSkelIn),
 	}
-	return parserOption, normalizeParserOption(&parserOption)
+	return compilerOption, normalizeCompilerOption(&compilerOption)
 }
 
 func newSymbolGetCommand() *ucli.Command {
@@ -106,7 +106,7 @@ func newSymbolGetCommand() *ucli.Command {
 			if err != nil {
 				return err
 			}
-			result, err := parser.ParseImport(option.SkelIn)
+			result, err := compiler.CompileImport(option.SkelIn)
 			if err != nil {
 				return err
 			}
@@ -144,11 +144,11 @@ func parseSymbolGetCommand(cmd *ucli.Command) (string, error) {
 	return skelName, nil
 }
 
-func parseSymbolGetFlags(cmd *ucli.Command) (parser.Option, error) {
-	parserOption := parser.Option{
+func parseSymbolGetFlags(cmd *ucli.Command) (compiler.Option, error) {
+	compilerOption := compiler.Option{
 		SkelIn: cmd.String(flagSymbolSkelIn),
 	}
-	return parserOption, normalizeParserOption(&parserOption)
+	return compilerOption, normalizeCompilerOption(&compilerOption)
 }
 
 func writeSymbols(cmd *ucli.Command, symbols []*_Symbol) {

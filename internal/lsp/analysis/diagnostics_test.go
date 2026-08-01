@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
+	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/internal/lsp/index"
-	"go.yorun.ai/skelc/internal/parser"
 )
 
 func TestSemanticDiagnosticsDoNotResolveImportsAcrossDomainRoots(t *testing.T) {
@@ -21,7 +21,7 @@ func TestSemanticDiagnosticsDoNotResolveImportsAcrossDomainRoots(t *testing.T) {
 	}
 
 	sources, paths := SemanticSources(documents)
-	diagnostics, err := SemanticDiagnostics(context.Background(), parser.NewWorkspaceAnalyzer(), sources, paths)
+	diagnostics, err := SemanticDiagnostics(context.Background(), compiler.NewWorkspaceAnalyzer(), sources, paths)
 	require.NoError(t, err)
 	assert.Empty(t, diagnostics)
 }
@@ -31,7 +31,7 @@ func TestSemanticDiagnosticsDoNotDuplicateSyntaxErrors(t *testing.T) {
 	document := index.Build(documentURI, "/workspace/user.skel", "domain demo.user\ndata User {", 2)
 	sources, paths := SemanticSources(map[uri.URI]*index.Document{documentURI: document})
 
-	diagnostics, err := SemanticDiagnostics(context.Background(), parser.NewWorkspaceAnalyzer(), sources, paths)
+	diagnostics, err := SemanticDiagnostics(context.Background(), compiler.NewWorkspaceAnalyzer(), sources, paths)
 	require.NoError(t, err)
 	assert.Empty(t, diagnostics)
 }
@@ -44,7 +44,7 @@ data Order { missing: MissingOrder }
 `, 3)
 	sources, paths := SemanticSources(map[uri.URI]*index.Document{documentURI: document})
 
-	diagnostics, err := SemanticDiagnostics(context.Background(), parser.NewWorkspaceAnalyzer(), sources, paths)
+	diagnostics, err := SemanticDiagnostics(context.Background(), compiler.NewWorkspaceAnalyzer(), sources, paths)
 	require.NoError(t, err)
 
 	require.Len(t, diagnostics[documentURI], 2)
@@ -57,11 +57,11 @@ func TestSemanticDiagnosticsIncludeDuplicateRelatedLocation(t *testing.T) {
 	document := index.Build(documentURI, "/workspace/data.skel", "domain demo\ndata User {}\ndata User {}\n", 1)
 	sources, paths := SemanticSources(map[uri.URI]*index.Document{documentURI: document})
 
-	diagnostics, err := SemanticDiagnostics(context.Background(), parser.NewWorkspaceAnalyzer(), sources, paths)
+	diagnostics, err := SemanticDiagnostics(context.Background(), compiler.NewWorkspaceAnalyzer(), sources, paths)
 	require.NoError(t, err)
 	require.Len(t, diagnostics[documentURI], 1)
 	diagnostic := diagnostics[documentURI][0]
-	assert.Equal(t, protocol.String(parser.DiagnosticCodeSemanticDuplicate), diagnostic.Code)
+	assert.Equal(t, protocol.String(compiler.DiagnosticCodeSemanticDuplicate), diagnostic.Code)
 	require.Len(t, diagnostic.RelatedInformation, 1)
 	assert.Equal(t, protocol.Position{Line: 1, Character: 5}, diagnostic.RelatedInformation[0].Location.Range.Start)
 }
@@ -85,7 +85,7 @@ func TestSemanticDiagnosticsKeepSameNamedDomainDirectoriesIndependent(t *testing
 	}
 
 	sources, paths := SemanticSources(documents)
-	diagnostics, err := SemanticDiagnostics(context.Background(), parser.NewWorkspaceAnalyzer(), sources, paths)
+	diagnostics, err := SemanticDiagnostics(context.Background(), compiler.NewWorkspaceAnalyzer(), sources, paths)
 	require.NoError(t, err)
 	assert.Empty(t, diagnostics)
 }
@@ -109,8 +109,8 @@ func TestSemanticDiagnosticsMergeSameNamedDomainFilesInOneDirectory(t *testing.T
 	}
 
 	sources, paths := SemanticSources(documents)
-	diagnostics, err := SemanticDiagnostics(context.Background(), parser.NewWorkspaceAnalyzer(), sources, paths)
+	diagnostics, err := SemanticDiagnostics(context.Background(), compiler.NewWorkspaceAnalyzer(), sources, paths)
 	require.NoError(t, err)
 	require.Len(t, diagnostics[secondURI], 1)
-	assert.Equal(t, protocol.String(parser.DiagnosticCodeSemanticDuplicate), diagnostics[secondURI][0].Code)
+	assert.Equal(t, protocol.String(compiler.DiagnosticCodeSemanticDuplicate), diagnostics[secondURI][0].Code)
 }

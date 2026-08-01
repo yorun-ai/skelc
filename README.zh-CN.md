@@ -162,7 +162,7 @@ skelc symbol get demo.user.User --skel-in ./skel
 skelc format --skel-in ./skel
 ```
 
-`format` 会原地修改文件，执行前会先验证全部输入。它采用唯一的规范样式：四空格缩进、紧凑的类型与权限标点、字段和参数冒号后保留一个空格、空块保持紧凑，以及顶层声明之间保留一个空行；声明顺序、注释内容和字符串值不会改变。工具集成可以使用全局参数 `--log-format jsonl` 获取机器可读诊断。
+`format` 会原地修改文件，执行前会先验证全部输入。它会先暂存所有待修改文件，再统一提交；如果后续写入失败，已经替换的文件会被恢复。它采用唯一的规范样式：四空格缩进、紧凑的类型与权限标点、字段和参数冒号后保留一个空格、空块保持紧凑，以及顶层声明之间保留一个空行；声明顺序、注释内容和字符串值不会改变。工具集成可以使用全局参数 `--log-format jsonl` 获取机器可读诊断。
 
 `check` 会在声明、block 成员、右花括号和 decorator 边界恢复解析，单次运行可为每个 domain 报告最多 50 条相互独立的语法与语义诊断。无效声明会被隔离，避免产生依赖级联错误。JSONL 诊断包含稳定 code、severity、精确 range、关联位置和可选修复建议。
 
@@ -195,7 +195,7 @@ for _, diagnostic := range result.Diagnostics {
 }
 ```
 
-API 同时提供 `CompileTypeScript` 和 `CompileSkeleton`。parser 与 loader warning 使用同一套结构化诊断，不再维护独立的字符串列表。所有公开契约生成器共用一次经过校验的 `internal/codegen/common` 投影，避免 Go、Skel 和 TypeScript 的可见性规则漂移。生成过程通过 `.skelc-manifest.json` 记录自身管理的文件，以原子方式逐个替换生成文件；提交失败时回滚所有受影响的输出目标，只删除内容未被修改的过期生成文件，并保留共享输出目录中所有未登记的文件。
+API 同时提供 `CompileTypeScript` 和 `CompileSkeleton`。parser 与 loader warning 使用同一套结构化诊断，不再维护独立的字符串列表。根 package 与 `go.yorun.ai/skelc/diagnostic` 都会导出稳定的诊断 code 常量，集成方无需重复填写原始字符串。所有公开契约生成器共用一次经过校验的 `internal/codegen/common` 投影，避免 Go、Skel 和 TypeScript 的可见性规则漂移。生成过程通过 `.skelc-manifest.json` 记录自身管理的文件，以原子方式逐个替换生成文件；提交失败时回滚所有受影响的输出目标，只删除内容未被修改的过期生成文件，并保留共享输出目录中所有未登记的文件。
 
 自定义 generator 可以调用 `skelc.Parse`，并通过与 parser 无关的 `go.yorun.ai/skelc/model` 使用返回的 `*model.Domain`。解析完成的模型已经包含由 skelc 计算好的兼容性 hash。内置的 `GenerateGolang`、`GenerateTypeScript` 和 `GenerateSkeleton` 也接受同一个已解析 domain，因此多个目标可以共享一次解析结果。
 

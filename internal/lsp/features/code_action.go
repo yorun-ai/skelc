@@ -6,7 +6,7 @@ import (
 
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
-	"go.yorun.ai/skelc/internal/parser"
+	"go.yorun.ai/skelc/internal/compiler"
 )
 
 func (s *Service) CodeAction(_ context.Context, params *protocol.CodeActionParams) ([]protocol.CommandOrCodeAction, error) {
@@ -15,7 +15,7 @@ func (s *Service) CodeAction(_ context.Context, params *protocol.CodeActionParam
 		if len(diagnostic.Data) == 0 {
 			continue
 		}
-		var suggestion parser.DiagnosticSuggestion
+		var suggestion compiler.DiagnosticSuggestion
 		if err := json.Unmarshal(diagnostic.Data, &suggestion); err != nil || suggestion.Replacement == "" {
 			continue
 		}

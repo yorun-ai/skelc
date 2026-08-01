@@ -14,20 +14,20 @@ func (import_ *Import) uniquified() string {
 	return fmt.Sprintf("%s %s", import_.Path, import_.Alias)
 }
 
-type importSet map[string]*Import
+type _ImportSet map[string]*Import
 
-func newImportSet() importSet {
-	return importSet{}
+func newImportSet() _ImportSet {
+	return _ImportSet{}
 }
 
-func (imports importSet) add(import_ *Import) {
+func (imports _ImportSet) add(import_ *Import) {
 	if import_ == nil {
 		return
 	}
 	imports[import_.uniquified()] = import_
 }
 
-func (imports importSet) addMany(importList ...[]*Import) {
+func (imports _ImportSet) addMany(importList ...[]*Import) {
 	for _, importItems := range importList {
 		for _, import_ := range importItems {
 			imports.add(import_)
@@ -35,7 +35,7 @@ func (imports importSet) addMany(importList ...[]*Import) {
 	}
 }
 
-func (imports importSet) sortedValues() []*Import {
+func (imports _ImportSet) sortedValues() []*Import {
 	values := make([]*Import, 0, len(imports))
 	for _, import_ := range imports {
 		values = append(values, import_)

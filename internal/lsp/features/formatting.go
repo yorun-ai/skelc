@@ -1,4 +1,4 @@
-package lsp
+package features
 
 import (
 	"context"
@@ -7,10 +7,8 @@ import (
 	"go.yorun.ai/skelc/internal/formatter"
 )
 
-func (s *_Server) Formatting(_ context.Context, params *protocol.DocumentFormattingParams) ([]protocol.TextEdit, error) {
-	s.mu.RLock()
-	document := s.documents[params.TextDocument.URI]
-	s.mu.RUnlock()
+func (s *Service) Formatting(_ context.Context, params *protocol.DocumentFormattingParams) ([]protocol.TextEdit, error) {
+	document := s.Snapshot.Document(params.TextDocument.URI)
 	if document == nil || len(document.ParseDiagnostics) > 0 {
 		return []protocol.TextEdit{}, nil
 	}

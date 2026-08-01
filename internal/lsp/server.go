@@ -5,27 +5,22 @@ import (
 	"context"
 	"io"
 	"sync"
-	"time"
 
 	"go.lsp.dev/jsonrpc2"
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
-	"go.yorun.ai/skelc/internal/parser"
+	"go.yorun.ai/skelc/internal/lsp/analysis"
+	"go.yorun.ai/skelc/internal/lsp/workspace"
 )
 
 type _Server struct {
 	protocol.UnimplementedServer
 
 	mu             sync.RWMutex
-	documents      map[uri.URI]*_Document
-	open           map[uri.URI]bool
+	workspace      *workspace.Store
 	semantic       map[uri.URI][]protocol.Diagnostic
-	workspaceFiles map[uri.URI]map[uri.URI]struct{}
 	client         protocol.Client
-	generation     uint64
-	semanticTimer  *time.Timer
-	semanticCancel context.CancelFunc
-	analyzer       *parser.WorkspaceAnalyzer
+	analysis       *analysis.Runner
 	snippetSupport bool
 	exit           chan struct{}
 	exitOnce       sync.Once
@@ -62,11 +57,10 @@ func Serve(ctx context.Context, input io.Reader, output io.Writer) error {
 
 func newServer() *_Server {
 	return &_Server{
-		documents: map[uri.URI]*_Document{}, open: map[uri.URI]bool{},
-		semantic:       map[uri.URI][]protocol.Diagnostic{},
-		workspaceFiles: map[uri.URI]map[uri.URI]struct{}{},
-		exit:           make(chan struct{}),
-		analyzer:       parser.NewWorkspaceAnalyzer(),
+		workspace: workspace.New(),
+		semantic:  map[uri.URI][]protocol.Diagnostic{},
+		exit:      make(chan struct{}),
+		analysis:  analysis.NewRunner(semanticAnalysisDelay),
 	}
 }
 

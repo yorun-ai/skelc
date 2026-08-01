@@ -1,16 +1,22 @@
-package lsp
+// Package analysis runs cancellable semantic analysis for immutable LSP
+// workspace snapshots.
+package analysis
 
 import (
 	"context"
+	"encoding/json"
 	"path/filepath"
 	"strings"
 
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
+	"go.yorun.ai/skelc/internal/lsp/index"
+	"go.yorun.ai/skelc/internal/lsp/source"
 	"go.yorun.ai/skelc/internal/parser"
 )
 
-func semanticSources(documents map[uri.URI]*_Document) ([]parser.Source, map[string]uri.URI) {
+// SemanticSources converts indexed LSP documents into compiler sources.
+func SemanticSources(documents map[uri.URI]*index.Document) ([]parser.Source, map[string]uri.URI) {
 	sources := make([]parser.Source, 0, len(documents))
 	paths := make(map[string]uri.URI, len(documents))
 	for documentURI, document := range documents {
@@ -25,7 +31,9 @@ func semanticSources(documents map[uri.URI]*_Document) ([]parser.Source, map[str
 	return sources, paths
 }
 
-func semanticDiagnostics(ctx context.Context, analyzer *parser.WorkspaceAnalyzer, sources []parser.Source, paths map[string]uri.URI) (map[uri.URI][]protocol.Diagnostic, error) {
+// SemanticDiagnostics analyzes sources and converts compiler diagnostics to
+// their LSP representation.
+func SemanticDiagnostics(ctx context.Context, analyzer *parser.WorkspaceAnalyzer, sources []parser.Source, paths map[string]uri.URI) (map[uri.URI][]protocol.Diagnostic, error) {
 	result := map[uri.URI][]protocol.Diagnostic{}
 	contents := make(map[string]string, len(sources))
 	for _, source := range sources {
@@ -63,4 +71,40 @@ func semanticDiagnostics(ctx context.Context, analyzer *parser.WorkspaceAnalyzer
 		})
 	}
 	return result, nil
+}
+
+func sourceRangeToProtocol(content string, sourceRange parser.SourceRange) protocol.Range {
+	buffer := source.New(content)
+	start := buffer.IdentifierRange(sourceRange.Start.Line, sourceRange.Start.Column, "").Start
+	end := buffer.IdentifierRange(sourceRange.End.Line, sourceRange.End.Column, "").Start
+	if comparePosition(end, start) <= 0 {
+		end = start
+		end.Character++
+	}
+	return protocol.Range{Start: start, End: end}
+}
+
+func diagnosticSeverityToProtocol(severity parser.DiagnosticSeverity) protocol.DiagnosticSeverity {
+	if severity == parser.DiagnosticSeverityWarning {
+		return protocol.DiagnosticSeverityWarning
+	}
+	return protocol.DiagnosticSeverityError
+}
+
+func diagnosticSuggestionData(suggestion *parser.DiagnosticSuggestion) protocol.LSPAny {
+	if suggestion == nil {
+		return nil
+	}
+	content, err := json.Marshal(suggestion)
+	if err != nil {
+		return nil
+	}
+	return protocol.LSPAny(content)
+}
+
+func comparePosition(left, right protocol.Position) int {
+	if left.Line != right.Line {
+		return int(left.Line) - int(right.Line)
+	}
+	return int(left.Character) - int(right.Character)
 }

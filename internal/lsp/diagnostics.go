@@ -17,8 +17,8 @@ func (s *_Server) publishDiagnostics(ctx context.Context, documentURI uri.URI) e
 }
 
 func (s *_Server) publishDiagnosticsWithClient(ctx context.Context, client protocol.Client, documentURI uri.URI) error {
+	document := s.workspace.Snapshot().Document(documentURI)
 	s.mu.RLock()
-	document := s.documents[documentURI]
 	semantic := append([]protocol.Diagnostic{}, s.semantic[documentURI]...)
 	s.mu.RUnlock()
 	diagnostics := semantic

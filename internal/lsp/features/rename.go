@@ -1,4 +1,4 @@
-package lsp
+package features
 
 import (
 	"context"
@@ -10,39 +10,34 @@ import (
 	"go.lsp.dev/uri"
 )
 
-func (s *_Server) PrepareRename(_ context.Context, params *protocol.PrepareRenameParams) (protocol.PrepareRenameResult, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	document := s.documents[params.TextDocument.URI]
+func (s *Service) PrepareRename(_ context.Context, params *protocol.PrepareRenameParams) (protocol.PrepareRenameResult, error) {
+	snapshot := s.Snapshot
+	document := snapshot.Document(params.TextDocument.URI)
 	if document == nil {
 		return nil, nil
 	}
 	occurrence, ok := occurrenceAt(document, params.Position)
-	if !ok || !s.hasDefinitionLocked(occurrence.Key) {
+	if !ok || !snapshot.HasDefinition(occurrence.Key) {
 		return nil, nil
 	}
 	range_ := occurrence.Range
 	return &range_, nil
 }
 
-func (s *_Server) Rename(_ context.Context, params *protocol.RenameParams) (*protocol.WorkspaceEdit, error) {
+func (s *Service) Rename(_ context.Context, params *protocol.RenameParams) (*protocol.WorkspaceEdit, error) {
 	if !isIdentifierValue(params.NewName) {
 		return nil, fmt.Errorf("invalid Skel identifier %q", params.NewName)
 	}
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	document := s.documents[params.TextDocument.URI]
+	snapshot := s.Snapshot
+	document := snapshot.Document(params.TextDocument.URI)
 	if document == nil {
 		return nil, nil
 	}
 	occurrence, ok := occurrenceAt(document, params.Position)
-	if !ok || !s.hasDefinitionLocked(occurrence.Key) {
+	if !ok || !snapshot.HasDefinition(occurrence.Key) {
 		return nil, nil
 	}
-	for _, candidate := range s.documents {
-		if candidate.Domain != domainFromKey(occurrence.Key) {
-			continue
-		}
+	for _, candidate := range snapshot.DocumentsInDomain(domainFromKey(occurrence.Key)) {
 		for _, definition := range candidate.Definitions {
 			if definition.Name == params.NewName && definition.Key != occurrence.Key {
 				return nil, fmt.Errorf("Skel declaration %s already exists", definition.Key)
@@ -50,12 +45,8 @@ func (s *_Server) Rename(_ context.Context, params *protocol.RenameParams) (*pro
 		}
 	}
 	changes := map[uri.URI][]protocol.TextEdit{}
-	for _, candidate := range s.documents {
-		for _, reference := range candidate.Occurrences {
-			if reference.Key == occurrence.Key {
-				changes[candidate.URI] = append(changes[candidate.URI], protocol.TextEdit{Range: reference.Range, NewText: params.NewName})
-			}
-		}
+	for _, location := range snapshot.Occurrences(occurrence.Key) {
+		changes[location.Document.URI] = append(changes[location.Document.URI], protocol.TextEdit{Range: location.Occurrence.Range, NewText: params.NewName})
 	}
 	for documentURI := range changes {
 		slices.SortFunc(changes[documentURI], func(left, right protocol.TextEdit) int {
@@ -63,17 +54,6 @@ func (s *_Server) Rename(_ context.Context, params *protocol.RenameParams) (*pro
 		})
 	}
 	return &protocol.WorkspaceEdit{Changes: changes}, nil
-}
-
-func (s *_Server) hasDefinitionLocked(key string) bool {
-	for _, document := range s.documents {
-		for _, definition := range document.Definitions {
-			if definition.Key == key {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func domainFromKey(key string) string {

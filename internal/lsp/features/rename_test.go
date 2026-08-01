@@ -1,4 +1,4 @@
-package lsp
+package features
 
 import (
 	"testing"
@@ -9,8 +9,8 @@ import (
 	"go.lsp.dev/uri"
 )
 
-func TestServerRenamesDeclarationsAndReferences(t *testing.T) {
-	server := newServer()
+func TestServiceRenamesDeclarationsAndReferences(t *testing.T) {
+	server := newFixture()
 	userURI := uri.File("/workspace/user.skel")
 	orderURI := uri.File("/workspace/order.skel")
 	server.putDocument(userURI, "domain demo.user\ndata User {}\n", 1, true)
@@ -30,8 +30,8 @@ func TestServerRenamesDeclarationsAndReferences(t *testing.T) {
 	assert.Equal(t, "Account", edit.Changes[orderURI][0].NewText)
 }
 
-func TestServerRejectsInvalidRename(t *testing.T) {
-	server := newServer()
+func TestServiceRejectsInvalidRename(t *testing.T) {
+	server := newFixture()
 	documentURI := uri.File("/workspace/user.skel")
 	server.putDocument(documentURI, "domain demo\ndata User {}\n", 1, true)
 
@@ -45,8 +45,8 @@ func TestServerRejectsInvalidRename(t *testing.T) {
 	assert.ErrorContains(t, err, "invalid Skel identifier")
 }
 
-func TestServerDoesNotRenameUnresolvedReferences(t *testing.T) {
-	server := newServer()
+func TestServiceDoesNotRenameUnresolvedReferences(t *testing.T) {
+	server := newFixture()
 	documentURI := uri.File("/workspace/user.skel")
 	server.putDocument(documentURI, "domain demo\ndata User { missing: Missing }\n", 1, true)
 

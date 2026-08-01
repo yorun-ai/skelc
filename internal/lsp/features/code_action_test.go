@@ -1,4 +1,4 @@
-package lsp
+package features
 
 import (
 	"testing"
@@ -16,7 +16,7 @@ func TestCodeActionBuildsQuickFixFromSuggestion(t *testing.T) {
 		Data:    diagnosticSuggestionData(&parser.DiagnosticSuggestion{Message: "replace with userId", Replacement: "userId", Replace: true}),
 	}
 	documentURI := uri.File("/workspace/user.skel")
-	actions, err := newServer().CodeAction(t.Context(), &protocol.CodeActionParams{
+	actions, err := newFixture().CodeAction(t.Context(), &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
 		Context:      protocol.CodeActionContext{Diagnostics: []protocol.Diagnostic{diagnostic}},
 	})

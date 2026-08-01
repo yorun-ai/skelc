@@ -1,29 +1,31 @@
-package lsp
+// Package index builds immutable language indexes for Skel documents.
+package index
 
 import (
 	"strings"
 
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
+	"go.yorun.ai/skelc/internal/lsp/source"
 	"go.yorun.ai/skelc/internal/parser"
 	"go.yorun.ai/skelc/internal/parser/grammar"
 )
 
-type _Document struct {
+type Document struct {
 	URI              uri.URI
 	Path             string
 	Source           string
 	Version          int32
 	Domain           string
 	Imports          map[string]string
-	Definitions      []_Definition
-	Symbols          []_Symbol
-	Occurrences      []_Occurrence
+	Definitions      []Definition
+	Symbols          []Symbol
+	Occurrences      []Occurrence
 	ParseDiagnostics parser.Diagnostics
 	Parsed           *grammar.SkelContent
 }
 
-type _Definition struct {
+type Definition struct {
 	Key         string
 	Name        string
 	Detail      string
@@ -33,45 +35,40 @@ type _Definition struct {
 	Range       protocol.Range
 }
 
-type _Occurrence struct {
+type Occurrence struct {
 	Key   string
 	Range protocol.Range
 }
 
-type _Symbol struct {
+type Symbol struct {
 	Name        string
 	Detail      string
 	Description string
 	Deprecated  bool
 	Kind        protocol.SymbolKind
 	Range       protocol.Range
-	Children    []_Symbol
+	Children    []Symbol
 }
 
-type _Token struct {
-	Value string
-	Start int
-	End   int
-}
-
-func indexDocument(documentURI uri.URI, path, source string, version int32) *_Document {
+// Build parses and indexes one in-memory Skel document.
+func Build(documentURI uri.URI, path, content string, version int32) *Document {
 	if path == "" {
 		path = documentURI.FsPath()
 	}
-	document := &_Document{URI: documentURI, Path: path, Source: source, Version: version, Imports: map[string]string{}}
-	tokens := scanIdentifiers(source)
-	content, diagnostics := parser.ParseSourceRecovering(path, []byte(source))
-	document.Parsed = content
+	document := &Document{URI: documentURI, Path: path, Source: content, Version: version, Imports: map[string]string{}}
+	tokens := source.New(content).IdentifierTokens()
+	parsed, diagnostics := parser.ParseSourceRecovering(path, []byte(content))
+	document.Parsed = parsed
 	document.ParseDiagnostics = diagnostics
 	if len(diagnostics) > 0 {
 		indexIncompleteDocument(document, tokens)
 		document.Occurrences = indexOccurrences(document, tokens)
 		return document
 	}
-	if content.Domain != nil && content.Domain.Name != nil {
-		document.Domain = content.Domain.Name.String()
+	if parsed.Domain != nil && parsed.Domain.Name != nil {
+		document.Domain = parsed.Domain.Name.String()
 	}
-	for _, importDecl := range content.Imports {
+	for _, importDecl := range parsed.Imports {
 		domain := importDecl.Domain.String()
 		alias := domain[strings.LastIndex(domain, ".")+1:]
 		if importDecl.Alias != nil {
@@ -79,18 +76,18 @@ func indexDocument(documentURI uri.URI, path, source string, version int32) *_Do
 		}
 		document.Imports[alias] = domain
 	}
-	for _, entry := range content.Entries {
+	for _, entry := range parsed.Entries {
 		name, pos, kind, detail := entryDefinition(entry)
 		if name == "" {
 			continue
 		}
-		range_ := identifierRange(source, pos, name)
+		range_ := identifierRange(content, pos, name)
 		description, deprecated := documentationFromDecoratorGroups(entry.Decorators)
-		document.Definitions = append(document.Definitions, _Definition{
+		document.Definitions = append(document.Definitions, Definition{
 			Key: document.Domain + "." + name, Name: name, Detail: detail, Description: description,
 			Deprecated: deprecated, Kind: kind, Range: range_,
 		})
-		document.Symbols = append(document.Symbols, entrySymbol(source, entry, name, detail, description, deprecated, kind, range_))
+		document.Symbols = append(document.Symbols, entrySymbol(content, entry, name, detail, description, deprecated, kind, range_))
 	}
 	document.Occurrences = indexOccurrences(document, tokens)
 	return document

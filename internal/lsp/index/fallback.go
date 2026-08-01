@@ -1,13 +1,14 @@
-package lsp
+package index
 
 import (
 	"strings"
 	"unicode"
 
 	"go.lsp.dev/protocol"
+	"go.yorun.ai/skelc/internal/lsp/source"
 )
 
-func indexIncompleteDocument(document *_Document, tokens []_Token) {
+func indexIncompleteDocument(document *Document, tokens []source.Token) {
 	depth := 0
 	for index := 0; index < len(tokens); index++ {
 		token := tokens[index]
@@ -34,32 +35,32 @@ func indexIncompleteDocument(document *_Document, tokens []_Token) {
 				continue
 			}
 			alias := domain[strings.LastIndex(domain, ".")+1:]
-			if next+1 < len(tokens) && tokens[next].Value == "as" && isIdentifierValue(tokens[next+1].Value) {
+			if next+1 < len(tokens) && tokens[next].Value == "as" && IsIdentifier(tokens[next+1].Value) {
 				alias = tokens[next+1].Value
 			}
 			document.Imports[alias] = domain
 		default:
 			kind, detail := fallbackEntryKind(token.Value)
-			if kind == protocol.SymbolKindNull || index+1 >= len(tokens) || !isIdentifierValue(tokens[index+1].Value) {
+			if kind == protocol.SymbolKindNull || index+1 >= len(tokens) || !IsIdentifier(tokens[index+1].Value) {
 				continue
 			}
 			nameToken := tokens[index+1]
-			range_ := offsetRange(document.Source, nameToken.Start, nameToken.End)
-			document.Definitions = append(document.Definitions, _Definition{
+			range_ := source.New(document.Source).Range(nameToken.Start, nameToken.End)
+			document.Definitions = append(document.Definitions, Definition{
 				Key: document.Domain + "." + nameToken.Value, Name: nameToken.Value, Detail: detail, Kind: kind, Range: range_,
 			})
-			document.Symbols = append(document.Symbols, _Symbol{Name: nameToken.Value, Detail: detail, Kind: kind, Range: range_})
+			document.Symbols = append(document.Symbols, Symbol{Name: nameToken.Value, Detail: detail, Kind: kind, Range: range_})
 		}
 	}
 }
 
-func qualifiedTokenValue(tokens []_Token, start int) (string, int) {
-	if start >= len(tokens) || !isIdentifierValue(tokens[start].Value) {
+func qualifiedTokenValue(tokens []source.Token, start int) (string, int) {
+	if start >= len(tokens) || !IsIdentifier(tokens[start].Value) {
 		return "", start
 	}
 	parts := []string{tokens[start].Value}
 	index := start + 1
-	for index+1 < len(tokens) && tokens[index].Value == "." && isIdentifierValue(tokens[index+1].Value) {
+	for index+1 < len(tokens) && tokens[index].Value == "." && IsIdentifier(tokens[index+1].Value) {
 		parts = append(parts, tokens[index+1].Value)
 		index += 2
 	}
@@ -85,7 +86,8 @@ func fallbackEntryKind(keyword string) (protocol.SymbolKind, string) {
 	}
 }
 
-func isIdentifierValue(value string) bool {
+// IsIdentifier reports whether value is a valid Skel identifier.
+func IsIdentifier(value string) bool {
 	if value == "" {
 		return false
 	}

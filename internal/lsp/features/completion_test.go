@@ -1,4 +1,4 @@
-package lsp
+package features
 
 import (
 	"strings"
@@ -10,8 +10,8 @@ import (
 	"go.lsp.dev/uri"
 )
 
-func TestServerCompletesKeywordsTypesAndImportedSymbols(t *testing.T) {
-	server := newServer()
+func TestServiceCompletesKeywordsTypesAndImportedSymbols(t *testing.T) {
+	server := newFixture()
 	userURI := uri.File("/workspace/user.skel")
 	orderURI := uri.File("/workspace/order.skel")
 	statusURI := uri.File("/workspace/status.skel")
@@ -47,8 +47,8 @@ func TestServerCompletesKeywordsTypesAndImportedSymbols(t *testing.T) {
 	assert.True(t, hasCompletion(items, "user"))
 }
 
-func TestServerCompletesDecoratorPrefixForField(t *testing.T) {
-	server := newServer()
+func TestServiceCompletesDecoratorPrefixForField(t *testing.T) {
+	server := newFixture()
 	documentURI := uri.File("/workspace/user.skel")
 	source := "domain demo\nconfig FeatureFlagConfig instant {\n    @desc(\"Enabled\")\n    @e\n    enabled: bool\n}\n"
 	server.putDocument(documentURI, source, 1, true)
@@ -77,21 +77,9 @@ func TestServerCompletesDecoratorPrefixForField(t *testing.T) {
 	assert.Equal(t, "example", textEdit.NewText)
 }
 
-func TestServerCompletesDeprecatedDecoratorWithReasonSnippet(t *testing.T) {
-	server := newServer()
-	snippetSupport := true
-	_, err := server.Initialize(t.Context(), &protocol.InitializeParams{
-		Capabilities: protocol.ClientCapabilities{
-			TextDocument: &protocol.TextDocumentClientCapabilities{
-				Completion: &protocol.CompletionClientCapabilities{
-					CompletionItem: &protocol.ClientCompletionItemOptions{
-						SnippetSupport: &snippetSupport,
-					},
-				},
-			},
-		},
-	})
-	require.NoError(t, err)
+func TestServiceCompletesDeprecatedDecoratorWithReasonSnippet(t *testing.T) {
+	server := newFixture()
+	server.snippetSupport = true
 	documentURI := uri.File("/workspace/user.skel")
 	source := "domain demo\ndata User {\n    @dep\n    legacyId: string\n}\n"
 	server.putDocument(documentURI, source, 1, true)
@@ -117,7 +105,7 @@ func TestServerCompletesDeprecatedDecoratorWithReasonSnippet(t *testing.T) {
 	assert.Equal(t, `deprecated("$0")`, textEdit.NewText)
 }
 
-func TestServerFiltersDecoratorCompletionByTarget(t *testing.T) {
+func TestServiceFiltersDecoratorCompletionByTarget(t *testing.T) {
 	tests := []struct {
 		name   string
 		source string
@@ -268,7 +256,7 @@ func TestServerFiltersDecoratorCompletionByTarget(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			server := newServer()
+			server := newFixture()
 			documentURI := uri.File("/workspace/test.skel")
 			server.putDocument(documentURI, test.source, 1, true)
 			result, err := server.Completion(t.Context(), &protocol.CompletionParams{
@@ -291,8 +279,8 @@ func TestServerFiltersDecoratorCompletionByTarget(t *testing.T) {
 	}
 }
 
-func TestServerMarksDeprecatedCompletion(t *testing.T) {
-	server := newServer()
+func TestServiceMarksDeprecatedCompletion(t *testing.T) {
+	server := newFixture()
 	documentURI := uri.File("/workspace/user.skel")
 	server.putDocument(documentURI, "domain demo\n@deprecated(\"Use Profile instead\")\ndata User {}\ndata Order { user: Us }\n", 1, true)
 
@@ -314,8 +302,8 @@ func TestServerMarksDeprecatedCompletion(t *testing.T) {
 	t.Fatal("expected User completion")
 }
 
-func TestServerCompletesContextualLanguageValues(t *testing.T) {
-	server := newServer()
+func TestServiceCompletesContextualLanguageValues(t *testing.T) {
+	server := newFixture()
 	documentURI := uri.File("/workspace/user.skel")
 	source := "domain demo\nconfig DatabaseConfig et\nactor ClientActor {\n    via cl\n}\nservice UserService {\n    for ClientActor via op\n}\n"
 	server.putDocument(documentURI, source, 1, true)

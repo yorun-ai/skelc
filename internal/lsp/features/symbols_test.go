@@ -1,4 +1,4 @@
-package lsp
+package features
 
 import (
 	"testing"
@@ -9,8 +9,8 @@ import (
 	"go.lsp.dev/uri"
 )
 
-func TestServerReturnsNestedDocumentAndWorkspaceSymbols(t *testing.T) {
-	server := newServer()
+func TestServiceReturnsNestedDocumentAndWorkspaceSymbols(t *testing.T) {
+	server := newFixture()
 	documentURI := uri.File("/workspace/user.skel")
 	server.putDocument(documentURI, `domain demo
 data User {
@@ -36,8 +36,8 @@ data User {
 	assert.Equal(t, "User", *workspaceSymbols[0].ContainerName)
 }
 
-func TestServerReturnsResourceCheckInputSymbols(t *testing.T) {
-	server := newServer()
+func TestServiceReturnsResourceCheckInputSymbols(t *testing.T) {
+	server := newFixture()
 	documentURI := uri.File("/workspace/resource.skel")
 	server.putDocument(documentURI, `domain demo
 resource User {

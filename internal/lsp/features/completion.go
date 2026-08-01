@@ -1,4 +1,4 @@
-package lsp
+package features
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"go.lsp.dev/protocol"
+	"go.yorun.ai/skelc/internal/lsp/index"
 )
 
 var completionKeywords = []string{
@@ -24,10 +25,9 @@ var completionTypes = []string{
 var actorViaCompletionValues = []string{"agent", "client", "openapi"}
 var configLifecycleCompletionValues = []string{"eternal", "instant"}
 
-func (s *_Server) Completion(_ context.Context, params *protocol.CompletionParams) (protocol.CompletionResult, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	document := s.documents[params.TextDocument.URI]
+func (s *Service) Completion(_ context.Context, params *protocol.CompletionParams) (protocol.CompletionResult, error) {
+	snapshot := s.Snapshot
+	document := snapshot.Document(params.TextDocument.URI)
 	if document == nil {
 		return protocol.CompletionItemSlice{}, nil
 	}
@@ -49,7 +49,7 @@ func (s *_Server) Completion(_ context.Context, params *protocol.CompletionParam
 			}
 			if decorator == "deprecated" {
 				item.TextEdit = &protocol.TextEdit{Range: range_, NewText: `deprecated("")`}
-				if s.snippetSupport {
+				if s.SnippetSupport {
 					item.InsertTextFormat = protocol.InsertTextFormatSnippet
 					item.TextEdit = &protocol.TextEdit{Range: range_, NewText: `deprecated("$0")`}
 				}
@@ -73,10 +73,7 @@ func (s *_Server) Completion(_ context.Context, params *protocol.CompletionParam
 	qualifier := qualifierBeforePosition(document.Source, params.Position)
 	if qualifier != "" {
 		domain := document.Imports[qualifier]
-		for _, candidate := range s.documents {
-			if candidate.Domain != domain {
-				continue
-			}
+		for _, candidate := range snapshot.DocumentsInDomain(domain) {
 			for _, definition := range candidate.Definitions {
 				items[definition.Name] = symbolCompletion(definition, domain)
 			}
@@ -100,10 +97,7 @@ func (s *_Server) Completion(_ context.Context, params *protocol.CompletionParam
 				Detail: protocol.NewOptional(domain),
 			}
 		}
-		for _, candidate := range s.documents {
-			if candidate.Domain != document.Domain {
-				continue
-			}
+		for _, candidate := range snapshot.DocumentsInDomain(document.Domain) {
 			for _, definition := range candidate.Definitions {
 				items[definition.Name] = symbolCompletion(definition, document.Domain)
 			}
@@ -122,7 +116,7 @@ func (s *_Server) Completion(_ context.Context, params *protocol.CompletionParam
 	return result, nil
 }
 
-func symbolCompletion(definition _Definition, domain string) protocol.CompletionItem {
+func symbolCompletion(definition index.Definition, domain string) protocol.CompletionItem {
 	item := protocol.CompletionItem{
 		Label: definition.Name, Kind: completionKind(definition.Kind), Detail: protocol.NewOptional(domain + "." + definition.Name),
 	}

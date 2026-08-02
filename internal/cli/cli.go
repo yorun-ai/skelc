@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -48,13 +49,7 @@ type _LogEntry struct {
 }
 
 func Main() {
-	if len(os.Args) == 2 && os.Args[1] == "lsp" {
-		os.Exit(runLSP())
-	}
-	result := Run(os.Args[1:])
-	if result.Stdout != "" {
-		_, _ = fmt.Fprint(os.Stdout, result.Stdout)
-	}
+	result := run(os.Args[1:], os.Stdin, os.Stdout)
 	if result.Stderr != "" {
 		_, _ = fmt.Fprint(os.Stderr, result.Stderr)
 		if !strings.HasSuffix(result.Stderr, "\n") {
@@ -65,10 +60,17 @@ func Main() {
 }
 
 func Run(args []string) Result {
+	var stdout strings.Builder
+	result := run(args, strings.NewReader(""), &stdout)
+	result.Stdout = stdout.String()
+	return result
+}
+
+func run(args []string, stdin io.Reader, stdout io.Writer) Result {
 	if len(args) == 0 {
 		args = []string{"--help"}
 	}
-	return runCLICommand(newCommand(), append([]string{"skelc"}, args...))
+	return runCLICommand(newCommand(), append([]string{"skelc"}, args...), stdin, stdout)
 }
 
 func newCommand() *ucli.Command {
@@ -96,13 +98,13 @@ func newCommand() *ucli.Command {
 	}
 }
 
-func runCLICommand(command *ucli.Command, args []string) (result Result) {
+func runCLICommand(command *ucli.Command, args []string, stdin io.Reader, stdout io.Writer) (result Result) {
 	rawLogFormat := rawLogFormatFromArgs(args)
 
-	var stdout strings.Builder
 	var stderr strings.Builder
 
-	command.Writer = &stdout
+	command.Reader = stdin
+	command.Writer = stdout
 	command.ErrWriter = &stderr
 	command.ExitErrHandler = func(_ context.Context, _ *ucli.Command, _ error) {}
 
@@ -110,29 +112,28 @@ func runCLICommand(command *ucli.Command, args []string) (result Result) {
 	if err != nil {
 		if diagnostics, ok := err.(interface{ DiagnosticEntries() compiler.Diagnostics }); ok {
 			return Result{
-				ExitCode: ExitCodeError, Stdout: stdout.String(),
-				Stderr: formatDiagnostics(diagnostics.DiagnosticEntries(), rawLogFormat),
+				ExitCode: ExitCodeError,
+				Stderr:   formatDiagnostics(diagnostics.DiagnosticEntries(), rawLogFormat),
 			}
 		}
 		if diagnostics, ok := err.(interface{ Errors() []error }); ok {
 			return Result{
-				ExitCode: ExitCodeError, Stdout: stdout.String(),
-				Stderr: formatErrors(diagnostics.Errors(), rawLogFormat),
+				ExitCode: ExitCodeError,
+				Stderr:   formatErrors(diagnostics.Errors(), rawLogFormat),
 			}
 		}
 		if stderr.Len() > 0 {
 			return Result{
 				ExitCode: ExitCodeError,
-				Stdout:   stdout.String(),
 				Stderr:   logutil.Format(logutil.Error("%s", stderr.String()), rawLogFormat),
 			}
 		}
-		return Result{ExitCode: ExitCodeError, Stdout: stdout.String(), Stderr: logutil.Format(logutil.Error("%s", err.Error()), rawLogFormat)}
+		return Result{ExitCode: ExitCodeError, Stderr: logutil.Format(logutil.Error("%s", err.Error()), rawLogFormat)}
 	}
 	if stderr.Len() > 0 {
-		return Result{ExitCode: ExitCodeError, Stdout: stdout.String(), Stderr: logutil.Format(logutil.Error("%s", stderr.String()), rawLogFormat)}
+		return Result{ExitCode: ExitCodeError, Stderr: logutil.Format(logutil.Error("%s", stderr.String()), rawLogFormat)}
 	}
-	return Result{ExitCode: ExitCodeSuccess, Stdout: stdout.String(), Stderr: stderr.String()}
+	return Result{ExitCode: ExitCodeSuccess, Stderr: stderr.String()}
 }
 
 func formatDiagnostics(diagnostics compiler.Diagnostics, format string) string {

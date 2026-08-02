@@ -26,7 +26,11 @@ func (g *_Gen) renderSkel(templateName string, payload *_SkelPayload) (string, e
 	if err := g.template.ExecuteTemplate(&rendered, templateName, payload); err != nil {
 		return "", fmt.Errorf("execute Skel template %s: %w", templateName, err)
 	}
-	return string(formatter.Source(rendered.Bytes())), nil
+	formatted, err := formatter.Source(rendered.Bytes())
+	if err != nil {
+		return "", fmt.Errorf("format Skel template %s: %w", templateName, err)
+	}
+	return string(formatted), nil
 }
 
 func skelTemplateFuncs() template.FuncMap {

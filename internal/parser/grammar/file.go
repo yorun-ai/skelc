@@ -1,11 +1,26 @@
 package grammar
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
 )
+
+var topLevelDeclarationKeywords = []string{
+	"enum", "data", "config", "actor", "resource", "service", "web", "event", "task",
+}
+
+// TopLevelDeclarationKeywords returns every keyword that starts a Skel declaration.
+func TopLevelDeclarationKeywords() []string {
+	return slices.Clone(topLevelDeclarationKeywords)
+}
+
+// IsTopLevelDeclarationKeyword reports whether value starts a Skel declaration.
+func IsTopLevelDeclarationKeyword(value string) bool {
+	return slices.Contains(topLevelDeclarationKeywords, value)
+}
 
 type SkelContent struct {
 	Pos     lexer.Position

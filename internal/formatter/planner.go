@@ -1,6 +1,10 @@
 package formatter
 
-import "strings"
+import (
+	"strings"
+
+	"go.yorun.ai/skelc/internal/parser/grammar"
+)
 
 type _TopLineKind uint8
 
@@ -59,9 +63,6 @@ func (p *_Planner) addNewline(index int, value string) {
 	if p.depth == 0 && p.parenDepth == 0 && (next == nil || next.value != "}") && p.canonicalTopLevelBreak(index) {
 		breaks = 2
 	}
-	if p.inRequire && p.parenDepth == 0 {
-		p.inRequire = false
-	}
 	p.breakLine(breaks)
 }
 
@@ -97,24 +98,31 @@ func (p *_Planner) addLineComment(value string) {
 }
 
 func (p *_Planner) addBlockComment(token _Token) {
+	baseIndent := max(0, token.column-1)
 	if p.lineTokenCount > 0 {
 		p.space()
+		baseIndent = minimumContinuationIndent(strings.Split(token.value, "\n"))
 	} else {
 		p.startTopLine(token.value, "BlockComment")
 	}
-	p.raw(token.value, p.indentLevel()*indentWidth)
+	p.raw(normalizeBlockComment(token.value, baseIndent), 0)
 	p.previous = "comment"
 	p.lineTokenCount++
 }
 
-func (p *_Planner) indentLevel() int {
-	level := p.depth
-	for _, indented := range p.parenIndents {
-		if indented {
-			level++
-		}
+func normalizeBlockComment(value string, baseIndent int) string {
+	lines := strings.Split(value, "\n")
+	if len(lines) < 2 {
+		return value
 	}
-	return level
+	for index := 1; index < len(lines); index++ {
+		if strings.TrimSpace(lines[index]) == "" {
+			lines[index] = ""
+			continue
+		}
+		lines[index] = trimBaseIndent(lines[index], baseIndent)
+	}
+	return strings.Join(lines, "\n")
 }
 
 func (p *_Planner) addSyntax(index int, token _Token) {
@@ -212,19 +220,10 @@ func classifyTopLine(value string, kind string) _TopLineKind {
 		return topLineDomain
 	case value == "import":
 		return topLineImport
-	case value == "pub" || isDeclarationKeyword(value):
+	case value == "pub" || grammar.IsTopLevelDeclarationKeyword(value):
 		return topLineDeclaration
 	default:
 		return topLineUnknown
-	}
-}
-
-func isDeclarationKeyword(value string) bool {
-	switch value {
-	case "enum", "data", "config", "actor", "resource", "service", "web", "event", "task":
-		return true
-	default:
-		return false
 	}
 }
 
@@ -257,6 +256,9 @@ func (p *_Planner) nextMeaningful(start int) *_Token {
 }
 
 func (p *_Planner) breakLine(lines int) {
+	if p.inRequire && p.parenDepth == 0 {
+		p.inRequire = false
+	}
 	kind := layoutLine
 	if lines > 1 {
 		kind = layoutBlankLine
@@ -284,19 +286,7 @@ func normalizeTripleString(value string) string {
 		return value
 	}
 
-	baseIndent := -1
-	for _, line := range lines[1 : len(lines)-1] {
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-		indent := len(line) - len(strings.TrimLeft(line, " \t"))
-		if baseIndent < 0 || indent < baseIndent {
-			baseIndent = indent
-		}
-	}
-	if baseIndent < 0 {
-		baseIndent = 0
-	}
+	baseIndent := minimumContinuationIndent(lines[:len(lines)-1])
 	for index := 1; index < len(lines)-1; index++ {
 		if strings.TrimSpace(lines[index]) == "" {
 			lines[index] = ""
@@ -306,6 +296,23 @@ func normalizeTripleString(value string) string {
 	}
 	lines[len(lines)-1] = strings.TrimLeft(lines[len(lines)-1], " \t")
 	return strings.Join(lines, "\n")
+}
+
+func minimumContinuationIndent(lines []string) int {
+	baseIndent := -1
+	for _, line := range lines[1:] {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		indent := len(line) - len(strings.TrimLeft(line, " \t"))
+		if baseIndent < 0 || indent < baseIndent {
+			baseIndent = indent
+		}
+	}
+	if baseIndent < 0 {
+		return 0
+	}
+	return baseIndent
 }
 
 func (p *_Planner) text(value string) {

@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -85,6 +87,79 @@ func TestRunSkelcFormatPreservesInputSymlink(t *testing.T) {
 		t.Fatal("format replaced the input symlink")
 	}
 	assertFileExact(t, targetPath, "domain demo.user\n")
+}
+
+func TestRunSkelcFormatCheckReportsFilesWithoutWriting(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "domain.skel")
+	writeCLIFile(t, path, "  domain demo.user  \n")
+
+	result := Run([]string{"format", "--check", "--skel-in", dir})
+	if result.ExitCode != ExitCodeError {
+		t.Fatalf("expected format check failure: %+v", result)
+	}
+	if result.Stdout != path+"\n" {
+		t.Fatalf("unexpected format check output: %q", result.Stdout)
+	}
+	if !strings.Contains(result.Stderr, "1 Skel file(s) require formatting") {
+		t.Fatalf("unexpected format check error: %q", result.Stderr)
+	}
+	assertFileExact(t, path, "  domain demo.user  \n")
+}
+
+func TestRunSkelcFormatCheckJSON(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "domain.skel")
+	writeCLIFile(t, path, "  domain demo.user  \n")
+
+	result := Run([]string{"format", "--check", "--output-format", "json", "--skel-in", dir})
+	if result.ExitCode != ExitCodeError {
+		t.Fatalf("expected format check failure: %+v", result)
+	}
+	var output _FormatResult
+	if err := json.Unmarshal([]byte(result.Stdout), &output); err != nil {
+		t.Fatalf("decode format result: %v, stdout=%q", err, result.Stdout)
+	}
+	if !output.Changed || len(output.Files) != 1 || output.Files[0] != path {
+		t.Fatalf("unexpected format result: %+v", output)
+	}
+	assertFileExact(t, path, "  domain demo.user  \n")
+}
+
+func TestRunSkelcFormatJSONReportsWrittenFiles(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "domain.skel")
+	writeCLIFile(t, path, "  domain demo.user  \n")
+
+	result := Run([]string{"format", "--output-format", "json", "--skel-in", dir})
+	if result.ExitCode != ExitCodeSuccess {
+		t.Fatalf("unexpected format result: %+v", result)
+	}
+	var output _FormatResult
+	if err := json.Unmarshal([]byte(result.Stdout), &output); err != nil {
+		t.Fatalf("decode format result: %v, stdout=%q", err, result.Stdout)
+	}
+	if !output.Changed || len(output.Files) != 1 || output.Files[0] != path {
+		t.Fatalf("unexpected format result: %+v", output)
+	}
+	assertFileExact(t, path, "domain demo.user\n")
+}
+
+func TestRunSkelcFormatCheckSucceedsWhenFilesAreFormatted(t *testing.T) {
+	dir := t.TempDir()
+	writeCLIFile(t, filepath.Join(dir, "domain.skel"), "domain demo.user\n")
+
+	result := Run([]string{"format", "--check", "--output-format", "json", "--skel-in", dir})
+	if result.ExitCode != ExitCodeSuccess || result.Stderr != "" {
+		t.Fatalf("unexpected format check result: %+v", result)
+	}
+	var output _FormatResult
+	if err := json.Unmarshal([]byte(result.Stdout), &output); err != nil {
+		t.Fatal(err)
+	}
+	if output.Changed || len(output.Files) != 0 {
+		t.Fatalf("unexpected format result: %+v", output)
+	}
 }
 
 func assertFileExact(t *testing.T, path string, expected string) {

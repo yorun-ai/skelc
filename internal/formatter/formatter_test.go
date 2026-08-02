@@ -8,6 +8,7 @@ import (
 	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/internal/parser"
 	"go.yorun.ai/skelc/internal/parser/grammar"
+	"go.yorun.ai/skelc/model"
 )
 
 func TestSourceGolden(t *testing.T) {
@@ -17,29 +18,37 @@ func TestSourceGolden(t *testing.T) {
 	if _, err := parser.ParseSource("complete.input.skel", input); err != nil {
 		t.Fatalf("input fixture does not parse: %v", err)
 	}
-	got := Source(input)
+	got := formatTestSource(t, input)
 	if string(got) != string(want) {
 		t.Fatalf("unexpected formatted source:\n%s\nwant:\n%s", got, want)
 	}
 	if _, err := parser.ParseSource("complete.golden.skel", got); err != nil {
 		t.Fatalf("formatted fixture does not parse: %v", err)
 	}
-	if second := Source(got); string(second) != string(got) {
+	if second := formatTestSource(t, got); string(second) != string(got) {
 		t.Fatalf("format is not idempotent:\n%s", second)
 	}
 }
 
 func TestFormatterIsIdempotentAroundUnmatchedClosingBrace(t *testing.T) {
-	first := Source([]byte("data}0"))
-	second := Source(first)
+	first := formatTestSource(t, []byte("data}0"))
+	second := formatTestSource(t, first)
 	if string(first) != string(second) {
 		t.Fatalf("formatter is not idempotent: first=%q second=%q", first, second)
 	}
 }
 
 func TestFormatterIsIdempotentAroundMismatchedParenAndBrace(t *testing.T) {
-	first := Source([]byte("//00\n00000(}"))
-	second := Source(first)
+	first := formatTestSource(t, []byte("//00\n00000(}"))
+	second := formatTestSource(t, first)
+	if string(first) != string(second) {
+		t.Fatalf("formatter is not idempotent: first=%q second=%q", first, second)
+	}
+}
+
+func TestFormatterEndsRequireSpacingAtSyntheticBlockBreak(t *testing.T) {
+	first := formatTestSource(t, []byte("require{:00"))
+	second := formatTestSource(t, first)
 	if string(first) != string(second) {
 		t.Fatalf("formatter is not idempotent: first=%q second=%q", first, second)
 	}
@@ -50,8 +59,8 @@ func TestFormatterIsIdempotentAroundInlineTripleString(t *testing.T) {
 		[]byte("0\"\"\"\n  \"\"\""),
 		[]byte("{\"\"\"\r \r\"\"\""),
 	} {
-		first := Source(source)
-		second := Source(first)
+		first := formatTestSource(t, source)
+		second := formatTestSource(t, first)
 		if string(first) != string(second) {
 			t.Errorf("formatter is not idempotent: first=%q second=%q", first, second)
 		}
@@ -62,7 +71,7 @@ func TestSourcePreservesCommentsAndStrings(t *testing.T) {
 	source := []byte("domain demo.user\n\n/* comment { }\n   keep */\n@desc(\"\"\"\n  keep { content }\n    nested\n\"\"\") // inline\nservice UserService {\nmethod ping {}\n}\n")
 	want := "domain demo.user\n\n/* comment { }\n   keep */\n@desc(\"\"\"\nkeep { content }\n  nested\n\"\"\") // inline\nservice UserService {\n    method ping {}\n}\n"
 
-	got := Source(source)
+	got := formatTestSource(t, source)
 	if string(got) != want {
 		t.Fatalf("unexpected formatted source:\n%s\nwant:\n%s", got, want)
 	}
@@ -70,6 +79,67 @@ func TestSourcePreservesCommentsAndStrings(t *testing.T) {
 	after := descriptionValue(t, got)
 	if before != after {
 		t.Fatalf("format changed triple-string value: before=%q after=%q", before, after)
+	}
+}
+
+func TestSourceRebasesBlockCommentsWithoutChangingRelativeIndentation(t *testing.T) {
+	source := []byte("domain demo.user\n\ndata User {\n        /* first\n             second\n          third\n        */\nid:string\n}\n")
+	want := "domain demo.user\n\ndata User {\n    /* first\n         second\n      third\n    */\n    id: string\n}\n"
+
+	formatted := formatTestSource(t, source)
+	if string(formatted) != want {
+		t.Fatalf("unexpected formatted block comment:\n%s\nwant:\n%s", formatted, want)
+	}
+	if second := formatTestSource(t, formatted); string(second) != want {
+		t.Fatalf("block comment formatting is not idempotent:\n%s", second)
+	}
+}
+
+func TestSourcePreservesSemanticMetadata(t *testing.T) {
+	source := []byte(`@desc("""
+User domain
+    with indentation
+""")
+domain demo.user
+
+@desc("""
+User data
+    with indentation
+""")
+@deprecated("Use Profile instead")
+@sensitive
+pub data User {
+@desc("User identifier")
+@deprecated("Use subject instead")
+@example("user-1")
+@sensitive
+id:string
+}
+`)
+	formatted := formatTestSource(t, source)
+	before := compileTestDomain(t, "before.skel", source)
+	after := compileTestDomain(t, "after.skel", formatted)
+
+	if before.Name() != after.Name() || before.Description() != after.Description() || before.Hash() != after.Hash() {
+		t.Fatalf("format changed domain metadata: before=%q/%q/%q after=%q/%q/%q",
+			before.Name(), before.Description(), before.Hash(), after.Name(), after.Description(), after.Hash())
+	}
+	if len(before.Data()) != 1 || len(after.Data()) != 1 {
+		t.Fatalf("unexpected data declarations: before=%d after=%d", len(before.Data()), len(after.Data()))
+	}
+	beforeData, afterData := before.Data()[0], after.Data()[0]
+	if beforeData.Description != afterData.Description || beforeData.Deprecated != afterData.Deprecated ||
+		beforeData.DeprecatedReason != afterData.DeprecatedReason || beforeData.Sensitive != afterData.Sensitive {
+		t.Fatalf("format changed data metadata: before=%+v after=%+v", beforeData, afterData)
+	}
+	if len(beforeData.Members) != 1 || len(afterData.Members) != 1 {
+		t.Fatalf("unexpected data members: before=%d after=%d", len(beforeData.Members), len(afterData.Members))
+	}
+	beforeMember, afterMember := beforeData.Members[0], afterData.Members[0]
+	if beforeMember.Description != afterMember.Description || beforeMember.Deprecated != afterMember.Deprecated ||
+		beforeMember.DeprecatedReason != afterMember.DeprecatedReason || beforeMember.Example != afterMember.Example ||
+		beforeMember.Sensitive != afterMember.Sensitive {
+		t.Fatalf("format changed member metadata: before=%+v after=%+v", beforeMember, afterMember)
 	}
 }
 
@@ -108,7 +178,7 @@ output User?
 }
 }
 `)
-	formatted := Source(source)
+	formatted := formatTestSource(t, source)
 	before := parseDomainHash(t, "before.skel", source)
 	after := parseDomainHash(t, "after.skel", formatted)
 	if before != after {
@@ -117,12 +187,21 @@ output User?
 }
 
 func TestSourceNormalizesEmptyAndInvalidInput(t *testing.T) {
-	if got := Source([]byte(" \r\n\t")); len(got) != 0 {
+	if got := formatTestSource(t, []byte(" \r\n\t")); len(got) != 0 {
 		t.Fatalf("expected empty output, got %q", got)
 	}
-	if got := string(Source([]byte("invalid !  \r\n"))); got != "invalid !\n" {
-		t.Fatalf("unexpected invalid-source fallback: %q", got)
+	if _, err := Source([]byte("invalid !  \r\n")); err == nil {
+		t.Fatal("expected invalid source error")
 	}
+}
+
+func formatTestSource(t *testing.T, source []byte) []byte {
+	t.Helper()
+	formatted, err := Source(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return formatted
 }
 
 func readTestFile(t *testing.T, name string) []byte {
@@ -135,6 +214,10 @@ func readTestFile(t *testing.T, name string) []byte {
 }
 
 func parseDomainHash(t *testing.T, name string, source []byte) string {
+	return compileTestDomain(t, name, source).Hash()
+}
+
+func compileTestDomain(t *testing.T, name string, source []byte) *model.Domain {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), name)
 	if err := os.WriteFile(path, source, 0o600); err != nil {
@@ -144,5 +227,5 @@ func parseDomainHash(t *testing.T, name string, source []byte) string {
 	if err != nil {
 		t.Fatalf("parse %s: %v", name, err)
 	}
-	return result.Domain.Hash()
+	return result.Domain
 }

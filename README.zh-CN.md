@@ -160,9 +160,10 @@ TypeScript 生成也支持 `--pub`，只输出公开 data、enum 和符合条件
 skelc symbol list --skel-in ./skel
 skelc symbol get demo.user.User --skel-in ./skel
 skelc format --skel-in ./skel
+skelc format --check --output-format json --skel-in ./skel
 ```
 
-`format` 会原地修改文件，执行前会先验证全部输入。它会先暂存所有待修改文件，再统一提交；如果后续写入失败，已经替换的文件会被恢复。它采用唯一的规范样式：四空格缩进、紧凑的类型与权限标点、字段和参数冒号后保留一个空格、空块保持紧凑，以及顶层声明之间保留一个空行；声明顺序、注释内容和字符串值不会改变。工具集成可以使用全局参数 `--log-format jsonl` 获取机器可读诊断。
+`format` 会在验证全部输入后原地修改文件。使用 `--check` 可以只报告格式不规范的文件并以非零状态退出，不修改文件；`--output-format json` 会返回机器可读的变更结果。格式化会先暂存所有待修改文件，再统一提交，保留文件所有者、mode 和平台支持的扩展元数据；如果后续写入或持久化同步失败，已经替换的文件会被恢复。它采用唯一的规范样式：四空格缩进、紧凑的类型与权限标点、字段和参数冒号后保留一个空格、空块保持紧凑，以及顶层声明之间保留一个空行；声明顺序、注释内容和字符串值不会改变。工具集成可以使用全局参数 `--log-format jsonl` 获取机器可读诊断。
 
 `check` 会在声明、block 成员、右花括号和 decorator 边界恢复解析，单次运行可为每个 domain 报告最多 50 条相互独立的语法与语义诊断。无效声明会被隔离，避免产生依赖级联错误。JSONL 诊断包含稳定 code、severity、精确 range、关联位置和可选修复建议。
 

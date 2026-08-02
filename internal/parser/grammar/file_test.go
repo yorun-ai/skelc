@@ -1,9 +1,32 @@
 package grammar
 
 import (
+	"reflect"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
+
+func TestTopLevelDeclarationKeywordsMatchSkelEntryGrammar(t *testing.T) {
+	quotedKeyword := regexp.MustCompile(`"([a-z]+)"`)
+	entryType := reflect.TypeFor[SkelEntry]()
+	keywords := make([]string, 0, entryType.NumField())
+	for index := range entryType.NumField() {
+		field := entryType.Field(index)
+		if field.Name == "Pos" || field.Name == "Decorators" || field.Name == "Pub" {
+			continue
+		}
+		match := quotedKeyword.FindStringSubmatch(field.Tag.Get("parser"))
+		if len(match) != 2 {
+			t.Fatalf("declaration field %s has no keyword in parser tag %q", field.Name, field.Tag.Get("parser"))
+		}
+		keywords = append(keywords, match[1])
+	}
+	if !slices.Equal(keywords, TopLevelDeclarationKeywords()) {
+		t.Fatalf("declaration keywords = %q, want %q", TopLevelDeclarationKeywords(), keywords)
+	}
+}
 
 func TestParseDomainContent(t *testing.T) {
 	content := parseSkelForTest(t, `

@@ -77,6 +77,28 @@ func TestReplaceAllRemovesNewFilesOnRollback(t *testing.T) {
 	assertTestFile(t, existingPath, "old existing")
 }
 
+func TestReplaceAllRollsBackWhenDirectorySyncFails(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "domain.skel")
+	writeTestFile(t, path, "old")
+	originalSync := syncReplacementDirectory
+	t.Cleanup(func() { syncReplacementDirectory = originalSync })
+	calls := 0
+	syncReplacementDirectory = func(string) error {
+		calls++
+		if calls == 1 {
+			return errors.New("injected directory sync failure")
+		}
+		return nil
+	}
+
+	err := ReplaceAll([]Replacement{{Path: path, Content: []byte("new"), Mode: 0o644}})
+	if err == nil || !strings.Contains(err.Error(), "injected directory sync failure") {
+		t.Fatalf("expected directory sync failure, got %v", err)
+	}
+	assertTestFile(t, path, "old")
+}
+
 func writeTestFile(t *testing.T, path string, content string) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {

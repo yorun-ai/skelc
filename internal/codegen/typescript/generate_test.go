@@ -1,11 +1,13 @@
 package typescript
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -33,6 +35,13 @@ func TestGenerateModule(t *testing.T) {
 	}
 	if !strings.Contains(string(packageJSON), `"@yorun-ai/vrpc": "*"`) {
 		t.Fatalf("missing vrpc peer dependency: %s", packageJSON)
+	}
+	var packageData map[string]any
+	if err := json.Unmarshal(packageJSON, &packageData); err != nil {
+		t.Fatalf("generated package.json is invalid: %v", err)
+	}
+	if packageData["_generated"] != common.GeneratedFileMarker {
+		t.Fatalf("missing generated marker in package.json: %s", packageJSON)
 	}
 	if _, err := os.Stat(filepath.Join(outDir, "tsconfig.json")); !os.IsNotExist(err) {
 		t.Fatalf("expected tsconfig.json to be missing: %v", err)

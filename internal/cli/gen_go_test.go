@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"go.yorun.ai/skelc/internal/codegen/common"
 )
 
 func TestRunSkelcGenGo(t *testing.T) {
@@ -42,7 +44,8 @@ func TestRunSkelcGenGoPreservesUnmanagedOutput(t *testing.T) {
 	assertFileContains(t, filepath.Join(goOut, ".hidden-dir", "old.go"), "old")
 	assertFileContains(t, filepath.Join(goOut, "old.go"), "old")
 	assertFileContains(t, filepath.Join(goOut, "doc.go"), "package skeled")
-	assertFileContains(t, filepath.Join(goOut, ".skelc-manifest.json"), `"doc.go"`)
+	assertFileContains(t, filepath.Join(goOut, "doc.go"), common.GeneratedFileMarker)
+	assertFileMissing(t, filepath.Join(goOut, ".skelc-manifest.json"))
 }
 
 func TestRunSkelcGenGoDoesNotChangeOutputWhenCompilationFails(t *testing.T) {

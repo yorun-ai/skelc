@@ -22,6 +22,12 @@ func (r *Renderer) Write(file string, content string) {
 		return
 	}
 	content = normalizeTrailingNewline(content)
+	content, err := MarkGeneratedFile(file, content)
+	if err != nil {
+		r.err = err
+		return
+	}
+	content = normalizeTrailingNewline(content)
 	fullPath := filepath.Join(r.outputDir, file)
 	if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
 		r.err = fmt.Errorf("create output directory for %s: %w", fullPath, err)

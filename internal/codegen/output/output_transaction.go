@@ -1,7 +1,6 @@
 package output
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -19,12 +18,12 @@ type _OutputSnapshot struct {
 }
 
 type _OutputCommit struct {
-	output        *ManagedOutput
-	manifest      _OutputManifest
-	previous      _OutputManifest
-	manifestBytes []byte
-	snapshots     []_OutputSnapshot
-	targetExisted bool
+	output               *ManagedOutput
+	files                []string
+	staleFiles           []string
+	removeLegacyManifest bool
+	snapshots            []_OutputSnapshot
+	targetExisted        bool
 }
 
 // RunManagedOutputs stages every non-empty target, runs generate with matching
@@ -124,16 +123,10 @@ func CommitManagedOutputs(outputs []*ManagedOutput) error {
 }
 
 func (o *ManagedOutput) prepareCommit() (*_OutputCommit, error) {
-	manifest, err := buildOutputManifest(o.stageDir)
+	files, err := collectStagedGeneratedOutputFiles(o.stageDir)
 	if err != nil {
 		return nil, err
 	}
-	manifestBytes, err := json.MarshalIndent(manifest, "", "  ")
-	if err != nil {
-		return nil, fmt.Errorf("encode output manifest: %w", err)
-	}
-	manifestBytes = append(manifestBytes, '\n')
-
 	targetExisted := true
 	if _, err := os.Lstat(o.targetDir); errors.Is(err, os.ErrNotExist) {
 		targetExisted = false
@@ -152,26 +145,32 @@ func (o *ManagedOutput) prepareCommit() (*_OutputCommit, error) {
 		cleanupNewTarget()
 		return nil, err
 	}
-	if err := rejectOutputSymlink(o.targetDir, outputManifestName); err != nil {
-		cleanupNewTarget()
-		return nil, err
-	}
-	previous, err := readOutputManifest(o.targetDir)
+	legacyManifest, legacyManifestExists, err := readLegacyOutputManifest(o.targetDir)
 	if err != nil {
 		cleanupNewTarget()
 		return nil, err
 	}
-	paths := map[string]bool{outputManifestName: true}
-	for _, file := range manifest.Files {
-		paths[file.Path] = true
-		if err := rejectOutputSymlink(o.targetDir, filepath.FromSlash(file.Path)); err != nil {
+	markedFiles, err := collectMarkedGeneratedOutputFiles(o.targetDir)
+	if err != nil {
+		cleanupNewTarget()
+		return nil, err
+	}
+	staleFiles, err := collectStaleGeneratedOutputFiles(o.targetDir, files, markedFiles, legacyManifest)
+	if err != nil {
+		cleanupNewTarget()
+		return nil, err
+	}
+	paths := map[string]bool{}
+	for _, file := range append(slices.Clone(files), staleFiles...) {
+		paths[file] = true
+		if err := rejectOutputSymlink(o.targetDir, filepath.FromSlash(file)); err != nil {
 			cleanupNewTarget()
 			return nil, err
 		}
 	}
-	for _, file := range previous.Files {
-		paths[file.Path] = true
-		if err := rejectOutputSymlink(o.targetDir, filepath.FromSlash(file.Path)); err != nil {
+	if legacyManifestExists {
+		paths[legacyOutputManifestName] = true
+		if err := rejectOutputSymlink(o.targetDir, legacyOutputManifestName); err != nil {
 			cleanupNewTarget()
 			return nil, err
 		}
@@ -182,22 +181,30 @@ func (o *ManagedOutput) prepareCommit() (*_OutputCommit, error) {
 		return nil, err
 	}
 	return &_OutputCommit{
-		output: o, manifest: manifest, previous: previous, manifestBytes: manifestBytes,
-		snapshots: snapshots, targetExisted: targetExisted,
+		output: o, files: files, staleFiles: staleFiles,
+		removeLegacyManifest: legacyManifestExists,
+		snapshots:            snapshots,
+		targetExisted:        targetExisted,
 	}, nil
 }
 
 func (commit *_OutputCommit) apply() error {
-	for _, file := range commit.manifest.Files {
-		if err := commit.output.commitOutputFile(file.Path); err != nil {
+	for _, file := range commit.files {
+		if err := commit.output.commitOutputFile(file); err != nil {
 			return err
 		}
 	}
-	if err := removeStaleOutputFiles(commit.output.targetDir, commit.previous, commit.manifest); err != nil {
+	if err := removeGeneratedOutputFiles(commit.output.targetDir, commit.staleFiles); err != nil {
 		return err
 	}
-	manifestPath := filepath.Join(commit.output.targetDir, outputManifestName)
-	return commit.output.writeFile(manifestPath, commit.manifestBytes, 0o644)
+	if !commit.removeLegacyManifest {
+		return nil
+	}
+	manifestPath := filepath.Join(commit.output.targetDir, legacyOutputManifestName)
+	if err := os.Remove(manifestPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("remove legacy output manifest %s: %w", manifestPath, err)
+	}
+	return nil
 }
 
 func (commit *_OutputCommit) rollback() error {

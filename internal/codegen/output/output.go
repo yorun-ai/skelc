@@ -9,28 +9,33 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/util/fileutil"
 )
 
-const outputManifestName = ".skelc-manifest.json"
+const (
+	legacyOutputManifestName     = ".skelc-manifest.json"
+	generatedFileMarkerScanLimit = 4 * 1024
+)
 
-type _OutputManifest struct {
-	Version int                   `json:"version"`
-	Files   []_OutputManifestFile `json:"files"`
+type _LegacyOutputManifest struct {
+	Version int                         `json:"version"`
+	Files   []_LegacyOutputManifestFile `json:"files"`
 }
 
-type _OutputManifestFile struct {
+type _LegacyOutputManifestFile struct {
 	Path   string `json:"path"`
 	SHA256 string `json:"sha256"`
 }
 
-// ManagedOutput stages a complete generator run and commits only files owned
-// by skelc. Files not listed in the previous manifest are never removed.
+// ManagedOutput stages a complete generator run and commits files atomically.
+// Generated-file markers distinguish skelc-owned output from handwritten files.
 type ManagedOutput struct {
 	targetDir string
 	stageRoot string
@@ -73,8 +78,8 @@ func (o *ManagedOutput) Abort() {
 	o.stageRoot = ""
 }
 
-func buildOutputManifest(stageDir string) (_OutputManifest, error) {
-	manifest := _OutputManifest{Version: 1, Files: []_OutputManifestFile{}}
+func collectStagedGeneratedOutputFiles(stageDir string) ([]string, error) {
+	files := []string{}
 	err := filepath.WalkDir(stageDir, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -85,58 +90,124 @@ func buildOutputManifest(stageDir string) (_OutputManifest, error) {
 		if entry.Type()&os.ModeSymlink != 0 {
 			return fmt.Errorf("generated output contains symlink %s", path)
 		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("generated output path %s is not a regular file", path)
+		}
 		relative, err := filepath.Rel(stageDir, path)
 		if err != nil {
 			return err
 		}
-		relative, err = cleanManifestPath(relative)
+		relative, err = cleanGeneratedOutputPath(relative)
 		if err != nil {
 			return err
 		}
-		hash, err := fileSHA256(path)
+		marked, err := generatedFileHasMarker(path)
 		if err != nil {
 			return err
 		}
-		manifest.Files = append(manifest.Files, _OutputManifestFile{Path: filepath.ToSlash(relative), SHA256: hash})
+		if !marked {
+			return fmt.Errorf("generated output %s is missing the skelc ownership marker", path)
+		}
+		files = append(files, filepath.ToSlash(relative))
 		return nil
 	})
 	if err != nil {
-		return _OutputManifest{}, fmt.Errorf("inspect staged output %s: %w", stageDir, err)
+		return nil, fmt.Errorf("inspect staged output %s: %w", stageDir, err)
 	}
-	slices.SortFunc(manifest.Files, func(left, right _OutputManifestFile) int {
-		return strings.Compare(left.Path, right.Path)
-	})
-	return manifest, nil
+	slices.Sort(files)
+	return files, nil
 }
 
-func readOutputManifest(targetDir string) (_OutputManifest, error) {
-	path := filepath.Join(targetDir, outputManifestName)
+func collectMarkedGeneratedOutputFiles(targetDir string) ([]string, error) {
+	files := []string{}
+	err := filepath.WalkDir(targetDir, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 {
+			return nil
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		if !info.Mode().IsRegular() {
+			return nil
+		}
+		marked, err := generatedFileHasMarker(path)
+		if err != nil {
+			return err
+		}
+		if !marked {
+			return nil
+		}
+		relative, err := filepath.Rel(targetDir, path)
+		if err != nil {
+			return err
+		}
+		relative, err = cleanGeneratedOutputPath(relative)
+		if err != nil {
+			return err
+		}
+		files = append(files, filepath.ToSlash(relative))
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("inspect generated output directory %s: %w", targetDir, err)
+	}
+	slices.Sort(files)
+	return files, nil
+}
+
+func generatedFileHasMarker(path string) (bool, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+	return generatedFileMarkerInReader(file)
+}
+
+func generatedFileMarkerInReader(reader io.Reader) (bool, error) {
+	prefix, err := io.ReadAll(io.LimitReader(reader, generatedFileMarkerScanLimit))
+	if err != nil {
+		return false, err
+	}
+	return common.HasGeneratedFileMarker(prefix), nil
+}
+
+func readLegacyOutputManifest(targetDir string) (_LegacyOutputManifest, bool, error) {
+	path := filepath.Join(targetDir, legacyOutputManifestName)
 	content, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return _OutputManifest{Version: 1}, nil
+		return _LegacyOutputManifest{Version: 1}, false, nil
 	}
 	if err != nil {
-		return _OutputManifest{}, fmt.Errorf("read output manifest %s: %w", path, err)
+		return _LegacyOutputManifest{}, false, fmt.Errorf("read legacy output manifest %s: %w", path, err)
 	}
-	var manifest _OutputManifest
+	var manifest _LegacyOutputManifest
 	if err := json.Unmarshal(content, &manifest); err != nil {
-		return _OutputManifest{}, fmt.Errorf("decode output manifest %s: %w", path, err)
+		return _LegacyOutputManifest{}, false, fmt.Errorf("decode legacy output manifest %s: %w", path, err)
 	}
 	if manifest.Version != 1 {
-		return _OutputManifest{}, fmt.Errorf("unsupported output manifest version %d in %s", manifest.Version, path)
+		return _LegacyOutputManifest{}, false, fmt.Errorf("unsupported legacy output manifest version %d in %s", manifest.Version, path)
 	}
 	for index := range manifest.Files {
-		cleaned, err := cleanManifestPath(filepath.FromSlash(manifest.Files[index].Path))
+		cleaned, err := cleanGeneratedOutputPath(filepath.FromSlash(manifest.Files[index].Path))
 		if err != nil {
-			return _OutputManifest{}, fmt.Errorf("invalid output manifest %s: %w", path, err)
+			return _LegacyOutputManifest{}, false, fmt.Errorf("invalid legacy output manifest %s: %w", path, err)
 		}
 		manifest.Files[index].Path = filepath.ToSlash(cleaned)
 	}
-	return manifest, nil
+	return manifest, true, nil
 }
 
 func (o *ManagedOutput) commitOutputFile(relative string) error {
-	relative, err := cleanManifestPath(filepath.FromSlash(relative))
+	relative, err := cleanGeneratedOutputPath(filepath.FromSlash(relative))
 	if err != nil {
 		return err
 	}
@@ -158,34 +229,59 @@ func (o *ManagedOutput) commitOutputFile(relative string) error {
 	return nil
 }
 
-func removeStaleOutputFiles(targetDir string, previous, current _OutputManifest) error {
-	currentPaths := make(map[string]bool, len(current.Files))
-	for _, file := range current.Files {
-		currentPaths[file.Path] = true
+func collectStaleGeneratedOutputFiles(
+	targetDir string,
+	current []string,
+	marked []string,
+	legacy _LegacyOutputManifest,
+) ([]string, error) {
+	currentPaths := make(map[string]bool, len(current))
+	for _, path := range current {
+		currentPaths[path] = true
 	}
-	for _, file := range previous.Files {
-		if currentPaths[file.Path] {
+	stalePaths := map[string]bool{}
+	for _, path := range marked {
+		if !currentPaths[path] {
+			stalePaths[path] = true
+		}
+	}
+	for _, file := range legacy.Files {
+		if currentPaths[file.Path] || stalePaths[file.Path] {
 			continue
 		}
-		relative, err := cleanManifestPath(filepath.FromSlash(file.Path))
+		relative, err := cleanGeneratedOutputPath(filepath.FromSlash(file.Path))
 		if err != nil {
-			return err
+			return nil, err
+		}
+		if err := rejectOutputSymlink(targetDir, relative); err != nil {
+			return nil, err
 		}
 		path := filepath.Join(targetDir, relative)
-		if err := rejectOutputSymlink(targetDir, relative); err != nil {
-			return err
-		}
 		hash, err := fileSHA256(path)
 		if errors.Is(err, os.ErrNotExist) {
 			continue
 		}
 		if err != nil {
-			return fmt.Errorf("inspect stale generated output %s: %w", path, err)
+			return nil, fmt.Errorf("inspect stale generated output %s: %w", path, err)
 		}
-		if hash != file.SHA256 {
-			continue
+		if hash == file.SHA256 {
+			stalePaths[file.Path] = true
 		}
-		if err := os.Remove(path); err != nil {
+	}
+	return slices.Sorted(maps.Keys(stalePaths)), nil
+}
+
+func removeGeneratedOutputFiles(targetDir string, paths []string) error {
+	for _, relative := range paths {
+		relative, err := cleanGeneratedOutputPath(filepath.FromSlash(relative))
+		if err != nil {
+			return err
+		}
+		if err := rejectOutputSymlink(targetDir, relative); err != nil {
+			return err
+		}
+		path := filepath.Join(targetDir, relative)
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("remove stale generated output %s: %w", path, err)
 		}
 		removeEmptyOutputParents(filepath.Dir(path), targetDir)
@@ -229,12 +325,12 @@ func removeEmptyOutputParents(dir, root string) {
 	}
 }
 
-func cleanManifestPath(path string) (string, error) {
+func cleanGeneratedOutputPath(path string) (string, error) {
 	cleaned := filepath.Clean(path)
 	if cleaned == "." || filepath.IsAbs(cleaned) || cleaned == ".." || strings.HasPrefix(cleaned, ".."+string(filepath.Separator)) {
 		return "", fmt.Errorf("unsafe generated output path %q", path)
 	}
-	if filepath.Base(cleaned) == outputManifestName {
+	if filepath.Base(cleaned) == legacyOutputManifestName {
 		return "", fmt.Errorf("generated output cannot use reserved path %q", path)
 	}
 	return cleaned, nil

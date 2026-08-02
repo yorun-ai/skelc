@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/util/sliceutil"
 	"go.yorun.ai/skelc/model"
 )
@@ -203,7 +204,7 @@ func TestRenderTsTrimsTrailingWhitespace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read generated file failed: %v", err)
 	}
-	if got, want := string(content), "const value = 1;\n\nconst next = 2;\n"; got != want {
+	if got, want := string(content), "// "+common.GeneratedFileMarker+"\n\nconst value = 1;\n\nconst next = 2;\n"; got != want {
 		t.Fatalf("unexpected content: got=%q want=%q", got, want)
 	}
 }

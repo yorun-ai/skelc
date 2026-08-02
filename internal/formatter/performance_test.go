@@ -11,8 +11,11 @@ pub data User<T> {
 `)
 
 func BenchmarkSource(b *testing.B) {
+	b.ReportAllocs()
 	for range b.N {
-		Source(formatterBenchmarkSource)
+		if _, err := Source(formatterBenchmarkSource); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -24,8 +27,14 @@ func FuzzSourceIdempotent(f *testing.F) {
 	f.Add([]byte("{\n0/*\n  */"))
 	f.Add([]byte("0\"\"\"\n  \"\"\""))
 	f.Fuzz(func(t *testing.T, source []byte) {
-		first := Source(source)
-		second := Source(first)
+		first, err := Source(source)
+		if err != nil {
+			return
+		}
+		second, err := Source(first)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if string(first) != string(second) {
 			t.Fatalf("formatter is not idempotent: first=%q second=%q", first, second)
 		}

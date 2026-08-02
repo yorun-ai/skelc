@@ -151,7 +151,8 @@ func topLevelTokenKind(tokens []lexer.Token, index int, identifier lexer.TokenTy
 		}
 		value = tokens[index].Value
 	}
-	for _, keyword := range []string{"domain", "import", "enum", "data", "config", "actor", "resource", "service", "web", "event", "task"} {
+	keywords := append([]string{"domain", "import"}, grammar.TopLevelDeclarationKeywords()...)
+	for _, keyword := range keywords {
 		next := nextSignificantToken(tokens, index+1, line, elided)
 		if value == keyword && next >= 0 && tokens[next].Type == identifier {
 			return keyword

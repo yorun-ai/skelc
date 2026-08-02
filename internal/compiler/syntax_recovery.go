@@ -224,7 +224,13 @@ func braceBalance(source []byte) int {
 
 func looksLikeTopLevelDeclaration(line string) bool {
 	line = strings.TrimPrefix(line, "pub ")
-	for _, prefix := range []string{"domain ", "import ", "enum ", "data ", "config ", "actor ", "resource ", "service ", "web ", "event ", "task ", "@"} {
+	keywords := append([]string{"domain", "import"}, grammar.TopLevelDeclarationKeywords()...)
+	keywords = append(keywords, "@")
+	for _, keyword := range keywords {
+		prefix := keyword
+		if keyword != "@" {
+			prefix += " "
+		}
 		if strings.HasPrefix(line, prefix) {
 			return true
 		}

@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 )
 
 // Replacement describes one file to atomically create or replace.
@@ -22,18 +23,24 @@ type _PreparedReplacement struct {
 	existed    bool
 }
 
+var syncReplacementDirectory = syncDirectory
+
 // Replace atomically replaces one file.
 func Replace(replacement Replacement) error {
-	if err := validateTarget(replacement.Path); err != nil {
-		return err
-	}
-	stagedPath, err := stage(replacement)
+	prepared, err := prepare(replacement)
 	if err != nil {
 		return err
 	}
-	defer os.Remove(stagedPath)
-	if err := os.Rename(stagedPath, replacement.Path); err != nil {
+	defer removePrepared(prepared)
+	if err := os.Rename(prepared.stagedPath, prepared.path); err != nil {
 		return fmt.Errorf("replace file %s: %w", replacement.Path, err)
+	}
+	if err := syncDirectories([]_PreparedReplacement{prepared}); err != nil {
+		rollbackErrors := rollback([]_PreparedReplacement{prepared}, os.Rename)
+		if rollbackSyncErr := syncDirectories([]_PreparedReplacement{prepared}); rollbackSyncErr != nil {
+			rollbackErrors = append(rollbackErrors, rollbackSyncErr)
+		}
+		return replacementFailure(err, rollbackErrors)
 	}
 	return nil
 }
@@ -48,8 +55,7 @@ func replaceAll(replacements []Replacement, replace func(string, string) error) 
 	prepared := make([]_PreparedReplacement, 0, len(replacements))
 	defer func() {
 		for _, replacement := range prepared {
-			_ = os.Remove(replacement.stagedPath)
-			_ = os.Remove(replacement.backupPath)
+			removePrepared(replacement)
 		}
 	}()
 
@@ -71,11 +77,18 @@ func replaceAll(replacements []Replacement, replace func(string, string) error) 
 		if err := replace(replacement.stagedPath, replacement.path); err != nil {
 			commitErr := fmt.Errorf("replace file %s: %w", replacement.path, err)
 			rollbackErrors := rollback(prepared[:index], replace)
-			if len(rollbackErrors) > 0 {
-				return errors.Join(commitErr, fmt.Errorf("roll back file replacements: %w", errors.Join(rollbackErrors...)))
+			if syncErr := syncDirectories(prepared[:index]); syncErr != nil {
+				rollbackErrors = append(rollbackErrors, syncErr)
 			}
-			return commitErr
+			return replacementFailure(commitErr, rollbackErrors)
 		}
+	}
+	if err := syncDirectories(prepared); err != nil {
+		rollbackErrors := rollback(prepared, replace)
+		if rollbackSyncErr := syncDirectories(prepared); rollbackSyncErr != nil {
+			rollbackErrors = append(rollbackErrors, rollbackSyncErr)
+		}
+		return replacementFailure(err, rollbackErrors)
 	}
 	return nil
 }
@@ -84,26 +97,25 @@ func prepare(replacement Replacement) (_PreparedReplacement, error) {
 	if err := validateTarget(replacement.Path); err != nil {
 		return _PreparedReplacement{}, err
 	}
-	stagedPath, err := stage(replacement)
+	info, err := os.Lstat(replacement.Path)
+	if errors.Is(err, os.ErrNotExist) {
+		stagedPath, stageErr := stage(replacement, "")
+		return _PreparedReplacement{path: replacement.Path, stagedPath: stagedPath}, stageErr
+	}
+	if err != nil {
+		return _PreparedReplacement{}, fmt.Errorf("inspect file %s: %w", replacement.Path, err)
+	}
+	stagedPath, err := stage(replacement, replacement.Path)
 	if err != nil {
 		return _PreparedReplacement{}, err
 	}
 	prepared := _PreparedReplacement{path: replacement.Path, stagedPath: stagedPath}
-
-	info, err := os.Lstat(replacement.Path)
-	if errors.Is(err, os.ErrNotExist) {
-		return prepared, nil
-	}
-	if err != nil {
-		_ = os.Remove(stagedPath)
-		return _PreparedReplacement{}, fmt.Errorf("inspect file %s: %w", replacement.Path, err)
-	}
 	content, err := os.ReadFile(replacement.Path)
 	if err != nil {
 		_ = os.Remove(stagedPath)
 		return _PreparedReplacement{}, fmt.Errorf("read file %s: %w", replacement.Path, err)
 	}
-	backupPath, err := stage(Replacement{Path: replacement.Path, Content: content, Mode: info.Mode()})
+	backupPath, err := stage(Replacement{Path: replacement.Path, Content: content, Mode: info.Mode()}, replacement.Path)
 	if err != nil {
 		_ = os.Remove(stagedPath)
 		return _PreparedReplacement{}, fmt.Errorf("back up file %s: %w", replacement.Path, err)
@@ -111,6 +123,18 @@ func prepare(replacement Replacement) (_PreparedReplacement, error) {
 	prepared.backupPath = backupPath
 	prepared.existed = true
 	return prepared, nil
+}
+
+func removePrepared(replacement _PreparedReplacement) {
+	_ = os.Remove(replacement.stagedPath)
+	_ = os.Remove(replacement.backupPath)
+}
+
+func replacementFailure(commitErr error, rollbackErrors []error) error {
+	if len(rollbackErrors) == 0 {
+		return commitErr
+	}
+	return errors.Join(commitErr, fmt.Errorf("roll back file replacements: %w", errors.Join(rollbackErrors...)))
 }
 
 func rollback(replacements []_PreparedReplacement, replace func(string, string) error) []error {
@@ -147,7 +171,7 @@ func validateTarget(path string) error {
 	return nil
 }
 
-func stage(replacement Replacement) (string, error) {
+func stage(replacement Replacement, metadataPath string) (string, error) {
 	temporary, err := os.CreateTemp(filepath.Dir(replacement.Path), ".skelc-file-*")
 	if err != nil {
 		return "", fmt.Errorf("create staged file for %s: %w", replacement.Path, err)
@@ -157,13 +181,18 @@ func stage(replacement Replacement) (string, error) {
 		_ = temporary.Close()
 		_ = os.Remove(temporaryPath)
 	}
-	if err := temporary.Chmod(replacement.Mode); err != nil {
-		cleanup()
-		return "", fmt.Errorf("set staged file mode for %s: %w", replacement.Path, err)
-	}
 	if _, err := temporary.Write(replacement.Content); err != nil {
 		cleanup()
 		return "", fmt.Errorf("write staged file for %s: %w", replacement.Path, err)
+	}
+	if metadataPath != "" {
+		if err := copyFileMetadata(metadataPath, temporary, replacement.Mode); err != nil {
+			cleanup()
+			return "", fmt.Errorf("copy file metadata for %s: %w", replacement.Path, err)
+		}
+	} else if err := temporary.Chmod(replacement.Mode); err != nil {
+		cleanup()
+		return "", fmt.Errorf("set staged file mode for %s: %w", replacement.Path, err)
 	}
 	if err := temporary.Sync(); err != nil {
 		cleanup()
@@ -174,4 +203,28 @@ func stage(replacement Replacement) (string, error) {
 		return "", fmt.Errorf("close staged file for %s: %w", replacement.Path, err)
 	}
 	return temporaryPath, nil
+}
+
+func syncDirectories(replacements []_PreparedReplacement) error {
+	directories := map[string]bool{}
+	for _, replacement := range replacements {
+		if replacement.path != "" {
+			directories[filepath.Dir(replacement.path)] = true
+		}
+	}
+	for _, directory := range sortedPaths(directories) {
+		if err := syncReplacementDirectory(directory); err != nil {
+			return fmt.Errorf("sync replacement directory %s: %w", directory, err)
+		}
+	}
+	return nil
+}
+
+func sortedPaths(paths map[string]bool) []string {
+	values := make([]string, 0, len(paths))
+	for path := range paths {
+		values = append(values, path)
+	}
+	slices.Sort(values)
+	return values
 }

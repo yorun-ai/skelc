@@ -10,11 +10,15 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 - Public diagnostic types and stable code constants through
   `go.yorun.ai/skelc/diagnostic` and the root API
+- `format --check` and machine-readable format results through
+  `--output-format json`
 
 ### Changed
 
 - Compiler validation and compatibility-hash failures now propagate explicit
   errors instead of relying on panic-based checks
+- Formatter lexer failures now propagate explicitly to CLI, LSP, and generated
+  Skel callers
 
 ### Fixed
 
@@ -22,6 +26,9 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
   structured analyzer metadata instead of parsed from human-readable messages
 - `format` stages all changed files before committing them and restores files
   already replaced if a later write fails
+- Formatter transactions preserve ownership, modes, supported extended
+  metadata, and synchronize parent directories before reporting success
+- Multiline block comments retain their relative indentation when rebased
 - Multi-target generation stages every output before committing and restores
   all affected targets when a commit fails
 - `@deprecated` completion inserts its required reason and uses a snippet

@@ -160,9 +160,10 @@ After declaring an `import` in `.skel`, use repeatable `--skel-import domain=PAT
 skelc symbol list --skel-in ./skel
 skelc symbol get demo.user.User --skel-in ./skel
 skelc format --skel-in ./skel
+skelc format --check --output-format json --skel-in ./skel
 ```
 
-`format` modifies files in place after validating all inputs. It stages every changed file before committing the batch and restores files already replaced if a later write fails. It applies one canonical style: four-space indentation, compact type and permission punctuation, one space after field and argument colons, compact empty blocks, and one blank line between top-level declarations. Declaration order and comment or string values are preserved. Tool integrations can request machine-readable diagnostics with the global `--log-format jsonl` option.
+`format` modifies files in place after validating all inputs. Use `--check` to report unformatted files and exit nonzero without modifying them; `--output-format json` returns a machine-readable change result. Formatting stages every changed file before committing the batch, preserves file ownership, mode, and supported extended metadata, and restores files already replaced if a later write or durability sync fails. It applies one canonical style: four-space indentation, compact type and permission punctuation, one space after field and argument colons, compact empty blocks, and one blank line between top-level declarations. Declaration order and comment or string values are preserved. Tool integrations can request machine-readable diagnostics with the global `--log-format jsonl` option.
 
 `check` recovers at declaration, block-member, closing-brace, and decorator boundaries and reports up to 50 independent syntax and semantic diagnostics per domain in one run. Invalid declarations are isolated so dependent errors do not cascade. JSONL diagnostics include a stable code, severity, exact range, related locations, and an optional fix suggestion.
 

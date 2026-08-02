@@ -12,7 +12,11 @@ func (s *Service) Formatting(_ context.Context, params *protocol.DocumentFormatt
 	if document == nil || len(document.ParseDiagnostics) > 0 {
 		return []protocol.TextEdit{}, nil
 	}
-	formatted := string(formatter.Source([]byte(document.Source)))
+	content, err := formatter.Source([]byte(document.Source))
+	if err != nil {
+		return nil, err
+	}
+	formatted := string(content)
 	if formatted == document.Source {
 		return []protocol.TextEdit{}, nil
 	}

@@ -5,8 +5,8 @@
 // validated [model.Domain]. The Compile functions combine parsing and one
 // generation step for callers that only need a single target.
 //
-// Generation tracks its own files in an output manifest. Existing files that
-// are not owned by skelc are preserved.
+// Generated files carry an ownership marker. Existing files without that
+// marker are preserved.
 package skelc
 
 import (
@@ -148,7 +148,7 @@ type SkeletonOption struct {
 }
 
 // GenerateGolang generates Go source or a standalone Go module from a parsed
-// domain. Only files owned by the previous skelc manifest may be removed.
+// domain. Stale files carrying the skelc generated marker may be removed.
 func GenerateGolang(domain *model.Domain, option GolangOption) error {
 	if domain == nil {
 		return fmt.Errorf("parsed domain is required")
@@ -192,8 +192,8 @@ func CompileGolang(input Input, option GolangOption) (CompileResult, error) {
 	return CompileResult{Diagnostics: parsed.Diagnostics}, nil
 }
 
-// GenerateTypeScript generates TypeScript source from a parsed domain. Only
-// files owned by the previous skelc manifest may be removed.
+// GenerateTypeScript generates TypeScript source from a parsed domain. Stale
+// files carrying the skelc generated marker may be removed.
 func GenerateTypeScript(domain *model.Domain, option TypeScriptOption) error {
 	if domain == nil {
 		return fmt.Errorf("parsed domain is required")
@@ -236,8 +236,8 @@ func CompileTypeScript(input Input, option TypeScriptOption) (CompileResult, err
 	return CompileResult{Diagnostics: parsed.Diagnostics}, nil
 }
 
-// GenerateSkeleton generates a Skel contract from a parsed domain. Only files
-// owned by the previous skelc manifest may be removed.
+// GenerateSkeleton generates a Skel contract from a parsed domain. Stale files
+// carrying the skelc generated marker may be removed.
 func GenerateSkeleton(domain *model.Domain, option SkeletonOption) error {
 	if domain == nil {
 		return fmt.Errorf("parsed domain is required")

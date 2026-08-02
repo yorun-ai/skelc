@@ -6,12 +6,16 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-08-02
+
 ### Added
 
 - Public diagnostic types and stable code constants through
   `go.yorun.ai/skelc/diagnostic` and the root API
 - `format --check` and machine-readable format results through
   `--output-format json`
+- A comprehensive commerce example covering imports, generic data,
+  configuration, events, resources and permissions, Web capabilities, and tasks
 
 ### Changed
 
@@ -33,6 +37,8 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
   all affected targets when a commit fails
 - `@deprecated` completion inserts its required reason and uses a snippet
   placeholder when the language client supports snippets
+- `skelc lsp` now uses normal CLI dispatch so global flags, help output,
+  injected standard streams, and server failures behave consistently
 
 ## [0.10.3] - 2026-07-30
 

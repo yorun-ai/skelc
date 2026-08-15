@@ -12,8 +12,12 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
   types expose `CloneBy(...)` with one typed clone callback per type parameter.
   Rpc service specs compose these methods into typed request and result clone
   hooks that provide value isolation for Vine's in-process transport without
-  promising JSON/CBOR or custom marshaling equivalence. Imported and recursive
-  data retain the serialization fallback when a type cannot be cloned safely
+  promising JSON/CBOR or custom marshaling equivalence. Soft-recursive data is
+  cloned structurally. During the v0.12 rolling upgrade, imported data uses its
+  generated clone method when available; older non-generic packages fall back
+  to serialization, while older generic packages use a typed structural clone
+  so type-parameter callbacks still define isolation. Data fields named
+  `clone` and `cloneBy` are now reserved for the stable generated methods
 - Generated Go code now requires and defaults to `go.yorun.ai/vine v0.13.1`
 - Generated Go package documentation now declares the package fully managed by
   skelc and warns that unmanaged Go files are outside skelc and Vine's

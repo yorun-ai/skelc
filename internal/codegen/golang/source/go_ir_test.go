@@ -43,3 +43,24 @@ func TestGoIRTemplateRendersStructuredControlFlow(t *testing.T) {
 		}
 	}
 }
+
+func TestGoIRTemplateRendersVariableAndMultiAssignment(t *testing.T) {
+	block := goBlock(
+		goVariableStatement("clone", "func(string) string"),
+		&_GoStatement{Assignment: goAssignments(
+			[]string{"value", "ok"},
+			":=",
+			goRaw("input.(string)"),
+		)},
+	)
+
+	got := renderGoIRForTest(t, "goBlock", block)
+	for _, fragment := range []string{
+		"var clone func(string) string",
+		"value, ok := input.(string)",
+	} {
+		if !strings.Contains(got, fragment) {
+			t.Fatalf("rendered Go IR missing %q:\n%s", fragment, got)
+		}
+	}
+}

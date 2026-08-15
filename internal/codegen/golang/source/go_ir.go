@@ -17,6 +17,7 @@ type _GoStatement struct {
 	If         *_GoIf
 	Range      *_GoRange
 	Return     *_GoReturn
+	Variable   *_GoVariable
 }
 
 type _GoAssignment struct {
@@ -40,6 +41,11 @@ type _GoRange struct {
 
 type _GoReturn struct {
 	Values []*_GoExpression
+}
+
+type _GoVariable struct {
+	Name string
+	Type string
 }
 
 type _GoExpression struct {
@@ -98,7 +104,11 @@ func goFunctionExpression(function *_GoFunction) *_GoExpression {
 }
 
 func goAssignment(target string, operator string, value *_GoExpression) *_GoAssignment {
-	return &_GoAssignment{Targets: []string{target}, Operator: operator, Values: []*_GoExpression{value}}
+	return goAssignments([]string{target}, operator, value)
+}
+
+func goAssignments(targets []string, operator string, values ...*_GoExpression) *_GoAssignment {
+	return &_GoAssignment{Targets: targets, Operator: operator, Values: values}
 }
 
 func goAssignmentStatement(target string, operator string, value *_GoExpression) *_GoStatement {
@@ -119,4 +129,8 @@ func goRangeStatement(names []string, source *_GoExpression, body *_GoBlock) *_G
 
 func goReturnStatement(values ...*_GoExpression) *_GoStatement {
 	return &_GoStatement{Return: &_GoReturn{Values: values}}
+}
+
+func goVariableStatement(name string, type_ string) *_GoStatement {
+	return &_GoStatement{Variable: &_GoVariable{Name: name, Type: type_}}
 }

@@ -52,6 +52,8 @@ for {{ range $index, $name := .Range.Names }}{{ if $index }}, {{ end }}{{ $name 
 }
 {{- else if .Return -}}
 return{{ if .Return.Values }} {{ template "goExpressionList" .Return.Values }}{{ end }}
+{{- else if .Variable -}}
+var {{ .Variable.Name }} {{ .Variable.Type }}
 {{- end -}}
 {{- end -}}
 

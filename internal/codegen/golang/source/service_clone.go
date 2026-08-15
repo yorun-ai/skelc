@@ -2,7 +2,9 @@ package source
 
 import (
 	"fmt"
+	"strings"
 
+	"go.yorun.ai/skelc/internal/skelmeta"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/model"
 )
@@ -15,7 +17,16 @@ type _CloneDataKey struct {
 type _CloneBuilder struct {
 	imports             _ImportSet
 	typeParameterCloner map[*model.TypeParameter]string
+	activeImportedClone map[_CloneDataKey]string
 	nextVariable        int
+}
+
+func newCloneBuilder(typeParameterCloners map[*model.TypeParameter]string) *_CloneBuilder {
+	return &_CloneBuilder{
+		imports:             newImportSet(),
+		typeParameterCloner: typeParameterCloners,
+		activeImportedClone: map[_CloneDataKey]string{},
+	}
 }
 
 func buildDataClone(parsed *model.Data, data *Data) {
@@ -34,10 +45,7 @@ func buildDataClone(parsed *model.Data, data *Data) {
 		return
 	}
 
-	builder := &_CloneBuilder{
-		imports:             newImportSet(),
-		typeParameterCloner: typeParameterCloners,
-	}
+	builder := newCloneBuilder(typeParameterCloners)
 	data.CloneBlock = goBlock()
 	for _, member := range parsed.Members {
 		memberName := nameutil.ToCamel(member.Name)
@@ -53,10 +61,7 @@ func buildDataClone(parsed *model.Data, data *Data) {
 }
 
 func buildMethodClones(parsed *model.Method, method *ServiceMethod) {
-	builder := &_CloneBuilder{
-		imports:             newImportSet(),
-		typeParameterCloner: map[*model.TypeParameter]string{},
-	}
+	builder := newCloneBuilder(map[*model.TypeParameter]string{})
 	if method.ArgumentsData != nil && cloneTypesSupported(methodArgumentTypes(parsed), nil) {
 		method.CloneArguments = builder.buildArgumentsClone(parsed, method)
 	}
@@ -100,9 +105,9 @@ func dataCloneMethodConflicts(data *model.Data) bool {
 
 func dataCloneMethodName(data *model.Data) string {
 	if len(data.TypeParameters) > 0 {
-		return "CloneBy"
+		return skelmeta.CloneByMethodName
 	}
-	return "Clone"
+	return skelmeta.CloneMethodName
 }
 
 func cloneTypesSupported(types []*model.Type, typeParameterCloners map[*model.TypeParameter]string) bool {
@@ -135,20 +140,26 @@ func cloneTypeSupported(
 			cloneTypeSupported(type_.Map.Value, completed, active, typeParameterCloners)
 	case model.TypeKindData:
 		if type_.Data == nil ||
-			(type_.Data.Kind != "" && type_.Data.Kind != model.DataKindData) ||
-			dataCloneMethodConflicts(type_.Data) {
+			(type_.Data.Kind != "" && type_.Data.Kind != model.DataKindData) {
 			return false
 		}
 		if type_.ExternalDomain != "" || type_.ExternalImportPath != "" {
-			// TODO: After generated packages have had several skelc release cycles to
-			// adopt Clone and CloneBy, assume imported data provides those methods and
-			// include it in typed clone hooks instead of using serialization fallback.
+			// TODO(v0.13.0): Require imported generated data to provide Clone or
+			// CloneBy and remove the v0.12 rolling-compatibility fallback.
+			for _, argument := range type_.TypeArguments {
+				if !cloneTypeSupported(argument, completed, active, typeParameterCloners) {
+					return false
+				}
+			}
+			return true
+		}
+		if dataCloneMethodConflicts(type_.Data) {
 			return false
 		}
 		plain := castType(withoutCloneNullable(type_)).Plain
 		key := _CloneDataKey{data: type_.Data, typePlain: plain}
 		if active[type_.Data] {
-			return false
+			return true
 		}
 		if completed[key] {
 			return true
@@ -202,29 +213,75 @@ func (b *_CloneBuilder) buildResultClone(parsedType *model.Type, resultType *Typ
 }
 
 func (b *_CloneBuilder) cloneAssignStatements(type_ *model.Type, source string, target string) []*_GoStatement {
-	if cloneTypeUsesNullablePointer(type_) {
+	return b.cloneAssignStatementsWithSubstitutions(type_, nil, source, target)
+}
+
+func (b *_CloneBuilder) cloneAssignStatementsWithSubstitutions(
+	type_ *model.Type,
+	substitutions map[*model.TypeParameter]*model.Type,
+	source string,
+	target string,
+) []*_GoStatement {
+	if type_ == nil {
+		return nil
+	}
+	if type_.Kind == model.TypeKindTypeParameter {
+		if cloner := b.typeParameterCloner[type_.TypeParameter]; cloner != "" {
+			return []*_GoStatement{goAssignmentStatement(
+				target,
+				"=",
+				goCall(cloner, goRaw(source)),
+			)}
+		}
+		resolved := resolveCloneType(type_, substitutions)
+		if resolved == type_ {
+			return nil
+		}
+		return b.cloneAssignStatementsWithSubstitutions(resolved, nil, source, target)
+	}
+
+	resolved := resolveCloneType(type_, substitutions)
+	if cloneTypeUsesNullablePointer(resolved) {
 		valueName := b.variableName("clonedValue")
 		thenBlock := goBlock(
 			goAssignmentStatement(valueName, ":=", goRaw("*"+source)),
 		)
-		thenBlock.append(b.cloneAssignStatements(withoutCloneNullable(type_), "(*"+source+")", valueName)...)
+		thenBlock.append(b.cloneAssignStatementsWithSubstitutions(
+			withoutCloneNullable(type_),
+			substitutions,
+			"(*"+source+")",
+			valueName,
+		)...)
 		thenBlock.append(goAssignmentStatement(target, "=", goRaw("&"+valueName)))
 		return []*_GoStatement{goIfStatement(nil, goRaw(source+" != nil"), thenBlock, nil)}
 	}
 
-	switch type_.Kind {
+	switch resolved.Kind {
 	case model.TypeKindScalar:
-		if type_.Scalar == model.ScalarBinary {
-			return b.cloneSliceAssignStatements(type_, nil, source, target)
+		if resolved.Scalar == model.ScalarBinary {
+			return b.cloneSliceAssignStatements(resolved, nil, nil, source, target)
 		}
 	case model.TypeKindList:
-		return b.cloneSliceAssignStatements(type_, type_.List.Value, source, target)
+		elementType := resolved.List.Value
+		if type_.Kind == model.TypeKindList {
+			elementType = type_.List.Value
+		}
+		return b.cloneSliceAssignStatements(resolved, elementType, substitutions, source, target)
 	case model.TypeKindMap:
 		b.imports.add(&Import{Path: "maps"})
 		keyName := b.variableName("key")
 		itemName := b.variableName("item")
 		clonedItemName := b.variableName("clonedItem")
-		itemStatements := b.cloneAssignStatements(type_.Map.Value, itemName, clonedItemName)
+		itemType := resolved.Map.Value
+		if type_.Kind == model.TypeKindMap {
+			itemType = type_.Map.Value
+		}
+		itemStatements := b.cloneAssignStatementsWithSubstitutions(
+			itemType,
+			substitutions,
+			itemName,
+			clonedItemName,
+		)
 		statements := []*_GoStatement{
 			goAssignmentStatement(target, "=", goCall("maps.Clone", goRaw(source))),
 		}
@@ -246,18 +303,22 @@ func (b *_CloneBuilder) cloneAssignStatements(type_ *model.Type, source string, 
 		}
 		return statements
 	case model.TypeKindData:
-		return []*_GoStatement{goAssignmentStatement(target, "=", b.cloneDataExpression(type_, source))}
-	case model.TypeKindTypeParameter:
 		return []*_GoStatement{goAssignmentStatement(
 			target,
 			"=",
-			goCall(b.typeParameterCloner[type_.TypeParameter], goRaw(source)),
+			b.cloneDataExpressionWithSubstitutions(type_, substitutions, source),
 		)}
 	}
 	return nil
 }
 
-func (b *_CloneBuilder) cloneSliceAssignStatements(type_ *model.Type, elementType *model.Type, source string, target string) []*_GoStatement {
+func (b *_CloneBuilder) cloneSliceAssignStatements(
+	type_ *model.Type,
+	elementType *model.Type,
+	substitutions map[*model.TypeParameter]*model.Type,
+	source string,
+	target string,
+) []*_GoStatement {
 	castedType := castType(withoutCloneNullable(type_))
 	thenBlock := goBlock(goAssignmentStatement(target, "=", goRaw("nil")))
 	elseBlock := goBlock(goAssignmentStatement(
@@ -271,8 +332,9 @@ func (b *_CloneBuilder) cloneSliceAssignStatements(type_ *model.Type, elementTyp
 	}
 
 	indexName := b.variableName("index")
-	elementStatements := b.cloneAssignStatements(
+	elementStatements := b.cloneAssignStatementsWithSubstitutions(
 		elementType,
+		substitutions,
 		source+"["+indexName+"]",
 		target+"["+indexName+"]",
 	)
@@ -289,18 +351,296 @@ func (b *_CloneBuilder) cloneSliceAssignStatements(type_ *model.Type, elementTyp
 }
 
 func (b *_CloneBuilder) cloneDataExpression(type_ *model.Type, source string) *_GoExpression {
-	nonNullableType := withoutCloneNullable(type_)
+	return b.cloneDataExpressionWithSubstitutions(type_, nil, source)
+}
+
+func (b *_CloneBuilder) cloneDataExpressionWithSubstitutions(
+	type_ *model.Type,
+	substitutions map[*model.TypeParameter]*model.Type,
+	source string,
+) *_GoExpression {
+	resolvedType := resolveCloneType(type_, substitutions)
+	nonNullableType := withoutCloneNullable(resolvedType)
 	castedType := castType(nonNullableType)
 	b.imports.addMany(castedType.Imports)
+	cloners := b.cloneTypeArgumentExpressions(type_, substitutions)
+	if importedCloneType(nonNullableType) {
+		return b.cloneImportedDataExpression(nonNullableType, source, cloners)
+	}
 	if len(nonNullableType.TypeArguments) == 0 {
 		return goCall(source + ".Clone")
 	}
-
-	cloners := make([]*_GoExpression, 0, len(nonNullableType.TypeArguments))
-	for _, argument := range nonNullableType.TypeArguments {
-		cloners = append(cloners, b.cloneFunctionExpression(argument))
-	}
 	return goCall(source+".CloneBy", cloners...)
+}
+
+func (b *_CloneBuilder) cloneTypeArgumentExpressions(
+	type_ *model.Type,
+	substitutions map[*model.TypeParameter]*model.Type,
+) []*_GoExpression {
+	cloners := make([]*_GoExpression, 0, len(type_.TypeArguments))
+	for _, argument := range type_.TypeArguments {
+		if argument.Kind == model.TypeKindTypeParameter {
+			if cloner := b.typeParameterCloner[argument.TypeParameter]; cloner != "" {
+				cloners = append(cloners, goRaw(cloner))
+				continue
+			}
+		}
+		cloners = append(cloners, b.cloneFunctionExpression(resolveCloneType(argument, substitutions)))
+	}
+	return cloners
+}
+
+func importedCloneType(type_ *model.Type) bool {
+	return type_.ExternalDomain != "" || type_.ExternalImportPath != ""
+}
+
+func (b *_CloneBuilder) cloneImportedDataExpression(
+	type_ *model.Type,
+	source string,
+	cloners []*_GoExpression,
+) *_GoExpression {
+	castedType := castType(type_)
+	plain := castedType.Plain
+	key := _CloneDataKey{data: type_.Data, typePlain: plain}
+	if activeClone := b.activeImportedClone[key]; activeClone != "" {
+		return goCall(activeClone, goRaw(source))
+	}
+	if len(type_.TypeArguments) == 0 {
+		return b.cloneImportedDataByMarshaling(type_, source, plain)
+	}
+	return b.cloneImportedGenericData(type_, source, plain, key, cloners)
+}
+
+func (b *_CloneBuilder) cloneImportedDataByMarshaling(
+	type_ *model.Type,
+	source string,
+	plain string,
+) *_GoExpression {
+	clonerName := b.variableName("cloner")
+	okName := b.variableName("clonerOK")
+	body := goBlock(goIfStatement(
+		goAssignments(
+			[]string{clonerName, okName},
+			":=",
+			goRaw(fmt.Sprintf("any(value).(interface { Clone() %s })", plain)),
+		),
+		goRaw(okName),
+		goBlock(goReturnStatement(goCall(clonerName+".Clone"))),
+		nil,
+	))
+	body.append(goReturnStatement(b.cloneImportedDataMarshaledExpression(type_, "value", plain)))
+	return goCallExpression(
+		goFunctionExpression(goFunction(
+			[]*_GoParameter{goParameter("value", plain)},
+			plain,
+			body,
+		)),
+		goRaw(source),
+	)
+}
+
+func (b *_CloneBuilder) cloneImportedDataMarshaledExpression(
+	type_ *model.Type,
+	source string,
+	plain string,
+) *_GoExpression {
+	b.imports.add(&Import{Path: "go.yorun.ai/vine/util/vcode"})
+	if type_.ContainsBinaryType() {
+		return goRaw(fmt.Sprintf(
+			"*vcode.MustUnmarshalCbor[%s](vcode.MustMarshalCbor(%s))",
+			plain,
+			source,
+		))
+	}
+	return goCall(
+		"vcode.MustUnmarshalJson["+plain+"]",
+		goCall("vcode.MustMarshalJson", goRaw(source)),
+	)
+}
+
+func (b *_CloneBuilder) cloneImportedGenericData(
+	type_ *model.Type,
+	source string,
+	plain string,
+	key _CloneDataKey,
+	cloners []*_GoExpression,
+) *_GoExpression {
+	cloneFunctionName := b.variableName("cloneImportedData")
+	callbackParameters := make([]*_GoParameter, 0, len(type_.TypeArguments))
+	callbackNames := make([]string, 0, len(type_.TypeArguments))
+	callbackTypes := make([]string, 0, len(type_.TypeArguments))
+	for _, argument := range type_.TypeArguments {
+		castedArgument := castType(argument)
+		b.imports.addMany(castedArgument.Imports)
+		callbackName := b.variableName("cloneImportedArgument")
+		callbackType := fmt.Sprintf("func(%s) %s", castedArgument.Plain, castedArgument.Plain)
+		callbackParameters = append(callbackParameters, goParameter(callbackName, callbackType))
+		callbackNames = append(callbackNames, callbackName)
+		callbackTypes = append(callbackTypes, callbackType)
+	}
+
+	clonerName := b.variableName("cloner")
+	okName := b.variableName("clonerOK")
+	cloneBody := goBlock(goIfStatement(
+		goAssignments(
+			[]string{clonerName, okName},
+			":=",
+			goRaw(fmt.Sprintf(
+				"any(value).(interface { CloneBy(%s) %s })",
+				strings.Join(callbackTypes, ", "),
+				plain,
+			)),
+		),
+		goRaw(okName),
+		goBlock(goReturnStatement(goCall(
+			clonerName+".CloneBy",
+			goRawExpressions(callbackNames)...,
+		))),
+		nil,
+	))
+	if importedCloneSchemaSupported(type_) {
+		cloneBody.append(goAssignmentStatement("cloned", ":=", goRaw("value")))
+	} else {
+		cloneBody.append(goAssignmentStatement(
+			"cloned",
+			":=",
+			b.cloneImportedDataMarshaledExpression(type_, "value", plain),
+		))
+	}
+
+	b.activeImportedClone[key] = cloneFunctionName
+	savedCloners := make(map[*model.TypeParameter]string, len(type_.Data.TypeParameters))
+	hadCloner := make(map[*model.TypeParameter]bool, len(type_.Data.TypeParameters))
+	for index, parameter := range type_.Data.TypeParameters {
+		savedCloners[parameter], hadCloner[parameter] = b.typeParameterCloner[parameter]
+		if index < len(callbackNames) {
+			b.typeParameterCloner[parameter] = callbackNames[index]
+		}
+	}
+	substitutions := cloneDataSubstitutions(type_)
+	for _, member := range type_.Data.Members {
+		memberType := contextualizeImportedCloneType(member.Type, type_)
+		if !importedCloneMemberTypeSupported(memberType) {
+			continue
+		}
+		memberName := nameutil.ToCamel(member.Name)
+		cloneBody.append(b.cloneAssignStatementsWithSubstitutions(
+			memberType,
+			substitutions,
+			"value."+memberName,
+			"cloned."+memberName,
+		)...)
+	}
+	for _, parameter := range type_.Data.TypeParameters {
+		if hadCloner[parameter] {
+			b.typeParameterCloner[parameter] = savedCloners[parameter]
+		} else {
+			delete(b.typeParameterCloner, parameter)
+		}
+	}
+	delete(b.activeImportedClone, key)
+	cloneBody.append(goReturnStatement(goRaw("cloned")))
+
+	outerParameters := append([]*_GoParameter{goParameter("value", plain)}, callbackParameters...)
+	outerArguments := append([]*_GoExpression{goRaw(source)}, cloners...)
+	outerBody := goBlock(
+		goVariableStatement(cloneFunctionName, fmt.Sprintf("func(%s) %s", plain, plain)),
+		goAssignmentStatement(
+			cloneFunctionName,
+			"=",
+			goFunctionExpression(goFunction(
+				[]*_GoParameter{goParameter("value", plain)},
+				plain,
+				cloneBody,
+			)),
+		),
+		goReturnStatement(goCall(cloneFunctionName, goRaw("value"))),
+	)
+	return goCallExpression(
+		goFunctionExpression(goFunction(outerParameters, plain, outerBody)),
+		outerArguments...,
+	)
+}
+
+func importedCloneSchemaSupported(importedType *model.Type) bool {
+	for _, member := range importedType.Data.Members {
+		if !importedCloneMemberTypeSupported(contextualizeImportedCloneType(member.Type, importedType)) {
+			return false
+		}
+	}
+	return true
+}
+
+func importedCloneMemberTypeSupported(type_ *model.Type) bool {
+	if type_ == nil {
+		return false
+	}
+	switch type_.Kind {
+	case model.TypeKindList:
+		return type_.List != nil && importedCloneMemberTypeSupported(type_.List.Value)
+	case model.TypeKindMap:
+		return type_.Map != nil &&
+			importedCloneMemberTypeSupported(type_.Map.Key) &&
+			importedCloneMemberTypeSupported(type_.Map.Value)
+	case model.TypeKindData, model.TypeKindEnum:
+		if type_.ExternalDomain != "" && type_.ExternalImportPath == "" {
+			return false
+		}
+		for _, argument := range type_.TypeArguments {
+			if !importedCloneMemberTypeSupported(argument) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func contextualizeImportedCloneType(type_ *model.Type, importedType *model.Type) *model.Type {
+	if type_ == nil {
+		return nil
+	}
+	contextualized := *type_
+	switch type_.Kind {
+	case model.TypeKindList:
+		contextualized.List = &model.ListType{
+			Value: contextualizeImportedCloneType(type_.List.Value, importedType),
+		}
+	case model.TypeKindMap:
+		contextualized.Map = &model.MapType{
+			Key:   contextualizeImportedCloneType(type_.Map.Key, importedType),
+			Value: contextualizeImportedCloneType(type_.Map.Value, importedType),
+		}
+	case model.TypeKindData:
+		contextualized.TypeArguments = make([]*model.Type, 0, len(type_.TypeArguments))
+		for _, argument := range type_.TypeArguments {
+			contextualized.TypeArguments = append(
+				contextualized.TypeArguments,
+				contextualizeImportedCloneType(argument, importedType),
+			)
+		}
+		if type_.Data != nil && type_.Data.Domain == importedType.Data.Domain && type_.ExternalDomain == "" {
+			contextualized.ExternalDomain = importedType.ExternalDomain
+			contextualized.ExternalAlias = importedType.ExternalAlias
+			contextualized.ExternalAliasExplicit = importedType.ExternalAliasExplicit
+			contextualized.ExternalImportPath = importedType.ExternalImportPath
+		}
+	case model.TypeKindEnum:
+		if type_.Enum != nil && type_.Enum.Domain == importedType.Data.Domain && type_.ExternalDomain == "" {
+			contextualized.ExternalDomain = importedType.ExternalDomain
+			contextualized.ExternalAlias = importedType.ExternalAlias
+			contextualized.ExternalAliasExplicit = importedType.ExternalAliasExplicit
+			contextualized.ExternalImportPath = importedType.ExternalImportPath
+		}
+	}
+	return &contextualized
+}
+
+func goRawExpressions(values []string) []*_GoExpression {
+	expressions := make([]*_GoExpression, 0, len(values))
+	for _, value := range values {
+		expressions = append(expressions, goRaw(value))
+	}
+	return expressions
 }
 
 func (b *_CloneBuilder) cloneFunctionExpression(type_ *model.Type) *_GoExpression {

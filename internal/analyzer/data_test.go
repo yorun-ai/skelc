@@ -153,6 +153,20 @@ func TestParseDataRejectsReservedSensitiveMarkerMethod(t *testing.T) {
 	})
 }
 
+func TestParseDataRejectsReservedCloneMethods(t *testing.T) {
+	for _, name := range []string{"clone", "cloneBy"} {
+		t.Run(name, func(t *testing.T) {
+			expectDataDiagnostic(t, "reserved for a generated clone method", &grammar.Data{
+				Name: ident("Credential"),
+				Members: []*grammar.DataMember{{
+					Name: ident(name),
+					Type: plainType(grammar.String),
+				}},
+			})
+		})
+	}
+}
+
 func TestParseDataRejectsInvalidSensitiveDecorator(t *testing.T) {
 	t.Run("argument", func(t *testing.T) {
 		expectDataDiagnostic(t, "decorator @sensitive does not accept an argument", &grammar.Data{

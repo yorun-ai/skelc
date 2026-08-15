@@ -153,26 +153,43 @@ func TestCastDataDoesNotGenerateConflictingCloneMethod(t *testing.T) {
 	}
 }
 
-func TestCastDataDoesNotGenerateCloneForImportedMember(t *testing.T) {
+func TestCastDataBuildsCompatibleCloneForImportedMember(t *testing.T) {
 	external := &model.Data{Name: "User", Domain: "identity.user"}
 	externalType := dataTypeForTest(external)
 	externalType.ExternalDomain = "identity.user"
 	externalType.ExternalImportPath = "example.com/identity"
+	externalType.ExternalAlias = "userpub"
 	data := castCloneableData(&model.Data{
 		Name:    "Order",
 		Members: []*model.DataMember{{Name: "user", Type: externalType}},
 	})
-	if data.Clone {
-		t.Fatalf("data with imported member must retain serialization fallback: %+v", data)
+	if !data.Clone {
+		t.Fatalf("data with imported member must expose Clone: %+v", data)
+	}
+	lines := renderGoIRForTest(t, "goBlock", data.CloneBlock)
+	for _, fragment := range []string{
+		"any(value).(interface { Clone() userpub.User })",
+		"return cloner0.Clone()",
+		"return vcode.MustUnmarshalJson[userpub.User](vcode.MustMarshalJson(value))",
+	} {
+		if !strings.Contains(lines, fragment) {
+			t.Fatalf("compatible imported clone missing %q:\n%s", fragment, lines)
+		}
+	}
+	if got, want := importPaths(data.CloneImports), []string{"example.com/identity", "go.yorun.ai/vine/util/vcode"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected imported clone imports: got=%v want=%v", got, want)
 	}
 }
 
-func TestCastDataDoesNotGenerateCloneForRecursiveData(t *testing.T) {
+func TestCastDataBuildsCloneForRecursiveData(t *testing.T) {
 	node := &model.Data{Name: "Node"}
 	node.Members = []*model.DataMember{{Name: "children", Type: listTypeForTest(dataTypeForTest(node))}}
 	data := castCloneableData(node)
-	if data.Clone {
-		t.Fatalf("recursive data must retain serialization fallback: %+v", data)
+	if !data.Clone {
+		t.Fatalf("recursive data must expose Clone: %+v", data)
+	}
+	if lines := renderGoIRForTest(t, "goBlock", data.CloneBlock); !strings.Contains(lines, "cloned.Children[index0] = v.Children[index0].Clone()") {
+		t.Fatalf("recursive clone missing nested Clone call:\n%s", lines)
 	}
 }
 

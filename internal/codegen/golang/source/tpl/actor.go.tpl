@@ -73,6 +73,7 @@ func (v *{{ $s.ReceiverType }}) Validate(path string) error {
 	return nil
 }
 {{- end }}
+{{ template "dataClone" $s -}}
 {{ end }}
 {{ range $service := $.AuthServices }}
 {{- if $service.CommentLines }}

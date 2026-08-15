@@ -13,7 +13,7 @@ import (
 
 const dataGoFilename = "data.go"
 
-var dataGoTemplate = loadGoTemplate("data.go.tpl")
+var dataGoTemplate = joinTemplates("imports.go.tpl", "data_clone.go.tpl", "data.go.tpl")
 
 type DataGoPayload struct {
 	PackageName   string
@@ -35,7 +35,7 @@ func (g *_Gen) buildDataGoPayload() *DataGoPayload {
 		Data:        make([]*Data, 0, len(g.view.Data)),
 	}
 	for _, dataType := range g.view.Data {
-		castedData := castData(dataType)
+		castedData := castCloneableData(dataType)
 		payload.Data = append(payload.Data, castedData)
 	}
 	imports := buildDataImports(payload.Data)
@@ -61,6 +61,11 @@ type Data struct {
 	MarkerMethodName string
 	Validate         bool
 	CheckLines       []string
+	Clone            bool
+	CloneMethodName  string
+	CloneParameters  string
+	CloneLines       []string
+	CloneImports     []*Import
 }
 
 func castData(p *model.Data) *Data {
@@ -91,7 +96,12 @@ func castData(p *model.Data) *Data {
 	if data.Validate {
 		data.CheckLines = buildDataCheckLines(p)
 	}
+	return data
+}
 
+func castCloneableData(p *model.Data) *Data {
+	data := castData(p)
+	buildDataClone(p, data)
 	return data
 }
 
@@ -128,6 +138,7 @@ func buildDataImports(dataList []*Data) []*Import {
 		if data.Validate {
 			imports.add(&Import{Path: "go.yorun.ai/vine/core/rpc"})
 		}
+		imports.addMany(data.CloneImports)
 		for _, member := range data.Members {
 			imports.addMany(collectTypeImports(member.Type))
 		}

@@ -6,6 +6,19 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+### Changed
+
+- Generated non-generic Go data types now expose `Clone()`, while generic data
+  types expose `CloneBy(...)` with one typed clone callback per type parameter.
+  Rpc service specs compose these methods into typed request and result clone
+  hooks that provide value isolation for Vine's in-process transport without
+  promising JSON/CBOR or custom marshaling equivalence. Imported and recursive
+  data retain the serialization fallback when a type cannot be cloned safely
+- Generated Go code now requires and defaults to `go.yorun.ai/vine v0.13.1`
+- Generated Go package documentation now declares the package fully managed by
+  skelc and warns that unmanaged Go files are outside skelc and Vine's
+  compilation, runtime, and compatibility guarantees
+
 ## [0.11.1] - 2026-08-03
 
 ### Changed

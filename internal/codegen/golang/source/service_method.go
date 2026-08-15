@@ -18,8 +18,11 @@ type ServiceMethod struct {
 	Arguments                   []*MethodArgument
 	ArgumentsData               *Data
 	ValidateArguments           string
+	CloneArguments              string
 	ResultType                  *Type
 	ValidateResult              string
+	CloneResult                 string
+	CloneImports                []*Import
 	ArgumentsSensitive          bool
 	ResultSensitive             bool
 	ArgumentsContainsBinaryType bool
@@ -58,6 +61,7 @@ func castServiceMethod(ps *model.Service, pm *model.Method) *ServiceMethod {
 		}
 	}
 	method.ValidateArguments = buildMethodValidateArguments(method)
+	buildMethodClones(pm, method)
 	method.CommentLines = goMethodDocLines(
 		method.Name,
 		pm.Description,

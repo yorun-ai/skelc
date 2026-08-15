@@ -8,7 +8,7 @@ import (
 )
 
 // MinimumVineVersion is the minimum Vine version supported by generated Go code.
-const MinimumVineVersion = "v0.10.1"
+const MinimumVineVersion = "v0.13.1"
 
 // DefaultVineVersion is the Vine version used when generation does not select one.
 const DefaultVineVersion = MinimumVineVersion

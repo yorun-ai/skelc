@@ -22,6 +22,10 @@ func TestGeneratorAlwaysRendersGoDocFile(t *testing.T) {
 	if !strings.Contains(string(goDocContent), "// Package skeled") {
 		t.Fatalf("expected fallback go doc comment, got:\n%s", string(goDocContent))
 	}
+	if !strings.Contains(string(goDocContent), "// This package is fully managed by skelc.") ||
+		!strings.Contains(string(goDocContent), "// unmanaged files.") {
+		t.Fatalf("expected generated package ownership warning, got:\n%s", string(goDocContent))
+	}
 	if !strings.Contains(string(goDocContent), "package skeled") {
 		t.Fatalf("expected go doc package declaration, got:\n%s", string(goDocContent))
 	}

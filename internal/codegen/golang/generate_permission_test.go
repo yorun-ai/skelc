@@ -56,7 +56,7 @@ func TestGeneratorRendersGoSkelChecks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read go data file: %v", err)
 	}
-	if !strings.Contains(string(goDataContent), `import "go.yorun.ai/vine/core/rpc"`) {
+	if !strings.Contains(string(goDataContent), `"go.yorun.ai/vine/core/rpc"`) {
 		t.Fatalf("expected data.go rpc import, got:\n%s", string(goDataContent))
 	}
 	if !strings.Contains(string(goDataContent), "func (v *Profile) Validate(path string) error") {
@@ -99,6 +99,12 @@ func TestGeneratorRendersGoSkelChecks(t *testing.T) {
 	}
 	if !strings.Contains(string(goServiceContent), "ValidateArguments: func(value any) error {") {
 		t.Fatalf("expected service arguments checker, got:\n%s", string(goServiceContent))
+	}
+	if !strings.Contains(string(goServiceContent), "CloneArguments: func(value any) any {") {
+		t.Fatalf("expected service arguments clone, got:\n%s", string(goServiceContent))
+	}
+	if !strings.Contains(string(goServiceContent), "CloneResult: func(value any) any {") {
+		t.Fatalf("expected service result clone, got:\n%s", string(goServiceContent))
 	}
 	if !strings.Contains(string(goServiceContent), `args := value.(*_UserServiceListUsersArguments)`) {
 		t.Fatalf("expected typed arguments assertion, got:\n%s", string(goServiceContent))

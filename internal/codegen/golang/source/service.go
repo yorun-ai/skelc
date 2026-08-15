@@ -195,6 +195,7 @@ func buildServiceImports(services []*Service) []*Import {
 	imports.addMany(serviceImports)
 	for _, service := range services {
 		for _, method := range service.Methods {
+			imports.addMany(method.CloneImports)
 			imports.addMany(collectTypeImports(method.ResultType))
 			for _, argument := range method.Arguments {
 				imports.addMany(collectTypeImports(argument.Type))

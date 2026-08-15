@@ -33,19 +33,21 @@ func TestCastServiceMethodBuildsTypedDeepCloneHooks(t *testing.T) {
 	}
 
 	method := castServiceMethod(&model.Service{Name: "CloneService"}, parsed)
+	cloneArguments := renderGoIRForTest(t, "goFunction", method.CloneArguments)
+	cloneResult := renderGoIRForTest(t, "goFunction", method.CloneResult)
 
 	for _, fragment := range []string{
 		"source := value.(*_CloneServiceCloneArguments)",
 		"clonedValue0 = (*source.Node).Clone()",
 		"cloned.Node = &clonedValue",
 	} {
-		if !strings.Contains(method.CloneArguments, fragment) {
-			t.Fatalf("CloneArguments missing %q:\n%s", fragment, method.CloneArguments)
+		if !strings.Contains(cloneArguments, fragment) {
+			t.Fatalf("CloneArguments missing %q:\n%s", fragment, cloneArguments)
 		}
 	}
-	if !strings.Contains(method.CloneResult, "source := value.(Node)") ||
-		!strings.Contains(method.CloneResult, "cloned = source.Clone()") {
-		t.Fatalf("unexpected CloneResult:\n%s", method.CloneResult)
+	if !strings.Contains(cloneResult, "source := value.(Node)") ||
+		!strings.Contains(cloneResult, "cloned = source.Clone()") {
+		t.Fatalf("unexpected CloneResult:\n%s", cloneResult)
 	}
 	if got := importPaths(method.CloneImports); len(got) != 0 {
 		t.Fatalf("unexpected clone imports: %v", got)
@@ -71,7 +73,7 @@ func TestCastServiceMethodFallsBackForImportedData(t *testing.T) {
 
 	method := castServiceMethod(&model.Service{Name: "UserService"}, parsed)
 
-	if method.CloneArguments != "" || method.CloneResult != "" {
+	if method.CloneArguments != nil || method.CloneResult != nil {
 		t.Fatalf("imported data must use Vine fallback: %+v", method)
 	}
 }
@@ -86,7 +88,7 @@ func TestCastServiceMethodFallsBackForRecursiveData(t *testing.T) {
 
 	method := castServiceMethod(&model.Service{Name: "NodeService"}, parsed)
 
-	if method.CloneResult != "" {
+	if method.CloneResult != nil {
 		t.Fatalf("recursive data must use Vine fallback: %+v", method)
 	}
 }
@@ -103,14 +105,15 @@ func TestCastServiceMethodBuildsGenericDataClone(t *testing.T) {
 	resultType := dataTypeForTest(page, stringTypeForTest())
 	method := castServiceMethod(&model.Service{Name: "PageService"}, &model.Method{Name: "list", ResultType: resultType})
 
-	if method.CloneResult == "" {
+	if method.CloneResult == nil {
 		t.Fatalf("expected generic result clone: %+v", method)
 	}
+	cloneResult := renderGoIRForTest(t, "goFunction", method.CloneResult)
 	for _, fragment := range []string{
 		"source.CloneBy(func(value string) string { return value })",
 	} {
-		if !strings.Contains(method.CloneResult, fragment) {
-			t.Fatalf("generic clone hook missing %q:\n%s", fragment, method.CloneResult)
+		if !strings.Contains(cloneResult, fragment) {
+			t.Fatalf("generic clone hook missing %q:\n%s", fragment, cloneResult)
 		}
 	}
 }

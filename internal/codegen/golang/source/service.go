@@ -17,6 +17,7 @@ var serviceImports = []*Import{
 
 var serviceGoTemplate = joinTemplates(
 	"imports.go.tpl",
+	"go_ir.go.tpl",
 	"service/root.go.tpl",
 	"service/info.go.tpl",
 	"service/arguments.go.tpl",

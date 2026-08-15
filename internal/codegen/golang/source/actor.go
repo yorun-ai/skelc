@@ -15,6 +15,7 @@ var actorInfoImports = []*Import{
 
 var actorGoTemplate = joinTemplates(
 	"imports.go.tpl",
+	"go_ir.go.tpl",
 	"data_clone.go.tpl",
 	"actor.go.tpl",
 	"service/info.go.tpl",

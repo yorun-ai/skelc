@@ -72,18 +72,24 @@ func TestCastDataBuildsCloneMethod(t *testing.T) {
 		},
 	})
 
-	if !data.Clone || data.CloneMethodName != "Clone" || data.CloneParameters != "" {
+	if !data.Clone || data.CloneMethodName != "Clone" || len(data.CloneParameters) != 0 {
 		t.Fatalf("unexpected clone metadata: %+v", data)
 	}
-	lines := strings.Join(data.CloneLines, "\n")
+	lines := renderGoIRForTest(t, "goBlock", data.CloneBlock)
 	for _, fragment := range []string{
-		"cloned.Content = append(v.Content[:0:0], v.Content...)",
+		"if v.Content == nil {",
+		"cloned.Content = make(skel.Binary, len(v.Content))",
+		"copy(cloned.Content, v.Content)",
+		"cloned.Children = make([]Child, len(v.Children))",
 		"cloned.Children[index0] = v.Children[index0].Clone()",
 		"cloned.Labels = maps.Clone(v.Labels)",
 	} {
 		if !strings.Contains(lines, fragment) {
 			t.Fatalf("clone lines missing %q:\n%s", fragment, lines)
 		}
+	}
+	if strings.Contains(lines, "[:0:0]") {
+		t.Fatalf("clone lines retain source slice backing arrays:\n%s", lines)
 	}
 	if got := importPaths(data.CloneImports); len(got) != 1 || got[0] != "maps" {
 		t.Fatalf("unexpected clone imports: %v", got)
@@ -103,10 +109,12 @@ func TestCastGenericDataBuildsCloneByMethod(t *testing.T) {
 	if !data.Clone || data.CloneMethodName != "CloneBy" {
 		t.Fatalf("unexpected clone metadata: %+v", data)
 	}
-	if data.CloneParameters != "cloneTItem func(TItem) TItem" {
-		t.Fatalf("unexpected clone parameters: %q", data.CloneParameters)
+	if len(data.CloneParameters) != 1 ||
+		data.CloneParameters[0].Name != "cloneTItem" ||
+		data.CloneParameters[0].Type != "func(TItem) TItem" {
+		t.Fatalf("unexpected clone parameters: %+v", data.CloneParameters)
 	}
-	if lines := strings.Join(data.CloneLines, "\n"); !strings.Contains(lines, "cloned.Items[index0] = cloneTItem(v.Items[index0])") {
+	if lines := renderGoIRForTest(t, "goBlock", data.CloneBlock); !strings.Contains(lines, "cloned.Items[index0] = cloneTItem(v.Items[index0])") {
 		t.Fatalf("generic clone lines did not use callback:\n%s", lines)
 	}
 }
@@ -128,7 +136,7 @@ func TestCastDataCallsNestedGenericCloneBy(t *testing.T) {
 		},
 	})
 
-	lines := strings.Join(data.CloneLines, "\n")
+	lines := renderGoIRForTest(t, "goBlock", data.CloneBlock)
 	if !strings.Contains(lines, "v.Page.CloneBy(func(value User) User {") ||
 		!strings.Contains(lines, "return value.Clone()") {
 		t.Fatalf("nested generic clone did not build concrete callback:\n%s", lines)

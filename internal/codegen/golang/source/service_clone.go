@@ -2,7 +2,6 @@ package source
 
 import (
 	"fmt"
-	"strings"
 
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/model"
@@ -25,11 +24,11 @@ func buildDataClone(parsed *model.Data, data *Data) {
 	// any methods or codec behavior they add are outside the supported contract.
 	data.CloneMethodName = dataCloneMethodName(parsed)
 	typeParameterCloners := make(map[*model.TypeParameter]string, len(parsed.TypeParameters))
-	parameters := make([]string, 0, len(parsed.TypeParameters))
+	parameters := make([]*_GoParameter, 0, len(parsed.TypeParameters))
 	for _, parameter := range parsed.TypeParameters {
 		clonerName := "clone" + parameter.Name
 		typeParameterCloners[parameter] = clonerName
-		parameters = append(parameters, fmt.Sprintf("%s func(%s) %s", clonerName, parameter.Name, parameter.Name))
+		parameters = append(parameters, goParameter(clonerName, fmt.Sprintf("func(%s) %s", parameter.Name, parameter.Name)))
 	}
 	if !cloneDataSupported(parsed, typeParameterCloners) {
 		return
@@ -39,17 +38,17 @@ func buildDataClone(parsed *model.Data, data *Data) {
 		imports:             newImportSet(),
 		typeParameterCloner: typeParameterCloners,
 	}
+	data.CloneBlock = goBlock()
 	for _, member := range parsed.Members {
 		memberName := nameutil.ToCamel(member.Name)
-		data.CloneLines = append(data.CloneLines, builder.cloneAssignLines(
+		data.CloneBlock.append(builder.cloneAssignStatements(
 			member.Type,
 			"v."+memberName,
 			"cloned."+memberName,
-			"\t",
 		)...)
 	}
 	data.Clone = true
-	data.CloneParameters = strings.Join(parameters, ", ")
+	data.CloneParameters = parameters
 	data.CloneImports = builder.imports.sortedValues()
 }
 
@@ -176,133 +175,164 @@ func cloneTypeSupported(
 	}
 }
 
-func (b *_CloneBuilder) buildArgumentsClone(parsed *model.Method, method *ServiceMethod) string {
-	lines := []string{
-		"func(value any) any {",
-		fmt.Sprintf("\tsource := value.(*%s)", method.ArgumentsData.Name),
-		"\tcloned := *source",
-	}
+func (b *_CloneBuilder) buildArgumentsClone(parsed *model.Method, method *ServiceMethod) *_GoFunction {
+	body := goBlock(
+		goAssignmentStatement("source", ":=", goRaw(fmt.Sprintf("value.(*%s)", method.ArgumentsData.Name))),
+		goAssignmentStatement("cloned", ":=", goRaw("*source")),
+	)
 	for index, argument := range parsed.Arguments {
-		lines = append(lines, b.cloneAssignLines(
+		body.append(b.cloneAssignStatements(
 			resolveCloneType(argument.Type, nil),
 			"source."+method.Arguments[index].MemberName,
 			"cloned."+method.Arguments[index].MemberName,
-			"\t",
 		)...)
 	}
-	lines = append(lines, "\treturn &cloned", "}")
-	return strings.Join(lines, "\n")
+	body.append(goReturnStatement(goRaw("&cloned")))
+	return goFunction([]*_GoParameter{goParameter("value", "any")}, "any", body)
 }
 
-func (b *_CloneBuilder) buildResultClone(parsedType *model.Type, resultType *Type) string {
-	lines := []string{
-		"func(value any) any {",
-		fmt.Sprintf("\tsource := value.(%s)", resultType.Plain),
-		"\tcloned := source",
-	}
-	lines = append(lines, b.cloneAssignLines(resolveCloneType(parsedType, nil), "source", "cloned", "\t")...)
-	lines = append(lines, "\treturn cloned", "}")
-	return strings.Join(lines, "\n")
+func (b *_CloneBuilder) buildResultClone(parsedType *model.Type, resultType *Type) *_GoFunction {
+	body := goBlock(
+		goAssignmentStatement("source", ":=", goRaw(fmt.Sprintf("value.(%s)", resultType.Plain))),
+		goAssignmentStatement("cloned", ":=", goRaw("source")),
+	)
+	body.append(b.cloneAssignStatements(resolveCloneType(parsedType, nil), "source", "cloned")...)
+	body.append(goReturnStatement(goRaw("cloned")))
+	return goFunction([]*_GoParameter{goParameter("value", "any")}, "any", body)
 }
 
-func (b *_CloneBuilder) cloneAssignLines(type_ *model.Type, source string, target string, indent string) []string {
+func (b *_CloneBuilder) cloneAssignStatements(type_ *model.Type, source string, target string) []*_GoStatement {
 	if cloneTypeUsesNullablePointer(type_) {
 		valueName := b.variableName("clonedValue")
-		lines := []string{
-			fmt.Sprintf("%sif %s != nil {", indent, source),
-			fmt.Sprintf("%s\t%s := *%s", indent, valueName, source),
-		}
-		lines = append(lines, b.cloneAssignLines(withoutCloneNullable(type_), "(*"+source+")", valueName, indent+"\t")...)
-		lines = append(lines,
-			fmt.Sprintf("%s\t%s = &%s", indent, target, valueName),
-			indent+"}",
+		thenBlock := goBlock(
+			goAssignmentStatement(valueName, ":=", goRaw("*"+source)),
 		)
-		return lines
+		thenBlock.append(b.cloneAssignStatements(withoutCloneNullable(type_), "(*"+source+")", valueName)...)
+		thenBlock.append(goAssignmentStatement(target, "=", goRaw("&"+valueName)))
+		return []*_GoStatement{goIfStatement(nil, goRaw(source+" != nil"), thenBlock, nil)}
 	}
 
 	switch type_.Kind {
 	case model.TypeKindScalar:
 		if type_.Scalar == model.ScalarBinary {
-			return []string{fmt.Sprintf("%s%s = append(%s[:0:0], %s...)", indent, target, source, source)}
+			return b.cloneSliceAssignStatements(type_, nil, source, target)
 		}
 	case model.TypeKindList:
-		indexName := b.variableName("index")
-		elementLines := b.cloneAssignLines(type_.List.Value, source+"["+indexName+"]", target+"["+indexName+"]", indent+"\t")
-		lines := []string{fmt.Sprintf("%s%s = append(%s[:0:0], %s...)", indent, target, source, source)}
-		if len(elementLines) > 0 {
-			lines = append(lines, fmt.Sprintf("%sfor %s := range %s {", indent, indexName, source))
-			lines = append(lines, elementLines...)
-			lines = append(lines, indent+"}")
-		}
-		return lines
+		return b.cloneSliceAssignStatements(type_, type_.List.Value, source, target)
 	case model.TypeKindMap:
 		b.imports.add(&Import{Path: "maps"})
 		keyName := b.variableName("key")
 		itemName := b.variableName("item")
 		clonedItemName := b.variableName("clonedItem")
-		itemLines := b.cloneAssignLines(type_.Map.Value, itemName, clonedItemName, indent+"\t")
-		lines := []string{fmt.Sprintf("%s%s = maps.Clone(%s)", indent, target, source)}
-		if len(itemLines) > 0 {
-			lines = append(lines,
-				fmt.Sprintf("%sfor %s, %s := range %s {", indent, keyName, itemName, source),
-				fmt.Sprintf("%s\t%s := %s", indent, clonedItemName, itemName),
-			)
-			lines = append(lines, itemLines...)
-			lines = append(lines,
-				fmt.Sprintf("%s\t%s[%s] = %s", indent, target, keyName, clonedItemName),
-				indent+"}",
-			)
+		itemStatements := b.cloneAssignStatements(type_.Map.Value, itemName, clonedItemName)
+		statements := []*_GoStatement{
+			goAssignmentStatement(target, "=", goCall("maps.Clone", goRaw(source))),
 		}
-		return lines
+		if len(itemStatements) > 0 {
+			body := goBlock(
+				goAssignmentStatement(clonedItemName, ":=", goRaw(itemName)),
+			)
+			body.append(itemStatements...)
+			body.append(goAssignmentStatement(
+				fmt.Sprintf("%s[%s]", target, keyName),
+				"=",
+				goRaw(clonedItemName),
+			))
+			statements = append(statements, goRangeStatement(
+				[]string{keyName, itemName},
+				goRaw(source),
+				body,
+			))
+		}
+		return statements
 	case model.TypeKindData:
-		return []string{fmt.Sprintf("%s%s = %s", indent, target, b.cloneDataExpression(type_, source))}
+		return []*_GoStatement{goAssignmentStatement(target, "=", b.cloneDataExpression(type_, source))}
 	case model.TypeKindTypeParameter:
-		return []string{fmt.Sprintf("%s%s = %s(%s)", indent, target, b.typeParameterCloner[type_.TypeParameter], source)}
+		return []*_GoStatement{goAssignmentStatement(
+			target,
+			"=",
+			goCall(b.typeParameterCloner[type_.TypeParameter], goRaw(source)),
+		)}
 	}
 	return nil
 }
 
-func (b *_CloneBuilder) cloneDataExpression(type_ *model.Type, source string) string {
+func (b *_CloneBuilder) cloneSliceAssignStatements(type_ *model.Type, elementType *model.Type, source string, target string) []*_GoStatement {
+	castedType := castType(withoutCloneNullable(type_))
+	thenBlock := goBlock(goAssignmentStatement(target, "=", goRaw("nil")))
+	elseBlock := goBlock(goAssignmentStatement(
+		target,
+		"=",
+		goCall("make", goRaw(castedType.Plain), goCall("len", goRaw(source))),
+	))
+	if elementType == nil {
+		elseBlock.append(goExpressionStatement(goCall("copy", goRaw(target), goRaw(source))))
+		return []*_GoStatement{goIfStatement(nil, goRaw(source+" == nil"), thenBlock, elseBlock)}
+	}
+
+	indexName := b.variableName("index")
+	elementStatements := b.cloneAssignStatements(
+		elementType,
+		source+"["+indexName+"]",
+		target+"["+indexName+"]",
+	)
+	if len(elementStatements) == 0 {
+		elseBlock.append(goExpressionStatement(goCall("copy", goRaw(target), goRaw(source))))
+	} else {
+		elseBlock.append(goRangeStatement(
+			[]string{indexName},
+			goRaw(source),
+			goBlock(elementStatements...),
+		))
+	}
+	return []*_GoStatement{goIfStatement(nil, goRaw(source+" == nil"), thenBlock, elseBlock)}
+}
+
+func (b *_CloneBuilder) cloneDataExpression(type_ *model.Type, source string) *_GoExpression {
 	nonNullableType := withoutCloneNullable(type_)
 	castedType := castType(nonNullableType)
 	b.imports.addMany(castedType.Imports)
 	if len(nonNullableType.TypeArguments) == 0 {
-		return source + ".Clone()"
+		return goCall(source + ".Clone")
 	}
 
-	cloners := make([]string, 0, len(nonNullableType.TypeArguments))
+	cloners := make([]*_GoExpression, 0, len(nonNullableType.TypeArguments))
 	for _, argument := range nonNullableType.TypeArguments {
 		cloners = append(cloners, b.cloneFunctionExpression(argument))
 	}
-	return fmt.Sprintf("%s.CloneBy(%s)", source, strings.Join(cloners, ", "))
+	return goCall(source+".CloneBy", cloners...)
 }
 
-func (b *_CloneBuilder) cloneFunctionExpression(type_ *model.Type) string {
+func (b *_CloneBuilder) cloneFunctionExpression(type_ *model.Type) *_GoExpression {
 	if type_.Kind == model.TypeKindTypeParameter {
-		return b.typeParameterCloner[type_.TypeParameter]
+		return goRaw(b.typeParameterCloner[type_.TypeParameter])
 	}
 
 	castedType := castType(type_)
 	b.imports.addMany(castedType.Imports)
 	if type_.Kind == model.TypeKindData && !type_.Nullable {
-		return fmt.Sprintf(
-			"func(value %s) %s { return %s }",
+		return goFunctionExpression(goFunction(
+			[]*_GoParameter{goParameter("value", castedType.Plain)},
 			castedType.Plain,
+			goBlock(goReturnStatement(b.cloneDataExpression(type_, "value"))),
+		))
+	}
+	cloneStatements := b.cloneAssignStatements(type_, "value", "cloned")
+	if len(cloneStatements) == 0 {
+		return goFunctionExpression(goFunction(
+			[]*_GoParameter{goParameter("value", castedType.Plain)},
 			castedType.Plain,
-			b.cloneDataExpression(type_, "value"),
-		)
+			goBlock(goReturnStatement(goRaw("value"))),
+		))
 	}
-	cloneLines := b.cloneAssignLines(type_, "value", "cloned", "\t")
-	if len(cloneLines) == 0 {
-		return fmt.Sprintf("func(value %s) %s { return value }", castedType.Plain, castedType.Plain)
-	}
-	lines := []string{
-		fmt.Sprintf("func(value %s) %s {", castedType.Plain, castedType.Plain),
-		"\tcloned := value",
-	}
-	lines = append(lines, cloneLines...)
-	lines = append(lines, "\treturn cloned", "}")
-	return strings.Join(lines, "\n")
+	body := goBlock(goAssignmentStatement("cloned", ":=", goRaw("value")))
+	body.append(cloneStatements...)
+	body.append(goReturnStatement(goRaw("cloned")))
+	return goFunctionExpression(goFunction(
+		[]*_GoParameter{goParameter("value", castedType.Plain)},
+		castedType.Plain,
+		body,
+	))
 }
 
 func (b *_CloneBuilder) variableName(prefix string) string {

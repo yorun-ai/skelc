@@ -2,7 +2,6 @@ package source
 
 import (
 	"fmt"
-	"strings"
 
 	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/util/nameutil"
@@ -17,11 +16,11 @@ type ServiceMethod struct {
 	CommentLines                []string
 	Arguments                   []*MethodArgument
 	ArgumentsData               *Data
-	ValidateArguments           string
-	CloneArguments              string
+	ValidateArguments           *_GoFunction
+	CloneArguments              *_GoFunction
 	ResultType                  *Type
-	ValidateResult              string
-	CloneResult                 string
+	ValidateResult              *_GoFunction
+	CloneResult                 *_GoFunction
 	CloneImports                []*Import
 	ArgumentsSensitive          bool
 	ResultSensitive             bool
@@ -88,24 +87,29 @@ func methodResultContainsBinaryType(method *model.Method) bool {
 	return method.ResultType.ContainsBinaryType()
 }
 
-func buildMethodValidateResult(method *model.Method, resultType *Type) string {
+func buildMethodValidateResult(method *model.Method, resultType *Type) *_GoFunction {
 	if method.ResultType == nil || resultType == nil || !typeNeedsCheck(method.ResultType, map[*model.Data]bool{}) {
-		return ""
+		return nil
 	}
 
-	lines := []string{"func(value any) error {"}
+	body := goBlock()
 	if method.ResultType.Nullable {
-		lines = append(lines, "\tif value == nil {", "\t\treturn nil", "\t}")
+		body.append(goIfStatement(
+			nil,
+			goRaw("value == nil"),
+			goBlock(goReturnStatement(goRaw("nil"))),
+			nil,
+		))
 	}
-	lines = append(lines, fmt.Sprintf("\tret := value.(%s)", resultType.Plain))
-	lines = append(lines, buildTypeCheckLines(method.ResultType, "ret", `"result"`, "\t", 0)...)
-	lines = append(lines, "\treturn nil", "}")
-	return strings.Join(lines, "\n")
+	body.append(goAssignmentStatement("ret", ":=", goRaw(fmt.Sprintf("value.(%s)", resultType.Plain))))
+	body.append(buildTypeCheckStatements(method.ResultType, "ret", `"result"`, 0)...)
+	body.append(goReturnStatement(goRaw("nil")))
+	return goFunction([]*_GoParameter{goParameter("value", "any")}, "error", body)
 }
 
-func buildMethodValidateArguments(method *ServiceMethod) string {
+func buildMethodValidateArguments(method *ServiceMethod) *_GoFunction {
 	if method.ArgumentsData == nil {
-		return ""
+		return nil
 	}
 
 	needsCheck := false
@@ -116,19 +120,25 @@ func buildMethodValidateArguments(method *ServiceMethod) string {
 		}
 	}
 	if !needsCheck {
-		return ""
+		return nil
 	}
 
-	lines := []string{"func(value any) error {"}
-	lines = append(lines, fmt.Sprintf("\targs := value.(*%s)", method.ArgumentsData.Name))
+	body := goBlock(
+		goAssignmentStatement("args", ":=", goRaw(fmt.Sprintf("value.(*%s)", method.ArgumentsData.Name))),
+	)
 	for _, argument := range method.Arguments {
 		if !typeNeedsCheck(argument.ParsedType, map[*model.Data]bool{}) {
 			continue
 		}
-		lines = append(lines, buildTypeCheckLines(argument.ParsedType, "args."+argument.MemberName, fmt.Sprintf("rpc.JoinPath(%q, %q)", "arguments", argument.MemberName), "\t", 0)...)
+		body.append(buildTypeCheckStatements(
+			argument.ParsedType,
+			"args."+argument.MemberName,
+			fmt.Sprintf("rpc.JoinPath(%q, %q)", "arguments", argument.MemberName),
+			0,
+		)...)
 	}
-	lines = append(lines, "\treturn nil", "}")
-	return strings.Join(lines, "\n")
+	body.append(goReturnStatement(goRaw("nil")))
+	return goFunction([]*_GoParameter{goParameter("value", "any")}, "error", body)
 }
 
 type MethodArgument struct {

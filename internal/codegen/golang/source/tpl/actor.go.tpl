@@ -67,9 +67,7 @@ func (v *{{ $s.ReceiverType }}) Validate(path string) error {
 	if err := rpc.CheckValueNotNil(v, path); err != nil {
 		return err
 	}
-{{- range $line := $s.CheckLines }}
-{{ $line }}
-{{- end }}
+{{ template "goBlock" $s.CheckBlock -}}
 	return nil
 }
 {{- end }}

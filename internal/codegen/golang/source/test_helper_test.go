@@ -1,8 +1,10 @@
 package source
 
 import (
+	"strings"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -111,4 +113,16 @@ func importPaths(imports []*Import) []string {
 		paths = append(paths, import_.Path)
 	}
 	return paths
+}
+
+func renderGoIRForTest(t *testing.T, templateName string, value any) string {
+	t.Helper()
+	content, err := common.RenderTemplate(
+		goIRTemplate.content+"\n{{ template \""+templateName+"\" . }}",
+		value,
+	)
+	if err != nil {
+		t.Fatalf("render Go IR: %v", err)
+	}
+	return strings.Join(strings.Fields(content), " ")
 }

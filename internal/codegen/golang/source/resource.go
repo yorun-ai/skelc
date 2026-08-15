@@ -11,6 +11,7 @@ const resourceGoFilename = "resource.go"
 
 var resourceGoTemplate = joinTemplates(
 	"imports.go.tpl",
+	"go_ir.go.tpl",
 	"resource.go.tpl",
 	"service/info.go.tpl",
 	"service/arguments.go.tpl",

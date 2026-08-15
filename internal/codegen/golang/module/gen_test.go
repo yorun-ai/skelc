@@ -19,6 +19,9 @@ func TestGenerateIncludesVersionedGoImports(t *testing.T) {
 	})
 
 	content := readGoModForTest(t, outputDir)
+	if !strings.Contains(content, "go 1.26.5") {
+		t.Fatalf("expected generated Go toolchain requirement:\n%s", content)
+	}
 	if !strings.Contains(content, "go.yorun.ai/app/vine/demo/skeled/userpub v0.0.0-00010101000000-000000000000") {
 		t.Fatalf("expected versioned go import require:\n%s", content)
 	}

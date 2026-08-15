@@ -13,7 +13,7 @@ import (
 
 const dataGoFilename = "data.go"
 
-var dataGoTemplate = loadGoTemplate("data.go.tpl")
+var dataGoTemplate = joinTemplates("imports.go.tpl", "go_ir.go.tpl", "data_clone.go.tpl", "data.go.tpl")
 
 type DataGoPayload struct {
 	PackageName   string
@@ -35,7 +35,7 @@ func (g *_Gen) buildDataGoPayload() *DataGoPayload {
 		Data:        make([]*Data, 0, len(g.view.Data)),
 	}
 	for _, dataType := range g.view.Data {
-		castedData := castData(dataType)
+		castedData := castCloneableData(dataType)
 		payload.Data = append(payload.Data, castedData)
 	}
 	imports := buildDataImports(payload.Data)
@@ -60,7 +60,12 @@ type Data struct {
 	Sensitive        bool
 	MarkerMethodName string
 	Validate         bool
-	CheckLines       []string
+	CheckBlock       *_GoBlock
+	Clone            bool
+	CloneMethodName  string
+	CloneParameters  []*_GoParameter
+	CloneBlock       *_GoBlock
+	CloneImports     []*Import
 }
 
 func castData(p *model.Data) *Data {
@@ -89,9 +94,14 @@ func castData(p *model.Data) *Data {
 	}
 	data.Validate = dataNeedsCheck(p, map[*model.Data]bool{})
 	if data.Validate {
-		data.CheckLines = buildDataCheckLines(p)
+		data.CheckBlock = buildDataCheckBlock(p)
 	}
+	return data
+}
 
+func castCloneableData(p *model.Data) *Data {
+	data := castData(p)
+	buildDataClone(p, data)
 	return data
 }
 
@@ -128,6 +138,7 @@ func buildDataImports(dataList []*Data) []*Import {
 		if data.Validate {
 			imports.add(&Import{Path: "go.yorun.ai/vine/core/rpc"})
 		}
+		imports.addMany(data.CloneImports)
 		for _, member := range data.Members {
 			imports.addMany(collectTypeImports(member.Type))
 		}
@@ -165,69 +176,93 @@ func typeNeedsCheck(type_ *model.Type, visiting map[*model.Data]bool) bool {
 	}
 }
 
-func buildDataCheckLines(p *model.Data) []string {
-	lines := []string{}
+func buildDataCheckBlock(p *model.Data) *_GoBlock {
+	block := goBlock()
 	for _, member := range p.Members {
 		memberName := nameutil.ToCamel(member.Name)
-		lines = append(lines, buildTypeCheckLines(member.Type, "v."+memberName, fmt.Sprintf("rpc.JoinPath(path, %q)", memberName), "\t", 0)...)
+		block.append(buildTypeCheckStatements(
+			member.Type,
+			"v."+memberName,
+			fmt.Sprintf("rpc.JoinPath(path, %q)", memberName),
+			0,
+		)...)
 	}
-	return lines
+	return block
 }
 
-func buildTypeCheckLines(type_ *model.Type, expr string, pathExpr string, indent string, depth int) []string {
+func buildTypeCheckStatements(type_ *model.Type, expr string, pathExpr string, depth int) []*_GoStatement {
 	if type_ == nil {
 		return nil
 	}
-	lines := []string{}
+	statements := []*_GoStatement{}
 	switch type_.Kind {
 	case model.TypeKindList:
 		if !type_.Nullable {
-			lines = append(lines,
-				fmt.Sprintf("%sif err := rpc.CheckValueNotNil(%s, %s); err != nil {", indent, expr, pathExpr),
-				fmt.Sprintf("%s\treturn err", indent),
-				fmt.Sprintf("%s}", indent),
-			)
+			statements = append(statements, buildCheckValueNotNilStatement(expr, pathExpr))
 		}
 		if typeNeedsCheck(type_.List.Value, map[*model.Data]bool{}) {
 			indexName := fmt.Sprintf("i%d", depth)
-			lines = append(lines, fmt.Sprintf("%sfor %s := range %s {", indent, indexName, expr))
-			lines = append(lines, buildTypeCheckLines(type_.List.Value, fmt.Sprintf("%s[%s]", expr, indexName), fmt.Sprintf("rpc.JoinIndex(%s, %s)", pathExpr, indexName), indent+"\t", depth+1)...)
-			lines = append(lines, fmt.Sprintf("%s}", indent))
+			statements = append(statements, goRangeStatement(
+				[]string{indexName},
+				goRaw(expr),
+				goBlock(buildTypeCheckStatements(
+					type_.List.Value,
+					fmt.Sprintf("%s[%s]", expr, indexName),
+					fmt.Sprintf("rpc.JoinIndex(%s, %s)", pathExpr, indexName),
+					depth+1,
+				)...),
+			))
 		}
 	case model.TypeKindMap:
 		if !type_.Nullable {
-			lines = append(lines,
-				fmt.Sprintf("%sif err := rpc.CheckValueNotNil(%s, %s); err != nil {", indent, expr, pathExpr),
-				fmt.Sprintf("%s\treturn err", indent),
-				fmt.Sprintf("%s}", indent),
-			)
+			statements = append(statements, buildCheckValueNotNilStatement(expr, pathExpr))
 		}
 		if typeNeedsCheck(type_.Map.Value, map[*model.Data]bool{}) {
 			keyName := fmt.Sprintf("key%d", depth)
 			itemName := fmt.Sprintf("item%d", depth)
-			lines = append(lines, fmt.Sprintf("%sfor %s, %s := range %s {", indent, keyName, itemName, expr))
-			lines = append(lines, buildTypeCheckLines(type_.Map.Value, itemName, fmt.Sprintf("rpc.JoinMapKey(%s, %s)", pathExpr, keyName), indent+"\t", depth+1)...)
-			lines = append(lines, fmt.Sprintf("%s}", indent))
+			statements = append(statements, goRangeStatement(
+				[]string{keyName, itemName},
+				goRaw(expr),
+				goBlock(buildTypeCheckStatements(
+					type_.Map.Value,
+					itemName,
+					fmt.Sprintf("rpc.JoinMapKey(%s, %s)", pathExpr, keyName),
+					depth+1,
+				)...),
+			))
 		}
 	case model.TypeKindData:
 		if !dataNeedsCheck(type_.Data, map[*model.Data]bool{}) {
-			return lines
+			return statements
 		}
 		if type_.Nullable {
-			lines = append(lines,
-				fmt.Sprintf("%sif %s != nil {", indent, expr),
-				fmt.Sprintf("%s\tif err := %s.Validate(%s); err != nil {", indent, expr, pathExpr),
-				fmt.Sprintf("%s\t\treturn err", indent),
-				fmt.Sprintf("%s\t}", indent),
-				fmt.Sprintf("%s}", indent),
-			)
-			return lines
+			statements = append(statements, goIfStatement(
+				nil,
+				goRaw(expr+" != nil"),
+				goBlock(buildValidateStatement(expr, pathExpr)),
+				nil,
+			))
+			return statements
 		}
-		lines = append(lines,
-			fmt.Sprintf("%sif err := (&%s).Validate(%s); err != nil {", indent, expr, pathExpr),
-			fmt.Sprintf("%s\treturn err", indent),
-			fmt.Sprintf("%s}", indent),
-		)
+		statements = append(statements, buildValidateStatement("(&"+expr+")", pathExpr))
 	}
-	return lines
+	return statements
+}
+
+func buildCheckValueNotNilStatement(expr string, pathExpr string) *_GoStatement {
+	return goIfStatement(
+		goAssignment("err", ":=", goCall("rpc.CheckValueNotNil", goRaw(expr), goRaw(pathExpr))),
+		goRaw("err != nil"),
+		goBlock(goReturnStatement(goRaw("err"))),
+		nil,
+	)
+}
+
+func buildValidateStatement(expr string, pathExpr string) *_GoStatement {
+	return goIfStatement(
+		goAssignment("err", ":=", goCall(expr+".Validate", goRaw(pathExpr))),
+		goRaw("err != nil"),
+		goBlock(goReturnStatement(goRaw("err"))),
+		nil,
+	)
 }

@@ -141,6 +141,14 @@ func TestGeneratorRendersPubGoView(t *testing.T) {
 		ModulePrefix: "github.com/acme/skel",
 	})
 
+	for _, outDir := range []string{goOutDir, goPubOutDir} {
+		docContent := readFileForTest(t, filepath.Join(outDir, "doc.go"))
+		if !strings.Contains(docContent, "// This package is fully managed by skelc.") ||
+			!strings.Contains(docContent, "// unmanaged files.") {
+			t.Fatalf("expected generated package ownership warning in %s/doc.go:\n%s", outDir, docContent)
+		}
+	}
+
 	serviceContent, err := os.ReadFile(filepath.Join(goPubOutDir, "service.go"))
 	if err != nil {
 		t.Fatalf("read go service file: %v", err)

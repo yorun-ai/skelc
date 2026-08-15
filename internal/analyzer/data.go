@@ -116,6 +116,13 @@ func parseDataLike(reporter *_DiagnosticReporter, gs *grammar.Data, kind model.D
 		valid = reporter.check(member.Name != skelmeta.SensitiveMarkerFieldName(),
 			"%s DataMember %s is reserved for the generated sensitive marker method",
 			member.Pos, skelmeta.SensitiveMarkerFieldName()) && valid
+		if kind == model.DataKindData {
+			for _, reservedName := range skelmeta.CloneMethodFieldNames() {
+				valid = reporter.check(member.Name != reservedName,
+					"%s DataMember %s is reserved for a generated clone method",
+					member.Pos, reservedName) && valid
+			}
+		}
 		duplicatedPosition, duplicated := memberPos[member.Name]
 		if duplicated {
 			reporter.reportDuplicatef("%s duplicated DataMember %s found, also present at %s", member.Pos, member.Name, duplicatedPosition)

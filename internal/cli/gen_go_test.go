@@ -27,6 +27,47 @@ func TestRunSkelcGenGo(t *testing.T) {
 	}
 }
 
+func TestRunSkelcGenGoRendersDataCloneMethodsAndGenericCallbacks(t *testing.T) {
+	dir := t.TempDir()
+	goOut := filepath.Join(t.TempDir(), "skeled")
+	writeCLIFile(t, filepath.Join(dir, "domain.skel"), `domain demo.user`)
+	writeCLIFile(t, filepath.Join(dir, "types.skel"), `domain demo.user
+
+data User {
+    name: string
+    roles: list<string>
+}
+
+data Page<TItem> {
+    items: list<TItem>
+}
+
+data Users {
+    page: Page<User>
+}
+
+service UserService {
+    method listUsers {
+        output Page<User>
+    }
+}
+`)
+
+	result := Run([]string{"gen", "go", "--skel-in", dir, "--go-out", goOut})
+
+	if result.ExitCode != ExitCodeSuccess {
+		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
+	}
+	assertFileContains(t, filepath.Join(goOut, "data.go"),
+		"func (v User) Clone() User",
+		"func (v Page[TItem]) CloneBy(cloneTItem func(TItem) TItem) Page[TItem]",
+		"func (v Users) Clone() Users",
+		"v.Page.CloneBy(func(value User) User {")
+	assertFileContains(t, filepath.Join(goOut, "service.go"),
+		"CloneResult: func(value any) any {",
+		"source.CloneBy(func(value User) User {")
+}
+
 func TestRunSkelcGenGoPreservesUnmanagedOutput(t *testing.T) {
 	dir := t.TempDir()
 	goOut := filepath.Join(t.TempDir(), "skeled")
@@ -78,7 +119,7 @@ func TestRunSkelcGenGoModule(t *testing.T) {
 	if result.Stderr != "" {
 		t.Fatalf("unexpected stderr: %q", result.Stderr)
 	}
-	assertFileContains(t, filepath.Join(goOut, "go.mod"), "go.yorun.ai/vine v0.10.1")
+	assertFileContains(t, filepath.Join(goOut, "go.mod"), "go.yorun.ai/vine v0.13.1")
 }
 
 func TestRunSkelcGenGoModuleWithGoVineVersion(t *testing.T) {
@@ -104,7 +145,7 @@ func TestRunSkelcGenGoModuleRejectsLowGoVineVersion(t *testing.T) {
 	if result.ExitCode != ExitCodeError {
 		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
 	}
-	if result.Stderr != "Error: go-vine-version v0.8.0 is lower than minimum v0.10.1" {
+	if result.Stderr != "Error: go-vine-version v0.8.0 is lower than minimum v0.13.1" {
 		t.Fatalf("unexpected stderr: %q", result.Stderr)
 	}
 }

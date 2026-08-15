@@ -21,7 +21,7 @@ When building a Vine application, skelc helps you:
 
 ## Install
 
-Go 1.26 or later is required:
+Go 1.26.5 or later is required:
 
 ```bash
 go install go.yorun.ai/skelc/cmd/skelc@latest

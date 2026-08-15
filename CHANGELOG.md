@@ -18,7 +18,8 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
   to serialization, while older generic packages use a typed structural clone
   so type-parameter callbacks still define isolation. Data fields named
   `clone` and `cloneBy` are now reserved for the stable generated methods
-- Generated Go code now requires and defaults to `go.yorun.ai/vine v0.13.1`
+- skelc and generated Go modules now require Go 1.26.5; generated code now
+  requires and defaults to `go.yorun.ai/vine v0.13.1`
 - Generated Go package documentation now declares the package fully managed by
   skelc and warns that unmanaged Go files are outside skelc and Vine's
   compilation, runtime, and compatibility guarantees

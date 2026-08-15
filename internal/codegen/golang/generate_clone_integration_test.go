@@ -98,7 +98,7 @@ func TestGeneratedCloneModuleCompilesAndIsolatesValues(t *testing.T) {
 	}
 	writeCloneConsumerFile(t, filepath.Join(consumerDir, "go.mod"), `module example.com/generated/cloneconsumer
 
-go 1.26
+go 1.26.5
 
 require example.com/generated/clonefixture v0.0.0
 
@@ -340,7 +340,7 @@ func (v *Page[TItem]) Validate(path string) error {
 
 	writeCloneConsumerFile(t, filepath.Join(runnerDir, "go.mod"), `module example.com/generated/legacyrunner
 
-go 1.26
+go 1.26.5
 
 require (
 	example.com/generated/legacy v0.0.0

@@ -61,7 +61,7 @@ func TestCompareClassifiesAndOrdersChanges(t *testing.T) {
 		enumDeclaration("UserStatus", "ACTIVE", "DISABLED"),
 		serviceDeclaration("UserService", "listUsers"),
 	)
-	report, err := Compare(baseline, candidate)
+	report, err := Diff(baseline, candidate)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,17 +84,22 @@ func TestCompareClassifiesAndOrdersChanges(t *testing.T) {
 	if strings.Join(codes, ",") != strings.Join(expected, ",") {
 		t.Fatalf("unexpected changes: %v", codes)
 	}
+	if report.Changes[0].Change != ChangeAdded || report.Changes[1].Change != ChangeRemoved ||
+		report.Changes[2].Change != ChangeAdded || report.Changes[3].Change != ChangeAdded {
+		t.Fatalf("unexpected change kinds: %+v", report.Changes)
+	}
 }
 
 func TestCompareTreatsDocumentationAsCompatible(t *testing.T) {
 	baseline := newTestDocument(dataDeclaration("User", "id"))
 	candidate := newTestDocument(dataDeclaration("User", "id"))
 	candidate.Declarations[0].Description = "User data"
-	report, err := Compare(baseline, candidate)
+	report, err := Diff(baseline, candidate)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !report.Compatible || report.Summary.Compatible != 1 || report.Changes[0].Code != "declaration.description.changed" {
+	if !report.Compatible || report.Summary.Compatible != 1 || report.Changes[0].Change != ChangeModified ||
+		report.Changes[0].Code != "declaration.description.changed" {
 		t.Fatalf("unexpected report: %+v", report)
 	}
 }
@@ -102,12 +107,50 @@ func TestCompareTreatsDocumentationAsCompatible(t *testing.T) {
 func TestCompareRecognizesDeclarationTypeChangeWithoutNamespaceCollision(t *testing.T) {
 	baseline := newTestDocument(dataDeclaration("State", "value"))
 	candidate := newTestDocument(enumDeclaration("State", "ACTIVE"))
-	report, err := Compare(baseline, candidate)
+	report, err := Diff(baseline, candidate)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if report.Summary.Breaking != 1 || len(report.Changes) != 1 || report.Changes[0].Code != "declaration.type.changed" {
 		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
+func TestCompareTreatsAuthenticationAndPermissionSemanticsAsDangerous(t *testing.T) {
+	readRequirement := func() *Requirement {
+		return &Requirement{Mode: "code", Code: "identity.User:read"}
+	}
+	writeRequirement := func() *Requirement {
+		return &Requirement{Mode: "code", Code: "identity.User:write"}
+	}
+	tests := []struct {
+		name      string
+		baseline  *Document
+		candidate *Document
+		code      string
+	}{
+		{"actor authentication added", actorDocument(false, false), actorDocument(true, false), "actor.auth.added"},
+		{"actor authentication removed", actorDocument(true, false), actorDocument(false, false), "actor.auth.removed"},
+		{"actor permission added", actorDocument(false, false), actorDocument(false, true), "actor.permission.added"},
+		{"actor permission removed", actorDocument(false, true), actorDocument(false, false), "actor.permission.removed"},
+		{"resource permission code changed", resourceDocument("identity.User:read"), resourceDocument("identity.User:write"), "resource.action.code.changed"},
+		{"service authentication tightened", servicePolicyDocument("unset", nil), servicePolicyDocument("auth", nil), "service.auth.tightened"},
+		{"service authentication relaxed", servicePolicyDocument("auth", nil), servicePolicyDocument("unset", nil), "service.auth.relaxed"},
+		{"service permission added", servicePolicyDocument("unset", nil), servicePolicyDocument("unset", readRequirement()), "service.require.added"},
+		{"service permission changed", servicePolicyDocument("unset", readRequirement()), servicePolicyDocument("unset", writeRequirement()), "service.require.changed"},
+		{"service permission removed", servicePolicyDocument("unset", readRequirement()), servicePolicyDocument("unset", nil), "service.require.removed"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			report, err := Diff(test.baseline, test.candidate)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !report.Compatible || report.Summary != (Summary{Dangerous: 1}) || len(report.Changes) != 1 ||
+				report.Changes[0].Impact != ImpactDangerous || report.Changes[0].Code != test.code {
+				t.Fatalf("unexpected report: %+v", report)
+			}
+		})
 	}
 }
 
@@ -149,6 +192,33 @@ func serviceDeclaration(name string, methods ...string) *Declaration {
 		Pub: true, Name: name, Kind: "service", SkelName: "demo.user." + name,
 		Service: &ServiceSchema{Auth: "unset", Audiences: []*Audience{}, Methods: values},
 	}
+}
+
+func actorDocument(authEnabled, permEnabled bool) *Document {
+	actor := &ActorSchema{Vias: []*ActorVia{}, AuthEnabled: authEnabled, PermEnabled: permEnabled}
+	if authEnabled {
+		actor.AuthCredential = &DataSchema{Members: []*Member{}}
+		actor.AuthInfo = &DataSchema{Members: []*Member{}}
+	}
+	return newTestDocument(&Declaration{
+		Pub: true, Name: "UserActor", Kind: "actor", SkelName: "demo.user.UserActor", Actor: actor,
+	})
+}
+
+func resourceDocument(permissionCode string) *Document {
+	return newTestDocument(&Declaration{
+		Pub: true, Name: "User", Kind: "resource", SkelName: "demo.user.User",
+		Resource: &ResourceSchema{Actions: []*ResourceAction{{
+			Name: "read", PermissionCode: permissionCode, Checks: []*ResourceCheck{},
+		}}},
+	})
+}
+
+func servicePolicyDocument(auth string, require *Requirement) *Document {
+	declaration := serviceDeclaration("UserService")
+	declaration.Service.Auth = auth
+	declaration.Service.Require = require
+	return newTestDocument(declaration)
 }
 
 func scalarType(name string) *Type {

@@ -108,23 +108,37 @@ func newSchemaDiffCommand() *ucli.Command {
 		Usage: "list all schema changes between baseline and candidate source",
 		Flags: []ucli.Flag{
 			&ucli.StringFlag{Name: flagSchemaSkelIn, Usage: "candidate skeleton input file or directory"},
-			&ucli.StringFlag{Name: flagSchemaBaselineSkelIn, Usage: "baseline skeleton input file or directory"},
+			&ucli.StringFlag{Name: flagSchemaBaselineSkelIn, Usage: "baseline skeleton input file or directory; defaults to the candidate path at Git HEAD"},
 		},
-		Action: func(_ context.Context, cmd *ucli.Command) error {
+		Action: func(ctx context.Context, cmd *ucli.Command) error {
 			if cmd.Args().Len() != 0 {
 				return fmt.Errorf("unexpected args for %s %s", commandSchema, commandSchemaDiff)
 			}
-			candidate, err := loadSourceSchema(flagSchemaSkelIn, cmd.String(flagSchemaSkelIn))
+			candidateSkelIn := cmd.String(flagSchemaSkelIn)
+			candidate, err := loadSourceSchema(flagSchemaSkelIn, candidateSkelIn)
 			if err != nil {
 				return err
 			}
-			baseline, err := loadSourceSchema(flagSchemaBaselineSkelIn, cmd.String(flagSchemaBaselineSkelIn))
+			baselineSkelIn := strings.TrimSpace(cmd.String(flagSchemaBaselineSkelIn))
+			var gitBaseline *_GitBaseline
+			if baselineSkelIn == "" {
+				gitBaseline, err = prepareGitBaseline(ctx, candidateSkelIn)
+				if err != nil {
+					return err
+				}
+				defer gitBaseline.cleanup()
+				baselineSkelIn = gitBaseline.skelIn
+			}
+			baseline, err := loadSourceSchema(flagSchemaBaselineSkelIn, baselineSkelIn)
 			if err != nil {
 				return err
 			}
-			report, err := schemas.Compare(baseline, candidate)
+			report, err := schemas.Diff(baseline, candidate)
 			if err != nil {
 				return err
+			}
+			if gitBaseline != nil {
+				gitBaseline.remapReportPositions(report)
 			}
 			return writeIndentedJSON(cmd, report, "schema diff")
 		},

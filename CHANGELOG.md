@@ -10,11 +10,16 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 - Added a unified `schema` command group for listing and inspecting declarations,
   producing deterministic versioned JSON schema snapshots, and diffing two Skel
-  source inputs with compatible, dangerous, and breaking change classes.
-  Every schema subcommand emits pretty-printed JSON, and diff always
-  returns the complete report without applying a failure threshold. The existing
-  `symbol list/get` commands remain available as deprecated compatibility entry
-  points.
+  source inputs with `COMPATIBLE`, `DANGEROUS`, and `BREAKING` change classes.
+  Diff items independently identify `ADDED`, `REMOVED`, and `MODIFIED`
+  operations. Every schema subcommand emits pretty-printed JSON, and diff always
+  returns the complete report without applying a failure threshold. When an
+  explicit baseline is omitted, diff reads the candidate path from Git `HEAD`.
+  The root Go facade exposes the schema JSON response types and classification
+  constants so integrations can decode command output without duplicating the
+  wire structures.
+  The existing `symbol list/get` commands remain available as deprecated
+  compatibility entry points.
 
 ## [0.12.0] - 2026-08-16
 

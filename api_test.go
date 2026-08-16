@@ -1,6 +1,7 @@
 package skelc_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"go/ast"
 	stdparser "go/parser"
@@ -66,6 +67,41 @@ func TestDiagnosticAliasesMatchPublicDiagnosticPackage(t *testing.T) {
 	}
 }
 
+func TestSchemaJSONFacadeTypes(t *testing.T) {
+	var entries []*skelc.SchemaEntry
+	if err := json.Unmarshal([]byte(`[{"pub":true,"name":"User","type":"data","skelName":"demo.user.User"}]`), &entries); err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].SkelName != "demo.user.User" {
+		t.Fatalf("unexpected schema entries: %+v", entries)
+	}
+
+	var declaration skelc.SchemaDeclaration
+	if err := json.Unmarshal([]byte(`{"pub":true,"name":"Status","type":"enum","skelName":"demo.user.Status","enum":{"items":[{"name":"ACTIVE"}]}}`), &declaration); err != nil {
+		t.Fatal(err)
+	}
+	if declaration.Enum == nil || len(declaration.Enum.Items) != 1 {
+		t.Fatalf("unexpected schema declaration: %+v", declaration)
+	}
+
+	var snapshot skelc.SchemaSnapshot
+	if err := json.Unmarshal([]byte(`{"format":"yorun.skel.schema","formatVersion":1,"domain":"demo.user","declarations":[]}`), &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.Format != skelc.SchemaFormat || snapshot.FormatVersion != skelc.SchemaFormatVersion {
+		t.Fatalf("unexpected schema snapshot: %+v", snapshot)
+	}
+
+	var report skelc.SchemaDiffReport
+	if err := json.Unmarshal([]byte(`{"compatible":true,"baselineDomain":"demo.user","candidateDomain":"demo.user","summary":{"breaking":0,"dangerous":1,"compatible":0},"changes":[{"code":"method.auth.changed","change":"MODIFIED","impact":"DANGEROUS","symbol":"demo.user.UserService.get"}]}`), &report); err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Changes) != 1 || report.Changes[0].Change != skelc.SchemaChangeModified ||
+		report.Changes[0].Impact != skelc.SchemaImpactDangerous {
+		t.Fatalf("unexpected schema diff report: %+v", report)
+	}
+}
+
 func TestPublicPackagesRespectDependencyBoundaries(t *testing.T) {
 	const internalPrefix = "go.yorun.ai/skelc/internal/"
 	rules := []struct {
@@ -99,6 +135,10 @@ func TestPublicPackagesRespectDependencyBoundaries(t *testing.T) {
 		},
 		{
 			directory: "diagnostic",
+			forbidden: func(path string) bool { return strings.HasPrefix(path, internalPrefix) },
+		},
+		{
+			directory: "schema",
 			forbidden: func(path string) bool { return strings.HasPrefix(path, internalPrefix) },
 		},
 		{

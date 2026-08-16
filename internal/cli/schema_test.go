@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -194,7 +195,9 @@ pub data User {
 	if err := json.Unmarshal([]byte(result.Stdout), &report); err != nil {
 		t.Fatalf("decode diff report: %v\n%s", err, result.Stdout)
 	}
-	if result.Stderr != "" || report.Compatible || report.Summary.Breaking != 1 || report.Changes[0].Code != "data.member.added" {
+	if result.Stderr != "" || report.Compatible || report.Summary.Breaking != 1 ||
+		report.Changes[0].Change != "ADDED" || report.Changes[0].Impact != "BREAKING" ||
+		report.Changes[0].Code != "data.member.added" {
 		t.Fatalf("unexpected diff output: %+v", result)
 	}
 }
@@ -257,5 +260,80 @@ pub enum UserStatus {
 	}
 	if !report.Compatible || report.Summary.Dangerous != 1 || report.Changes[0].Code != "enum.item.added" {
 		t.Fatalf("unexpected report: %+v", report)
+	}
+}
+
+func TestRunSkelcSchemaDiffUsesGitHeadBaseline(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	for _, test := range []struct {
+		name             string
+		directoryInput   bool
+		expectedBaseline string
+	}{
+		{name: "directory", directoryInput: true, expectedBaseline: "HEAD:skel/data.skel"},
+		{name: "single file", expectedBaseline: "HEAD:user.skel"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			repository := t.TempDir()
+			skelIn := filepath.Join(repository, "user.skel")
+			sourceFile := skelIn
+			baselineSource := `domain demo.user
+
+pub data User {
+    id: string
+}
+`
+			candidateSource := strings.Replace(baselineSource, "id: string", "id: int", 1)
+			if test.directoryInput {
+				skelIn = filepath.Join(repository, "skel")
+				sourceFile = filepath.Join(skelIn, "data.skel")
+				writeCLIFile(t, filepath.Join(skelIn, "domain.skel"), "domain demo.user")
+			}
+			writeCLIFile(t, sourceFile, baselineSource)
+			runSchemaGitCommand(t, repository, "init", "--quiet")
+			runSchemaGitCommand(t, repository, "add", "--all")
+			runSchemaGitCommand(t, repository,
+				"-c", "user.name=Skelc Test", "-c", "user.email=skelc@example.invalid",
+				"-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "baseline",
+			)
+			writeCLIFile(t, sourceFile, candidateSource)
+
+			result := Run([]string{"schema", "diff", "--skel-in", skelIn})
+			if result.ExitCode != ExitCodeSuccess || result.Stderr != "" {
+				t.Fatalf("unexpected Git diff result: %+v", result)
+			}
+			var report schemas.Report
+			if err := json.Unmarshal([]byte(result.Stdout), &report); err != nil {
+				t.Fatalf("decode Git diff report: %v\n%s", err, result.Stdout)
+			}
+			if len(report.Changes) != 1 || report.Changes[0].Code != "data.member.type.changed" {
+				t.Fatalf("unexpected Git diff report: %+v", report)
+			}
+			if report.Changes[0].Baseline == nil || report.Changes[0].Baseline.File != test.expectedBaseline {
+				t.Fatalf("unexpected Git baseline position: %+v", report.Changes[0].Baseline)
+			}
+		})
+	}
+}
+
+func TestRunSkelcSchemaDiffRequiresBaselineWithoutGitHistory(t *testing.T) {
+	dir := t.TempDir()
+	writeCLIFile(t, filepath.Join(dir, "domain.skel"), "domain demo.user")
+
+	result := Run([]string{"schema", "diff", "--skel-in", dir})
+	if result.ExitCode != ExitCodeError ||
+		!strings.Contains(result.Stderr, "git history not found") ||
+		!strings.Contains(result.Stderr, "--baseline-skel-in") {
+		t.Fatalf("expected missing Git history guidance: %+v", result)
+	}
+}
+
+func runSchemaGitCommand(t *testing.T, directory string, args ...string) {
+	t.Helper()
+	command := exec.Command("git", append([]string{"-C", directory}, args...)...)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, output)
 	}
 }

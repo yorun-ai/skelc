@@ -7,55 +7,41 @@ import (
 	"strings"
 
 	"go.yorun.ai/skelc/model"
+	publicschema "go.yorun.ai/skelc/schema"
 )
-
-type Impact string
 
 const (
-	ImpactBreaking   Impact = "breaking"
-	ImpactDangerous  Impact = "dangerous"
-	ImpactCompatible Impact = "compatible"
+	ImpactBreaking   = publicschema.ImpactBreaking
+	ImpactDangerous  = publicschema.ImpactDangerous
+	ImpactCompatible = publicschema.ImpactCompatible
+
+	ChangeAdded    = publicschema.ChangeAdded
+	ChangeRemoved  = publicschema.ChangeRemoved
+	ChangeModified = publicschema.ChangeModified
 )
 
-type Change struct {
-	Code      string          `json:"code"`
-	Impact    Impact          `json:"impact"`
-	Symbol    string          `json:"symbol"`
-	Message   string          `json:"message"`
-	Baseline  *model.Position `json:"baseline,omitempty"`
-	Candidate *model.Position `json:"candidate,omitempty"`
-}
+type ImpactLevel = publicschema.ImpactLevel
+type ChangeType = publicschema.ChangeType
+type Change = publicschema.Change
+type Summary = publicschema.Summary
+type Report = publicschema.Report
 
-type Summary struct {
-	Breaking   int `json:"breaking"`
-	Dangerous  int `json:"dangerous"`
-	Compatible int `json:"compatible"`
-}
-
-type Report struct {
-	Compatible      bool      `json:"compatible"`
-	BaselineDomain  string    `json:"baselineDomain"`
-	CandidateDomain string    `json:"candidateDomain"`
-	Summary         Summary   `json:"summary"`
-	Changes         []*Change `json:"changes"`
-}
-
-func Compare(baseline, candidate *Document) (*Report, error) {
+func Diff(baseline, candidate *Document) (*Report, error) {
 	if err := Validate(baseline); err != nil {
 		return nil, fmt.Errorf("baseline: %w", err)
 	}
 	if err := Validate(candidate); err != nil {
 		return nil, fmt.Errorf("candidate: %w", err)
 	}
-	comparison := &_Comparison{report: &Report{
+	diff := &_Diff{report: &Report{
 		Compatible: true, BaselineDomain: baseline.Domain, CandidateDomain: candidate.Domain,
 		Changes: []*Change{},
 	}}
 	if baseline.Domain != candidate.Domain {
-		comparison.add(ImpactBreaking, "domain.name.changed", candidate.Domain,
+		diff.add(ImpactBreaking, "domain.name.changed", candidate.Domain,
 			fmt.Sprintf("domain name changed from %s to %s", baseline.Domain, candidate.Domain), model.Position{}, model.Position{})
-		comparison.finish()
-		return comparison.report, nil
+		diff.finish()
+		return diff.report, nil
 	}
 
 	candidateByName := declarationsByKey(candidate.Declarations)
@@ -66,7 +52,7 @@ func Compare(baseline, candidate *Document) (*Report, error) {
 		if other == nil {
 			continue
 		}
-		comparison.compareDeclaration(declaration, other)
+		diff.compareDeclaration(declaration, other)
 		matchedBaseline[declaration] = true
 		matchedCandidate[other] = true
 	}
@@ -77,7 +63,7 @@ func Compare(baseline, candidate *Document) (*Report, error) {
 		if len(baselineValues) != 1 || len(candidateValues) != 1 {
 			continue
 		}
-		comparison.compareDeclaration(baselineValues[0], candidateValues[0])
+		diff.compareDeclaration(baselineValues[0], candidateValues[0])
 		matchedBaseline[baselineValues[0]] = true
 		matchedCandidate[candidateValues[0]] = true
 	}
@@ -85,34 +71,25 @@ func Compare(baseline, candidate *Document) (*Report, error) {
 		if matchedBaseline[declaration] {
 			continue
 		}
-		comparison.add(ImpactBreaking, "declaration.removed", declaration.SkelName,
+		diff.add(ImpactBreaking, "declaration.removed", declaration.SkelName,
 			fmt.Sprintf("%s %s was removed", declaration.Kind, declaration.SkelName), declaration.Pos, model.Position{})
 	}
 	for _, declaration := range candidate.Declarations {
 		if matchedCandidate[declaration] {
 			continue
 		}
-		comparison.add(ImpactCompatible, "declaration.added", declaration.SkelName,
+		diff.add(ImpactCompatible, "declaration.added", declaration.SkelName,
 			fmt.Sprintf("%s %s was added", declaration.Kind, declaration.SkelName), model.Position{}, declaration.Pos)
 	}
-	comparison.finish()
-	return comparison.report, nil
+	diff.finish()
+	return diff.report, nil
 }
 
-func (r *Report) HasImpact(impact Impact) bool {
-	for _, change := range r.Changes {
-		if change.Impact == impact {
-			return true
-		}
-	}
-	return false
-}
-
-type _Comparison struct {
+type _Diff struct {
 	report *Report
 }
 
-func (c *_Comparison) compareDeclaration(baseline, candidate *Declaration) {
+func (c *_Diff) compareDeclaration(baseline, candidate *Declaration) {
 	if baseline.Kind != candidate.Kind {
 		c.add(ImpactBreaking, "declaration.type.changed", candidate.SkelName,
 			fmt.Sprintf("declaration type changed from %s to %s", baseline.Kind, candidate.Kind), baseline.Pos, candidate.Pos)
@@ -148,7 +125,7 @@ func (c *_Comparison) compareDeclaration(baseline, candidate *Declaration) {
 	}
 }
 
-func (c *_Comparison) compareEnum(owner string, baseline, candidate *EnumSchema) {
+func (c *_Diff) compareEnum(owner string, baseline, candidate *EnumSchema) {
 	baselineByName := enumItemsByName(baseline.Items)
 	candidateByName := enumItemsByName(candidate.Items)
 	for _, item := range baseline.Items {
@@ -168,7 +145,7 @@ func (c *_Comparison) compareEnum(owner string, baseline, candidate *EnumSchema)
 	}
 }
 
-func (c *_Comparison) compareData(owner string, baseline, candidate *DataSchema) {
+func (c *_Diff) compareData(owner string, baseline, candidate *DataSchema) {
 	if baseline.Lifecycle != candidate.Lifecycle {
 		c.add(ImpactBreaking, "config.lifecycle.changed", owner,
 			fmt.Sprintf("config lifecycle changed from %s to %s", baseline.Lifecycle, candidate.Lifecycle), model.Position{}, model.Position{})
@@ -182,7 +159,7 @@ func (c *_Comparison) compareData(owner string, baseline, candidate *DataSchema)
 	c.compareMembers(owner, "data.member", baseline.Members, candidate.Members, ImpactDangerous)
 }
 
-func (c *_Comparison) compareMembers(owner, prefix string, baseline, candidate []*Member, reorderImpact Impact) {
+func (c *_Diff) compareMembers(owner, prefix string, baseline, candidate []*Member, reorderImpact ImpactLevel) {
 	baselineByName := membersByName(baseline)
 	candidateByName := membersByName(candidate)
 	for _, member := range baseline {
@@ -215,33 +192,31 @@ func (c *_Comparison) compareMembers(owner, prefix string, baseline, candidate [
 	}
 }
 
-func (c *_Comparison) compareActor(owner string, baseline, candidate *ActorSchema) {
+func (c *_Diff) compareActor(owner string, baseline, candidate *ActorSchema) {
 	c.compareStringSet(owner, "actor.via", actorViaNames(baseline.Vias), actorViaNames(candidate.Vias), ImpactBreaking, ImpactCompatible)
 	if baseline.AuthEnabled != candidate.AuthEnabled {
-		impact := ImpactCompatible
 		code := "actor.auth.added"
 		message := "actor authentication was added"
 		if baseline.AuthEnabled {
-			impact, code, message = ImpactBreaking, "actor.auth.removed", "actor authentication was removed"
+			code, message = "actor.auth.removed", "actor authentication was removed"
 		}
-		c.add(impact, code, owner, message, model.Position{}, model.Position{})
+		c.add(ImpactDangerous, code, owner, message, model.Position{}, model.Position{})
 	}
 	if baseline.AuthEnabled && candidate.AuthEnabled {
 		c.compareMembers(owner+".credential", "actor.auth-credential.member", baseline.AuthCredential.Members, candidate.AuthCredential.Members, ImpactDangerous)
 		c.compareMembers(owner+".info", "actor.auth-info.member", baseline.AuthInfo.Members, candidate.AuthInfo.Members, ImpactDangerous)
 	}
 	if baseline.PermEnabled != candidate.PermEnabled {
-		impact := ImpactCompatible
 		code := "actor.permission.added"
 		message := "actor permission support was added"
 		if baseline.PermEnabled {
-			impact, code, message = ImpactBreaking, "actor.permission.removed", "actor permission support was removed"
+			code, message = "actor.permission.removed", "actor permission support was removed"
 		}
-		c.add(impact, code, owner, message, model.Position{}, model.Position{})
+		c.add(ImpactDangerous, code, owner, message, model.Position{}, model.Position{})
 	}
 }
 
-func (c *_Comparison) compareResource(owner string, baseline, candidate *ResourceSchema) {
+func (c *_Diff) compareResource(owner string, baseline, candidate *ResourceSchema) {
 	c.compareResourceChecks(owner, baseline.Checks, candidate.Checks)
 	baselineByName := resourceActionsByName(baseline.Actions)
 	candidateByName := resourceActionsByName(candidate.Actions)
@@ -253,7 +228,7 @@ func (c *_Comparison) compareResource(owner string, baseline, candidate *Resourc
 			continue
 		}
 		if action.PermissionCode != other.PermissionCode {
-			c.add(ImpactBreaking, "resource.action.code.changed", symbol, "resource action permission code changed", action.Pos, other.Pos)
+			c.add(ImpactDangerous, "resource.action.code.changed", symbol, "resource action permission code changed", action.Pos, other.Pos)
 		}
 		c.compareMetadata("resource.action", symbol, action.Metadata, other.Metadata, action.Pos, other.Pos)
 		c.compareResourceChecks(symbol, action.Checks, other.Checks)
@@ -266,7 +241,7 @@ func (c *_Comparison) compareResource(owner string, baseline, candidate *Resourc
 	}
 }
 
-func (c *_Comparison) compareResourceChecks(owner string, baseline, candidate []*ResourceCheck) {
+func (c *_Diff) compareResourceChecks(owner string, baseline, candidate []*ResourceCheck) {
 	baselineByName := resourceChecksByName(baseline)
 	candidateByName := resourceChecksByName(candidate)
 	for _, check := range baseline {
@@ -287,7 +262,7 @@ func (c *_Comparison) compareResourceChecks(owner string, baseline, candidate []
 	}
 }
 
-func (c *_Comparison) compareService(owner string, baseline, candidate *ServiceSchema) {
+func (c *_Diff) compareService(owner string, baseline, candidate *ServiceSchema) {
 	c.compareAudiences(owner, "service.audience", baseline.Audiences, candidate.Audiences)
 	c.compareAuth(owner, "service", baseline.Auth, candidate.Auth, model.Position{}, model.Position{})
 	c.compareRequirement(owner, "service", baseline.Require, candidate.Require, model.Position{}, model.Position{})
@@ -310,7 +285,7 @@ func (c *_Comparison) compareService(owner string, baseline, candidate *ServiceS
 	}
 }
 
-func (c *_Comparison) compareMethod(owner string, baseline, candidate *Method) {
+func (c *_Diff) compareMethod(owner string, baseline, candidate *Method) {
 	c.compareAuth(owner, "method", baseline.Auth, candidate.Auth, baseline.Pos, candidate.Pos)
 	c.compareRequirement(owner, "method", baseline.Require, candidate.Require, baseline.Pos, candidate.Pos)
 	c.compareArguments(owner, "method.argument", baseline.Arguments, candidate.Arguments)
@@ -328,7 +303,7 @@ func (c *_Comparison) compareMethod(owner string, baseline, candidate *Method) {
 	c.compareMetadata("method", owner, baseline.Metadata, candidate.Metadata, baseline.Pos, candidate.Pos)
 }
 
-func (c *_Comparison) compareArguments(owner, prefix string, baseline, candidate []*Argument) {
+func (c *_Diff) compareArguments(owner, prefix string, baseline, candidate []*Argument) {
 	baselineByName := argumentsByName(baseline)
 	candidateByName := argumentsByName(candidate)
 	for _, argument := range baseline {
@@ -361,7 +336,7 @@ func (c *_Comparison) compareArguments(owner, prefix string, baseline, candidate
 	}
 }
 
-func (c *_Comparison) compareTask(owner string, baseline, candidate *TaskSchema) {
+func (c *_Diff) compareTask(owner string, baseline, candidate *TaskSchema) {
 	baselineByName := triggersByName(baseline.Triggers)
 	candidateByName := triggersByName(candidate.Triggers)
 	for _, trigger := range baseline.Triggers {
@@ -388,7 +363,7 @@ func (c *_Comparison) compareTask(owner string, baseline, candidate *TaskSchema)
 	}
 }
 
-func (c *_Comparison) compareAudiences(owner, prefix string, baseline, candidate []*Audience) {
+func (c *_Diff) compareAudiences(owner, prefix string, baseline, candidate []*Audience) {
 	baselineByKey := audiencesByKey(baseline)
 	candidateByKey := audiencesByKey(candidate)
 	for key, audience := range baselineByKey {
@@ -405,36 +380,34 @@ func (c *_Comparison) compareAudiences(owner, prefix string, baseline, candidate
 	}
 }
 
-func (c *_Comparison) compareAuth(owner, prefix, baseline, candidate string, baselinePos, candidatePos model.Position) {
+func (c *_Diff) compareAuth(owner, prefix, baseline, candidate string, baselinePos, candidatePos model.Position) {
 	if baseline == candidate {
 		return
 	}
-	impact := ImpactDangerous
 	code := prefix + ".auth.changed"
 	if candidate == string(model.AuthModeAuth) {
-		impact, code = ImpactBreaking, prefix+".auth.tightened"
+		code = prefix + ".auth.tightened"
 	} else if baseline == string(model.AuthModeAuth) {
 		code = prefix + ".auth.relaxed"
 	}
-	c.add(impact, code, owner, fmt.Sprintf("authentication changed from %s to %s", baseline, candidate), baselinePos, candidatePos)
+	c.add(ImpactDangerous, code, owner, fmt.Sprintf("authentication changed from %s to %s", baseline, candidate), baselinePos, candidatePos)
 }
 
-func (c *_Comparison) compareRequirement(owner, prefix string, baseline, candidate *Requirement, baselinePos, candidatePos model.Position) {
+func (c *_Diff) compareRequirement(owner, prefix string, baseline, candidate *Requirement, baselinePos, candidatePos model.Position) {
 	if reflect.DeepEqual(baseline, candidate) {
 		return
 	}
-	impact := ImpactBreaking
 	code := prefix + ".require.changed"
 	message := "permission requirement changed"
 	if baseline == nil {
 		code, message = prefix+".require.added", "permission requirement was added"
 	} else if candidate == nil {
-		impact, code, message = ImpactDangerous, prefix+".require.removed", "permission requirement was removed"
+		code, message = prefix+".require.removed", "permission requirement was removed"
 	}
-	c.add(impact, code, owner, message, baselinePos, candidatePos)
+	c.add(ImpactDangerous, code, owner, message, baselinePos, candidatePos)
 }
 
-func (c *_Comparison) compareMetadata(prefix, symbol string, baseline, candidate Metadata, baselinePos, candidatePos model.Position) {
+func (c *_Diff) compareMetadata(prefix, symbol string, baseline, candidate Metadata, baselinePos, candidatePos model.Position) {
 	if baseline.Description != candidate.Description {
 		c.add(ImpactCompatible, prefix+".description.changed", symbol, "description changed", baselinePos, candidatePos)
 	}
@@ -450,7 +423,7 @@ func (c *_Comparison) compareMetadata(prefix, symbol string, baseline, candidate
 	}
 }
 
-func (c *_Comparison) compareStringSet(owner, prefix string, baseline, candidate []string, removedImpact, addedImpact Impact) {
+func (c *_Diff) compareStringSet(owner, prefix string, baseline, candidate []string, removedImpact, addedImpact ImpactLevel) {
 	baselineSet := stringSet(baseline)
 	candidateSet := stringSet(candidate)
 	for _, value := range baseline {
@@ -465,14 +438,25 @@ func (c *_Comparison) compareStringSet(owner, prefix string, baseline, candidate
 	}
 }
 
-func (c *_Comparison) add(impact Impact, code, symbol, message string, baseline, candidate model.Position) {
+func (c *_Diff) add(impact ImpactLevel, code, symbol, message string, baseline, candidate model.Position) {
 	c.report.Changes = append(c.report.Changes, &Change{
-		Code: code, Impact: impact, Symbol: symbol, Message: message,
+		Code: code, Change: changeType(code), Impact: impact, Symbol: symbol, Message: message,
 		Baseline: positionPointer(baseline), Candidate: positionPointer(candidate),
 	})
 }
 
-func (c *_Comparison) finish() {
+func changeType(code string) ChangeType {
+	switch {
+	case strings.HasSuffix(code, ".added"):
+		return ChangeAdded
+	case strings.HasSuffix(code, ".removed"):
+		return ChangeRemoved
+	default:
+		return ChangeModified
+	}
+}
+
+func (c *_Diff) finish() {
 	slices.SortFunc(c.report.Changes, func(left, right *Change) int {
 		if order := impactOrder(left.Impact) - impactOrder(right.Impact); order != 0 {
 			return order
@@ -498,7 +482,7 @@ func (c *_Comparison) finish() {
 	c.report.Compatible = c.report.Summary.Breaking == 0
 }
 
-func impactOrder(impact Impact) int {
+func impactOrder(impact ImpactLevel) int {
 	switch impact {
 	case ImpactBreaking:
 		return 1

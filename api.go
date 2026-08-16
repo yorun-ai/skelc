@@ -19,6 +19,7 @@ import (
 	"go.yorun.ai/skelc/internal/codegen/typescript"
 	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/schema"
 )
 
 // MinimumGolangVineVersion is the minimum Vine module version supported by
@@ -74,6 +75,111 @@ const (
 	DiagnosticCodeLoaderDirectory    = diagnostic.CodeLoaderDirectory
 	DiagnosticCodeLoaderHiddenFile   = diagnostic.CodeLoaderHiddenFile
 	DiagnosticCodeLoaderUnsupported  = diagnostic.CodeLoaderUnsupported
+)
+
+// SchemaFormat identifies schema snapshot JSON produced by skelc.
+const SchemaFormat = schema.Format
+
+// SchemaFormatVersion is the current schema snapshot JSON format version.
+const SchemaFormatVersion = schema.FormatVersion
+
+// SchemaEntry is one declaration summary emitted by schema list.
+type SchemaEntry = schema.Entry
+
+// SchemaDeclaration is one normalized declaration emitted by schema get or
+// contained in a SchemaSnapshot.
+type SchemaDeclaration = schema.Declaration
+
+// SchemaSnapshot is the versioned normalized domain document emitted by schema
+// snapshot.
+type SchemaSnapshot = schema.Document
+
+// SchemaMetadata contains common declaration and member documentation metadata.
+type SchemaMetadata = schema.Metadata
+
+// SchemaEnum is the normalized body of an enum declaration.
+type SchemaEnum = schema.EnumSchema
+
+// SchemaEnumItem is one normalized enum item.
+type SchemaEnumItem = schema.EnumItem
+
+// SchemaData is the normalized body shared by data, config, and event declarations.
+type SchemaData = schema.DataSchema
+
+// SchemaMember is one normalized data member.
+type SchemaMember = schema.Member
+
+// SchemaType is a normalized type reference used throughout schema JSON.
+type SchemaType = schema.Type
+
+// SchemaActor is the normalized body of an actor declaration.
+type SchemaActor = schema.ActorSchema
+
+// SchemaActorVia is one actor transport capability.
+type SchemaActorVia = schema.ActorVia
+
+// SchemaResource is the normalized body of a resource declaration.
+type SchemaResource = schema.ResourceSchema
+
+// SchemaResourceAction is one normalized resource action.
+type SchemaResourceAction = schema.ResourceAction
+
+// SchemaResourceCheck is one normalized resource check.
+type SchemaResourceCheck = schema.ResourceCheck
+
+// SchemaService is the normalized body of a service declaration.
+type SchemaService = schema.ServiceSchema
+
+// SchemaAudience is one normalized actor audience.
+type SchemaAudience = schema.Audience
+
+// SchemaMethod is one normalized service method.
+type SchemaMethod = schema.Method
+
+// SchemaArgument is one normalized method, check, or trigger argument.
+type SchemaArgument = schema.Argument
+
+// SchemaWeb is the normalized body of a web declaration.
+type SchemaWeb = schema.WebSchema
+
+// SchemaTask is the normalized body of a task declaration.
+type SchemaTask = schema.TaskSchema
+
+// SchemaTrigger is one normalized task trigger.
+type SchemaTrigger = schema.Trigger
+
+// SchemaRequirement is one normalized permission expression.
+type SchemaRequirement = schema.Requirement
+
+// SchemaRequirementCheck is one normalized permission check invocation.
+type SchemaRequirementCheck = schema.RequirementCheck
+
+// SchemaRequirementCheckArgument is one permission check argument binding.
+type SchemaRequirementCheckArgument = schema.RequirementCheckArgument
+
+// SchemaDiffReport is the complete JSON report emitted by schema diff.
+type SchemaDiffReport = schema.Report
+
+// SchemaDiffSummary contains schema diff counts grouped by impact level.
+type SchemaDiffSummary = schema.Summary
+
+// SchemaChange is one change in a SchemaDiffReport.
+type SchemaChange = schema.Change
+
+// SchemaImpactLevel classifies a schema change's compatibility impact.
+type SchemaImpactLevel = schema.ImpactLevel
+
+// SchemaChangeType identifies whether a schema element was added, removed, or modified.
+type SchemaChangeType = schema.ChangeType
+
+const (
+	SchemaImpactBreaking   = schema.ImpactBreaking
+	SchemaImpactDangerous  = schema.ImpactDangerous
+	SchemaImpactCompatible = schema.ImpactCompatible
+
+	SchemaChangeAdded    = schema.ChangeAdded
+	SchemaChangeRemoved  = schema.ChangeRemoved
+	SchemaChangeModified = schema.ChangeModified
 )
 
 // CompileResult contains structured non-fatal diagnostics produced while loading and parsing Skel sources.

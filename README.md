@@ -168,6 +168,7 @@ skelc schema list --skel-in ./skel
 skelc schema list data --skel-in ./skel
 skelc schema get data demo.user.User --skel-in ./skel
 skelc schema snapshot --skel-in ./skel > ./user.schema.json
+skelc schema diff --skel-in ./skel
 skelc schema diff --baseline-skel-in ./previous/skel --skel-in ./skel
 skelc format --skel-in ./skel
 skelc format --check --output-format json --skel-in ./skel
@@ -184,10 +185,15 @@ but are not persisted in the artifact. Imported declarations remain opaque
 fully qualified references in the current domain's snapshot and are checked
 separately in their owning domain.
 `schema diff` returns a structured JSON report, classifies changes as
-compatible, dangerous, or breaking, and always includes every detected change.
-A diff accepts only the baseline and candidate Skel source files or
-directories through `--baseline-skel-in` and `--skel-in`; snapshots are not
-diff inputs.
+`COMPATIBLE`, `DANGEROUS`, or `BREAKING`, and always includes every detected
+change. Each item also carries an independent `change` value of `ADDED`,
+`REMOVED`, or `MODIFIED`.
+A diff accepts only Skel source files or directories; snapshots are not diff
+inputs. `--skel-in` selects the candidate. When `--baseline-skel-in` is omitted,
+skelc finds the candidate's Git repository and reads the same path from `HEAD`,
+so the default diff is the latest committed version against the working tree.
+If the repository, commit history, or path at `HEAD` is unavailable, provide an
+explicit `--baseline-skel-in`.
 A completed diff returns exit code `0` regardless of its compatibility
 result; command, input, compilation, and schema errors return `1`.
 `symbol list/get` remain available as deprecated compatibility entry points for
@@ -227,6 +233,12 @@ for _, diagnostic := range result.Diagnostics {
 ```
 
 The API also provides `CompileTypeScript` and `CompileSkeleton`. Parser and loader warnings use the same structured diagnostic model instead of a separate string list. Stable diagnostic code constants are exported by the root package and by `go.yorun.ai/skelc/diagnostic`, so integrations do not need to repeat raw code strings. All public-contract generators consume one validated `internal/codegen/common` projection, preventing Go, Skel, and TypeScript visibility rules from drifting. Generation marks ownership in every generated file, atomically replaces individual outputs, rolls back every affected target when a commit fails, removes stale marked files, and preserves unmarked files in a shared output directory.
+
+Go integrations can decode schema command JSON without copying its wire
+structures. The root package exports `SchemaEntry` for `schema list`,
+`SchemaDeclaration` for `schema get`, `SchemaSnapshot` for `schema snapshot`,
+and `SchemaDiffReport` for `schema diff`, together with their nested schema
+types and `SchemaImpact*` and `SchemaChange*` constants.
 
 Custom generators can call `skelc.Parse` and consume the returned `*model.Domain` through the parser-independent `go.yorun.ai/skelc/model` package. Parsed models already contain compatibility hashes calculated by skelc. Built-in generators accept the same parsed domain through `GenerateGolang`, `GenerateTypeScript`, and `GenerateSkeleton`, so several targets can share one parse result.
 

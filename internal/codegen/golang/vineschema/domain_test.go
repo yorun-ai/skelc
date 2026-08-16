@@ -1,11 +1,62 @@
-package schema
+package vineschema
 
 import (
 	"go.yorun.ai/skelc/internal/codegen/golang/view"
 	"go.yorun.ai/skelc/internal/model"
+	contractschema "go.yorun.ai/skelc/internal/schema"
 	"path/filepath"
 	"testing"
 )
+
+func TestVineSchemaAdaptsNormalizedSchemaProjection(t *testing.T) {
+	profile := new(model.Data{
+		Name: "Profile", Description: "Profile data.", Pub: true, Sensitive: true,
+		Members: []*model.DataMember{new(model.DataMember{
+			Name: "displayName", Description: "Display name.", Sensitive: true,
+			Type: new(model.Type{Kind: model.TypeKindScalar, Scalar: model.ScalarString, Nullable: true}),
+		})},
+	})
+	domain := buildModelDomainForTest(t, model.DomainSpec{
+		Name: "demo.user", Description: "User domain.", Data: []*model.Data{profile},
+		Services: []*model.Service{new(model.Service{
+			Name: "Profiles", Pub: true, Auth: model.AuthModeAuth,
+			Audiences: []*model.ActorAudience{new(model.ActorAudience{Actor: "Client", Via: string(model.ActorViaClient)})},
+			Methods: []*model.Method{new(model.Method{
+				Name: "get", Description: "Gets a profile.", Auth: model.AuthModeNoAuth,
+				ResultType: dataTypeForTest(profile),
+			})},
+		})},
+	})
+	document, err := contractschema.Project(domain, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gen := newGen(Option{Domain: domain, View: mustView(t, view.ModeFull, domain), Mode: view.ModeFull})
+	runtime := mustBuildDomainSchema(t, gen)
+
+	projectedData := contractschema.Find(document, string(contractschema.DeclarationTypeData), profile.SkelName)
+	if runtime.Description != document.Description || runtime.Data[0].Description != projectedData.Description {
+		t.Fatalf("runtime metadata diverged from normalized schema: %#v", runtime.Data[0])
+	}
+	if runtime.Data[0].Sensitive != projectedData.Data.Sensitive || runtime.Data[0].Members[0].Sensitive != projectedData.Data.Members[0].Sensitive {
+		t.Fatalf("runtime sensitivity diverged from normalized schema: %#v", runtime.Data[0])
+	}
+	projectedType := projectedData.Data.Members[0].Type
+	runtimeType := runtime.Data[0].Members[0].Type
+	if string(runtimeType.Kind) != string(projectedType.Kind) || string(runtimeType.Scalar) != projectedType.Name || runtimeType.Nullable != projectedType.Nullable {
+		t.Fatalf("runtime type diverged from normalized schema: projected=%#v runtime=%#v", projectedType, runtimeType)
+	}
+
+	serviceValue := domain.Services()[0]
+	projectedService := contractschema.Find(document, string(contractschema.DeclarationTypeService), serviceValue.SkelName)
+	runtimeService := runtime.Services[0]
+	if string(runtimeService.AuthMode) != string(projectedService.Service.Auth) || runtimeService.Audiences[0].SkelName != projectedService.Service.Audiences[0].Actor {
+		t.Fatalf("runtime service diverged from normalized schema: projected=%#v runtime=%#v", projectedService.Service, runtimeService)
+	}
+	if string(runtimeService.Methods[0].AuthMode) != string(projectedService.Service.Methods[0].Auth) || runtimeService.Methods[0].Description != projectedService.Service.Methods[0].Description {
+		t.Fatalf("runtime method diverged from normalized schema: projected=%#v runtime=%#v", projectedService.Service.Methods[0], runtimeService.Methods[0])
+	}
+}
 
 func TestBuildDomainSchemaCopiesHashes(t *testing.T) {
 	userProfile := &model.Data{
@@ -41,7 +92,7 @@ func TestBuildDomainSchemaCopiesHashes(t *testing.T) {
 		PackageName:     "skeled",
 		Out:             filepath.Join(t.TempDir(), "skeled"),
 	})
-	meta := gen.buildDomainSchema()
+	meta := mustBuildDomainSchema(t, gen)
 
 	if meta.Generated == nil || meta.Generated.CompilerVersion != "v1.2.3" {
 		t.Fatalf("unexpected generated info: %+v", meta.Generated)
@@ -126,7 +177,7 @@ func TestBuildDomainSchemaIncludesSensitiveMetadata(t *testing.T) {
 		PackageName: "skeled",
 		Out:         filepath.Join(t.TempDir(), "skeled"),
 	})
-	schema := gen.buildDomainSchema()
+	schema := mustBuildDomainSchema(t, gen)
 
 	if !schema.Data[0].Sensitive || !schema.Data[0].Members[0].Sensitive {
 		t.Fatalf("unexpected sensitive data schema: %+v", schema.Data[0])
@@ -182,7 +233,7 @@ func TestBuildDomainSchemaSplitFullFlagAndContent(t *testing.T) {
 		PackageName: "userpub",
 		Out:         filepath.Join(t.TempDir(), "pub"),
 	})
-	pubSchema := pubGen.buildDomainSchema()
+	pubSchema := mustBuildDomainSchema(t, pubGen)
 	if pubSchema.Full {
 		t.Fatal("did not expect pub schema to be full")
 	}
@@ -200,7 +251,7 @@ func TestBuildDomainSchemaSplitFullFlagAndContent(t *testing.T) {
 		PackageName: "user",
 		Out:         filepath.Join(t.TempDir(), "regular"),
 	})
-	regularSchema := regularGen.buildDomainSchema()
+	regularSchema := mustBuildDomainSchema(t, regularGen)
 	if !regularSchema.Full {
 		t.Fatal("expected regular schema to be full")
 	}
@@ -232,7 +283,7 @@ func TestBuildDomainSchemaConfigLifecycleUsesConfValue(t *testing.T) {
 		PackageName: "skeled",
 		Out:         filepath.Join(t.TempDir(), "skeled"),
 	})
-	meta := gen.buildDomainSchema()
+	meta := mustBuildDomainSchema(t, gen)
 
 	if len(meta.Configs) != 1 {
 		t.Fatalf("expected one config, got %d", len(meta.Configs))
@@ -276,7 +327,7 @@ func TestBuildDomainSchemaIncludesActorAuthMethod(t *testing.T) {
 		PackageName: "skeled",
 		Out:         filepath.Join(t.TempDir(), "skeled"),
 	})
-	meta := gen.buildDomainSchema()
+	meta := mustBuildDomainSchema(t, gen)
 
 	if len(meta.Actors) != 1 {
 		t.Fatalf("expected one actor, got %d", len(meta.Actors))

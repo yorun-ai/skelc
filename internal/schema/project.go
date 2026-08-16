@@ -16,18 +16,70 @@ func Project(domain *model.Domain, importAliases map[string]string) (*Document, 
 		Format: Format, FormatVersion: FormatVersion, Domain: domain.Name(),
 		Description: domain.Description(), Declarations: []*Declaration{},
 	}
-	aliases := make(map[string]string, len(importAliases)+len(domain.Imports()))
-	for alias, name := range importAliases {
-		aliases[alias] = name
-	}
-	for _, imported := range domain.Imports() {
-		aliases[imported.Alias] = imported.Name
-	}
+	aliases := referenceAliases(domain, importAliases)
 	appendDeclarations(document, domain, aliases, domain.Enums(), domain.Data(), domain.Configs(), domain.Events(),
 		domain.Actors(), domain.Resources(), domain.Services(), domain.Webs(), domain.Tasks())
 	normalizeReferenceNames(document, domain.Name(), aliases)
 	slices.SortFunc(document.Declarations, compareDeclarations)
 	return document, nil
+}
+
+// ProjectDataDeclaration normalizes one semantic data-like declaration for an
+// internal consumer that needs the same representation as a schema document.
+func ProjectDataDeclaration(domain *model.Domain, value *model.Data) *Declaration {
+	if value == nil {
+		return nil
+	}
+	projected := projectData(value)
+	if domain != nil {
+		normalizeDeclarationReferences(projected, domain.Name(), referenceAliases(domain, nil))
+	}
+	return projected
+}
+
+// ProjectServiceDeclaration normalizes one semantic service declaration for an
+// internal consumer that needs the same representation as a schema document.
+func ProjectServiceDeclaration(domain *model.Domain, value *model.Service) *Declaration {
+	if value == nil {
+		return nil
+	}
+	domainName := ""
+	aliases := map[string]string{}
+	if domain != nil {
+		domainName = domain.Name()
+		aliases = referenceAliases(domain, nil)
+	}
+	declaration := projectService(domainName, aliases, value)
+	normalizeDeclarationReferences(declaration, domainName, aliases)
+	return declaration
+}
+
+// ProjectMethodSchema normalizes one semantic method for an internal consumer
+// that needs the same representation as a schema document.
+func ProjectMethodSchema(domain *model.Domain, value *model.Method) *Method {
+	if value == nil {
+		return nil
+	}
+	projected := projectMethod(value)
+	if domain != nil {
+		domainName := domain.Name()
+		aliases := referenceAliases(domain, nil)
+		normalizeArgumentReferences(projected.Arguments, domainName, aliases)
+		normalizeTypeReference(projected.Result, domainName, aliases)
+		normalizeRequirementReferences(projected.Require, domainName, aliases)
+	}
+	return projected
+}
+
+func referenceAliases(domain *model.Domain, supplied map[string]string) map[string]string {
+	aliases := make(map[string]string, len(supplied)+len(domain.Imports()))
+	for alias, name := range supplied {
+		aliases[alias] = name
+	}
+	for _, imported := range domain.Imports() {
+		aliases[imported.Alias] = imported.Name
+	}
+	return aliases
 }
 
 func ValidateKind(kind string) error {

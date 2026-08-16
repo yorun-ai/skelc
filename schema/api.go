@@ -42,6 +42,10 @@ const (
 	TypeKindEnum = internalschema.TypeKindEnum
 	// TypeKindData identifies a normalized data reference.
 	TypeKindData = internalschema.TypeKindData
+	// TypeKindConfig identifies a normalized config reference.
+	TypeKindConfig = internalschema.TypeKindConfig
+	// TypeKindEvent identifies a normalized event reference.
+	TypeKindEvent = internalschema.TypeKindEvent
 	// TypeKindTypeParameter identifies a generic type parameter.
 	TypeKindTypeParameter = internalschema.TypeKindTypeParameter
 	// TypeKindImportedReference identifies an unresolved imported-domain type.

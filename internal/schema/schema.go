@@ -41,6 +41,8 @@ const (
 	TypeKindScalar            TypeKind = "scalar"
 	TypeKindEnum              TypeKind = "enum"
 	TypeKindData              TypeKind = "data"
+	TypeKindConfig            TypeKind = "config"
+	TypeKindEvent             TypeKind = "event"
 	TypeKindTypeParameter     TypeKind = "typeParameter"
 	TypeKindImportedReference TypeKind = "importedReference"
 	TypeKindList              TypeKind = "list"

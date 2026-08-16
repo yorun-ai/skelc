@@ -1,4 +1,4 @@
-package schema
+package vineschema
 
 import (
 	"testing"
@@ -10,6 +10,15 @@ import (
 func mustView(t *testing.T, mode view.Mode, domain *model.Domain) *view.Domain {
 	t.Helper()
 	result, err := view.New(mode, domain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return result
+}
+
+func mustBuildDomainSchema(t *testing.T, gen *_Gen) *_DomainSchema {
+	t.Helper()
+	result, err := gen.buildDomainSchema()
 	if err != nil {
 		t.Fatal(err)
 	}

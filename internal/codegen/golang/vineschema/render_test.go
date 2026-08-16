@@ -1,4 +1,4 @@
-package schema
+package vineschema
 
 import (
 	"go.yorun.ai/skelc/internal/codegen/golang/view"

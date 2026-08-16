@@ -1,4 +1,4 @@
-package schema
+package vineschema
 
 type _EnumSchema struct {
 	Name             string

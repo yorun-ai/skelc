@@ -66,6 +66,14 @@ func projectType(value *model.Type) *Type {
 		result.Name = value.SkelName
 	case model.TypeKindData:
 		result.Kind = TypeKindData
+		if value.Data != nil {
+			switch value.Data.Kind {
+			case model.DataKindConfig:
+				result.Kind = TypeKindConfig
+			case model.DataKindEvent:
+				result.Kind = TypeKindEvent
+			}
+		}
 		result.Name = value.SkelName
 	case model.TypeKindTypeParameter:
 		result.Kind = TypeKindTypeParameter

@@ -131,6 +131,26 @@
             "description": "Documented schema element.",
             "deprecated": true,
             "deprecatedReason": "Use the replacement.",
+            "name": "runtime",
+            "type": {
+              "kind": "config",
+              "name": "demo.contract.Runtime"
+            }
+          },
+          {
+            "description": "Documented schema element.",
+            "deprecated": true,
+            "deprecatedReason": "Use the replacement.",
+            "name": "changed",
+            "type": {
+              "kind": "event",
+              "name": "demo.contract.UserChanged"
+            }
+          },
+          {
+            "description": "Documented schema element.",
+            "deprecated": true,
+            "deprecatedReason": "Use the replacement.",
             "name": "external",
             "type": {
               "kind": "importedReference",

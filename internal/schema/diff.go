@@ -282,7 +282,7 @@ func typeDisplay(value *Type) string {
 		result = "list<" + typeDisplay(value.Element) + ">"
 	case TypeKindMap:
 		result = "map<" + typeDisplay(value.Key) + ", " + typeDisplay(value.Value) + ">"
-	case TypeKindData, TypeKindImportedReference:
+	case TypeKindData, TypeKindConfig, TypeKindEvent, TypeKindImportedReference:
 		result = value.Name
 		if len(value.Arguments) > 0 {
 			arguments := make([]string, 0, len(value.Arguments))

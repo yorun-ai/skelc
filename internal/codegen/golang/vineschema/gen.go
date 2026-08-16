@@ -1,4 +1,4 @@
-package schema
+package vineschema
 
 import (
 	"embed"
@@ -63,7 +63,10 @@ func newGen(option Option) *_Gen {
 }
 
 func (g *_Gen) gen() error {
-	payload := g.buildSchemaGoPayload()
+	payload, err := g.buildSchemaGoPayload()
+	if err != nil {
+		return err
+	}
 	content, err := common.RenderTemplateWithFuncs(schemaGoTemplate, payload, g.schemaGoTemplateFuncs())
 	if err != nil {
 		return fmt.Errorf("render generated %s: %w", schemaGoFilename, err)
@@ -106,11 +109,15 @@ type SchemaGoPayload struct {
 	Schema      *_DomainSchema
 }
 
-func (g *_Gen) buildSchemaGoPayload() *SchemaGoPayload {
+func (g *_Gen) buildSchemaGoPayload() (*SchemaGoPayload, error) {
+	schema, err := g.buildDomainSchema()
+	if err != nil {
+		return nil, err
+	}
 	return &SchemaGoPayload{
 		PackageName: g.pkgName,
-		Schema:      g.buildDomainSchema(),
-	}
+		Schema:      schema,
+	}, nil
 }
 
 func (g *_Gen) schemaGoTemplateFuncs() template.FuncMap {

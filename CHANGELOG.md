@@ -22,6 +22,13 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
   The existing `symbol list/get` commands remain available as deprecated
   compatibility entry points.
 
+### Changed
+
+- Generated Vine runtime schema now adapts the same normalized projection used
+  by schema inspection and compatibility diffing. Resolved local type
+  references distinguish data, config, and event declarations, while Vine-only
+  hashes and generated-service metadata remain runtime extensions.
+
 ## [0.12.0] - 2026-08-16
 
 ### Changed

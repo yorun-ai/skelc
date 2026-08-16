@@ -161,14 +161,29 @@ TypeScript generation also accepts `--pub` to emit only public data, enums, and 
 
 After declaring an `import` in `.skel`, use repeatable `--skel-import domain=PATH` options to provide the complete transitive dependency graph. skelc analyzes every dependency but generates code only for the `--skel-in` target. When generating a Go module or TypeScript, map the target's direct language-package dependencies with `--go-import`, `--go-module-prefix`, or `--ts-import`. See the [CLI reference](https://skel.yorun.ai/docs/cli) for complete examples.
 
-### Inspect and Format
+### Inspect, Export, Compare, and Format
 
 ```bash
-skelc symbol list --skel-in ./skel
-skelc symbol get demo.user.User --skel-in ./skel
+skelc schema list --skel-in ./skel
+skelc schema list data --skel-in ./skel
+skelc schema get data demo.user.User --skel-in ./skel
+skelc schema get data demo.user.User --output-format json --skel-in ./skel
+skelc schema export --skel-in ./skel --schema-out ./user.schema.json
+skelc schema compare --against ./released/user.schema.json --skel-in ./skel
 skelc format --skel-in ./skel
 skelc format --check --output-format json --skel-in ./skel
 ```
+
+`schema list` returns declaration summaries, while `schema get TYPE SKEL_NAME`
+returns one complete normalized declaration as a human-readable detail tree or,
+with `--output-format json`, a lossless JSON object. Both default to the full domain.
+`schema export/compare` default to the public contract. Exported JSON is
+deterministically ordered and carries a versioned schema-format identifier;
+source positions are used for live comparison diagnostics but are not persisted
+in the artifact. `schema compare` classifies changes as compatible, dangerous,
+or breaking and returns exit code `2` when its configured `--fail-on` threshold
+is reached. `symbol list/get` remain available as deprecated compatibility
+entry points for existing scripts.
 
 `format` modifies files in place after validating all inputs. Use `--check` to report unformatted files and exit nonzero without modifying them; `--output-format json` returns a machine-readable change result. Formatting stages every changed file before committing the batch, preserves file ownership, mode, and supported extended metadata, and restores files already replaced if a later write or durability sync fails. It applies one canonical style: four-space indentation, compact type and permission punctuation, one space after field and argument colons, compact empty blocks, and one blank line between top-level declarations. Declaration order and comment or string values are preserved. Tool integrations can request machine-readable diagnostics with the global `--log-format jsonl` option.
 
@@ -223,7 +238,8 @@ After upgrading skelc, regenerate the code and run type checks and tests in its 
 check          validate Skel definitions
 format         format Skel definitions in place
 lsp            run the Skel language server over stdio
-symbol         list or inspect top-level symbols
+schema         list, inspect, export, or compare semantic schemas
+symbol         deprecated schema query compatibility commands
 gen skel       generate public Skel contracts
 gen go         generate code inside an existing Go module
 gen go-module  generate a standalone Go module

@@ -6,6 +6,14 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+### Added
+
+- Added a unified `schema` command group for listing and inspecting declarations,
+  exporting deterministic versioned JSON schema documents, and comparing source
+  or exported schemas with compatible, dangerous, and breaking change classes.
+  Breaking comparisons use exit code `2`; the existing `symbol list/get`
+  commands remain available as deprecated compatibility entry points.
+
 ## [0.12.0] - 2026-08-16
 
 ### Changed

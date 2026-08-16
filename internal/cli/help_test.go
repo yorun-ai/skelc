@@ -17,6 +17,9 @@ func TestRunSkelcHelpShowsSubcommandOptions(t *testing.T) {
 	if !strings.Contains(result.Stdout, "symbol") {
 		t.Fatalf("unexpected stdout: %q", result.Stdout)
 	}
+	if !strings.Contains(result.Stdout, "schema") {
+		t.Fatalf("unexpected stdout: %q", result.Stdout)
+	}
 	if !strings.Contains(result.Stdout, "check") {
 		t.Fatalf("unexpected stdout: %q", result.Stdout)
 	}
@@ -37,6 +40,22 @@ func TestRunSkelcHelpShowsSubcommandOptions(t *testing.T) {
 	}
 	if !strings.Contains(result.Stdout, "format OPTIONS:") {
 		t.Fatalf("unexpected stdout: %q", result.Stdout)
+	}
+}
+
+func TestRunSkelcSchemaHelpShowsSubcommandsAndOptions(t *testing.T) {
+	result := Run([]string{"schema", "--help"})
+
+	if result.ExitCode != ExitCodeSuccess {
+		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
+	}
+	for _, expected := range []string{"list [TYPE]", "get TYPE SKEL_NAME", "list OPTIONS:", "get OPTIONS:", "export OPTIONS:", "compare OPTIONS:", "--schema-out", "--against", "--fail-on"} {
+		if !strings.Contains(result.Stdout, expected) {
+			t.Fatalf("expected %q in stdout: %q", expected, result.Stdout)
+		}
+	}
+	if strings.Contains(result.Stdout, "--type") {
+		t.Fatalf("did not expect removed --type flag: %q", result.Stdout)
 	}
 }
 

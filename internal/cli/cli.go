@@ -22,8 +22,9 @@ type Result struct {
 const (
 	commandSkelc = "skelc"
 
-	ExitCodeSuccess = 0
-	ExitCodeError   = 1
+	ExitCodeSuccess      = 0
+	ExitCodeError        = 1
+	ExitCodeIncompatible = 2
 
 	flagLogFormat = "log-format"
 
@@ -91,6 +92,7 @@ func newCommand() *ucli.Command {
 			newVersionCommand(),
 			newLSPCommand(),
 			newGenCommand(),
+			newSchemaCommand(),
 			newSymbolCommand(),
 			newCheckCommand(),
 			newFormatCommand(),
@@ -110,6 +112,9 @@ func runCLICommand(command *ucli.Command, args []string, stdin io.Reader, stdout
 
 	err := command.Run(context.Background(), args)
 	if err != nil {
+		if exitError, ok := err.(interface{ ExitCode() int }); ok {
+			return Result{ExitCode: exitError.ExitCode(), Stderr: stderr.String()}
+		}
 		if diagnostics, ok := err.(interface{ DiagnosticEntries() compiler.Diagnostics }); ok {
 			return Result{
 				ExitCode: ExitCodeError,

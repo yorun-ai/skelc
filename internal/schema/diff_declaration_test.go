@@ -3,7 +3,7 @@ package schema
 import (
 	"testing"
 
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func _testDeclarationRules(t *testing.T, coverage *_RuleCoverage) {

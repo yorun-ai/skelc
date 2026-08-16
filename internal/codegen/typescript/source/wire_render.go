@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/util/nameutil"
-	"go.yorun.ai/skelc/model"
 )
 
 func (b *_WireSchemaBuilder) renderFactories() []*_WireFactory {

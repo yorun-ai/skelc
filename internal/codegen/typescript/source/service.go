@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"go.yorun.ai/skelc/internal/codegen/common"
+	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/util/nameutil"
-	"go.yorun.ai/skelc/model"
 )
 
 const serviceTsFilename = "service.ts"

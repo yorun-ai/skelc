@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"go.yorun.ai/skelc/internal/codegen/common"
+	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/internal/util/sliceutil"
-	"go.yorun.ai/skelc/model"
 )
 
 type Enum struct {

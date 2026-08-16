@@ -3,7 +3,7 @@ package schema
 import (
 	"strings"
 
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func (g *_Gen) buildActorSchema(actor *model.Actor) *_ActorSchema {

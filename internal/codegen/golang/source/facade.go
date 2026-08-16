@@ -3,7 +3,7 @@ package source
 import (
 	"strings"
 
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 const facadeGoFilename = "pub.go"

@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func TestWalkTypeVisitsStructuralChildrenInOrder(t *testing.T) {

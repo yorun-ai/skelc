@@ -3,7 +3,7 @@ package source
 import (
 	"testing"
 
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func TestCastWeb(t *testing.T) {

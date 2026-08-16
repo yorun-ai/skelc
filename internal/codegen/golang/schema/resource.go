@@ -1,6 +1,6 @@
 package schema
 
-import "go.yorun.ai/skelc/model"
+import "go.yorun.ai/skelc/internal/model"
 
 func (g *_Gen) buildResourceSchema(resource *model.Resource) *_ResourceSchema {
 	schema := &_ResourceSchema{

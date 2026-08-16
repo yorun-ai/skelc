@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"go.yorun.ai/skelc/internal/codegen/common"
+	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/util/sliceutil"
-	"go.yorun.ai/skelc/model"
 )
 
 func TestNewGenDerivesPackageNameForApp(t *testing.T) {

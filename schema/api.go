@@ -1,7 +1,3 @@
-// Package schema exposes the stable JSON wire contract emitted by skelc schema
-// commands. It is a public facade over the internal schema implementation and
-// can be used by integrations that consume schema list, get, snapshot, or diff
-// output.
 package schema
 
 import (

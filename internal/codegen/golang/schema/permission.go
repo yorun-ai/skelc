@@ -1,6 +1,6 @@
 package schema
 
-import "go.yorun.ai/skelc/model"
+import "go.yorun.ai/skelc/internal/model"
 
 func (g *_Gen) buildPermRequireSchema(require *model.PermissionRequire) *_PermRequire {
 	if require == nil {

@@ -2,7 +2,7 @@ package skeleton
 
 import (
 	"go.yorun.ai/skelc/internal/codegen/common"
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 type _SkelPayload struct {

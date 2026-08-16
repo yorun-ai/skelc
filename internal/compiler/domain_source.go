@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"go.yorun.ai/skelc/internal/loader"
+	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/parser"
 	"go.yorun.ai/skelc/internal/parser/grammar"
-	"go.yorun.ai/skelc/model"
 )
 
 type _DomainSourceIssue struct {

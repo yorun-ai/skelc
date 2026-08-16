@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func Diff(baseline, candidate *Document) (*Report, error) {

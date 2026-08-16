@@ -3,7 +3,7 @@ package view
 import (
 	"testing"
 
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func TestViewSeparatesPubResources(t *testing.T) {

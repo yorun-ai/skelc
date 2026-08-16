@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func hasClientActorVia(actor *model.Actor) bool {

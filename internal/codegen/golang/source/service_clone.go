@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/skelmeta"
 	"go.yorun.ai/skelc/internal/util/nameutil"
-	"go.yorun.ai/skelc/model"
 )
 
 type _CloneDataKey struct {

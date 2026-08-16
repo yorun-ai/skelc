@@ -3,7 +3,7 @@ package source
 import (
 	"fmt"
 
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 type _WireMethod struct {

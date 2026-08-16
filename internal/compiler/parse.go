@@ -9,7 +9,7 @@ import (
 	"go.yorun.ai/skelc/internal/analyzer"
 	"go.yorun.ai/skelc/internal/hasher"
 	"go.yorun.ai/skelc/internal/loader"
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 type Option struct {

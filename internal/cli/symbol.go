@@ -8,8 +8,8 @@ import (
 
 	ucli "github.com/urfave/cli/v3"
 	"go.yorun.ai/skelc/internal/compiler"
+	"go.yorun.ai/skelc/internal/model"
 	schemas "go.yorun.ai/skelc/internal/schema"
-	"go.yorun.ai/skelc/model"
 )
 
 const (

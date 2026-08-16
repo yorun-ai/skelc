@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"slices"
 
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func (c *_Diff) compareDeclaration(baseline, candidate *Declaration) {

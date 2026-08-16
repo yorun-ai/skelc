@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"go.yorun.ai/skelc/internal/compiler"
+	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/parser"
 	"go.yorun.ai/skelc/internal/parser/grammar"
-	"go.yorun.ai/skelc/model"
 )
 
 func TestSourceGolden(t *testing.T) {

@@ -7,8 +7,8 @@ import (
 
 	"go.yorun.ai/skelc/diagnostic"
 	"go.yorun.ai/skelc/internal/analyzer"
+	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/util/checkutil"
-	"go.yorun.ai/skelc/model"
 )
 
 const (

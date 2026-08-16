@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"go.yorun.ai/skelc/internal/analyzer"
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func TestParseSourceRecoveringCollectsIndependentSyntaxErrors(t *testing.T) {

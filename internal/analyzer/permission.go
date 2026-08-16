@@ -3,8 +3,8 @@ package analyzer
 import (
 	"strings"
 
+	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/parser/grammar"
-	"go.yorun.ai/skelc/model"
 )
 
 func parseRequire(reporter *_DiagnosticReporter, gr *grammar.Require) (*model.PermissionRequire, bool) {

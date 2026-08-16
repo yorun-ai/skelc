@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"go.yorun.ai/skelc/internal/codegen/golang"
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func TestGeneratorSkipsGoModuleFilesByDefault(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"go.yorun.ai/skelc/internal/compiler"
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func TestGenWritesDomainDescriptionAndOnlyNeededImports(t *testing.T) {

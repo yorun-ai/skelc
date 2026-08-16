@@ -1,6 +1,6 @@
 package analyzer
 
-import "go.yorun.ai/skelc/model"
+import "go.yorun.ai/skelc/internal/model"
 
 func (p *Analysis) checkConfigMemberTypes(dataList []*model.Data) {
 	for _, dataType := range dataList {

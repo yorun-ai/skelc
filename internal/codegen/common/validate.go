@@ -3,7 +3,7 @@ package common
 import (
 	"fmt"
 
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 // ValidateDomain rejects malformed programmatically constructed models before

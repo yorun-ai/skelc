@@ -5,7 +5,7 @@ import (
 
 	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/codegen/typescript/module"
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func (g *_Gen) resolveExternalTypeImports() {

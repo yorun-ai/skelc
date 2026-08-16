@@ -9,9 +9,9 @@ import (
 	"strings"
 	"sync"
 
+	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/parser"
 	"go.yorun.ai/skelc/internal/parser/grammar"
-	"go.yorun.ai/skelc/model"
 )
 
 // Source is an in-memory Skel document used by workspace analysis. Domain is a

@@ -3,7 +3,7 @@ package golang
 import (
 	gomodule "go.yorun.ai/skelc/internal/codegen/golang/module"
 	"go.yorun.ai/skelc/internal/codegen/golang/view"
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 // MinimumVineVersion is the minimum Vine version supported by generated Go code.

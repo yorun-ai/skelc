@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func sourceLineOffsets(source []byte, line int) (int, int, bool) {

@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"strings"
 
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func resolveMethodArgumentJsonPath(reporter *_DiagnosticReporter, method *model.Method, path string) (*model.Type, bool) {

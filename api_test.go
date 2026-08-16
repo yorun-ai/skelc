@@ -75,7 +75,9 @@ func TestPublicPackagesRespectDependencyBoundaries(t *testing.T) {
 		{
 			directory: "internal/parser",
 			forbidden: func(path string) bool {
-				return strings.HasPrefix(path, internalPrefix) && path != internalPrefix+"parser/grammar"
+				return strings.HasPrefix(path, internalPrefix) &&
+					path != internalPrefix+"parser/grammar" &&
+					path != internalPrefix+"model"
 			},
 		},
 		{
@@ -91,11 +93,15 @@ func TestPublicPackagesRespectDependencyBoundaries(t *testing.T) {
 		},
 		{
 			directory: "internal/hasher",
-			forbidden: func(path string) bool { return strings.HasPrefix(path, internalPrefix) },
+			forbidden: func(path string) bool {
+				return strings.HasPrefix(path, internalPrefix) && path != internalPrefix+"model"
+			},
 		},
 		{
 			directory: "model",
-			forbidden: func(path string) bool { return strings.HasPrefix(path, internalPrefix) },
+			forbidden: func(path string) bool {
+				return strings.HasPrefix(path, internalPrefix) && path != internalPrefix+"model"
+			},
 		},
 		{
 			directory: "diagnostic",

@@ -1,7 +1,7 @@
 package source
 
 import (
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 	"strings"
 )
 

@@ -38,7 +38,7 @@ func newSymbolCommand() *ucli.Command {
 func newSymbolListCommand() *ucli.Command {
 	return &ucli.Command{
 		Name:  commandSymbolList,
-		Usage: "list skel symbols",
+		Usage: "deprecated: list skel symbols; use schema list",
 		Flags: newSymbolFlags("symbol list output format: text/json"),
 		Action: func(_ context.Context, cmd *ucli.Command) error {
 			option, err := parseSymbolListCommand(cmd)
@@ -89,7 +89,7 @@ func parseSymbolListCommand(cmd *ucli.Command) (compiler.Option, error) {
 func newSymbolGetCommand() *ucli.Command {
 	return &ucli.Command{
 		Name:      commandSymbolGet,
-		Usage:     "get a skel symbol",
+		Usage:     "deprecated: get a skel symbol; use schema get",
 		ArgsUsage: "SKEL_NAME",
 		Flags:     newSymbolFlags("symbol output format: text/json"),
 		Action: func(_ context.Context, cmd *ucli.Command) error {

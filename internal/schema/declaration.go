@@ -1,50 +1,6 @@
-// Package schema defines the stable JSON wire types emitted by skelc schema
-// commands. It is parser-independent and can be used with encoding/json by
-// integrations that consume schema list, get, snapshot, or diff output.
 package schema
 
 import "go.yorun.ai/skelc/model"
-
-const (
-	// Format identifies schema snapshot JSON produced by skelc.
-	Format = "yorun.skel.schema"
-	// FormatVersion is the current schema snapshot JSON format version.
-	FormatVersion = 1
-)
-
-// Document is the versioned normalized domain emitted by schema snapshot.
-type Document struct {
-	Format        string         `json:"format"`
-	FormatVersion int            `json:"formatVersion"`
-	Domain        string         `json:"domain"`
-	Description   string         `json:"description,omitempty"`
-	Declarations  []*Declaration `json:"declarations"`
-}
-
-// Metadata contains common declaration and member documentation metadata.
-type Metadata struct {
-	Description      string `json:"description,omitempty"`
-	Deprecated       bool   `json:"deprecated,omitempty"`
-	DeprecatedReason string `json:"deprecatedReason,omitempty"`
-}
-
-// Declaration is one complete normalized declaration emitted by schema get or
-// contained in a Document.
-type Declaration struct {
-	Metadata
-	Pub      bool            `json:"pub"`
-	Name     string          `json:"name"`
-	Kind     string          `json:"type"`
-	SkelName string          `json:"skelName"`
-	Enum     *EnumSchema     `json:"enum,omitempty"`
-	Data     *DataSchema     `json:"data,omitempty"`
-	Actor    *ActorSchema    `json:"actor,omitempty"`
-	Resource *ResourceSchema `json:"resource,omitempty"`
-	Service  *ServiceSchema  `json:"service,omitempty"`
-	Web      *WebSchema      `json:"web,omitempty"`
-	Task     *TaskSchema     `json:"task,omitempty"`
-	Pos      model.Position  `json:"-"`
-}
 
 type EnumSchema struct {
 	Items []*EnumItem `json:"items"`
@@ -57,10 +13,10 @@ type EnumItem struct {
 }
 
 type DataSchema struct {
-	Lifecycle      string    `json:"lifecycle,omitempty"`
-	Sensitive      bool      `json:"sensitive,omitempty"`
-	TypeParameters []string  `json:"typeParameters,omitempty"`
-	Members        []*Member `json:"members"`
+	Lifecycle      ConfigLifecycle `json:"lifecycle,omitempty"`
+	Sensitive      bool            `json:"sensitive,omitempty"`
+	TypeParameters []string        `json:"typeParameters,omitempty"`
+	Members        []*Member       `json:"members"`
 }
 
 type Member struct {
@@ -73,13 +29,13 @@ type Member struct {
 }
 
 type Type struct {
-	Kind      string  `json:"kind"`
-	Nullable  bool    `json:"nullable,omitempty"`
-	Name      string  `json:"name,omitempty"`
-	Arguments []*Type `json:"arguments,omitempty"`
-	Element   *Type   `json:"element,omitempty"`
-	Key       *Type   `json:"key,omitempty"`
-	Value     *Type   `json:"value,omitempty"`
+	Kind      TypeKind `json:"kind"`
+	Nullable  bool     `json:"nullable,omitempty"`
+	Name      string   `json:"name,omitempty"`
+	Arguments []*Type  `json:"arguments,omitempty"`
+	Element   *Type    `json:"element,omitempty"`
+	Key       *Type    `json:"key,omitempty"`
+	Value     *Type    `json:"value,omitempty"`
 }
 
 type ActorSchema struct {
@@ -117,7 +73,7 @@ type ResourceCheck struct {
 
 type ServiceSchema struct {
 	Audiences []*Audience  `json:"audiences"`
-	Auth      string       `json:"auth"`
+	Auth      AuthMode     `json:"auth"`
 	Require   *Requirement `json:"require,omitempty"`
 	Methods   []*Method    `json:"methods"`
 }
@@ -133,7 +89,7 @@ type Method struct {
 	Name               string         `json:"name"`
 	SkelName           string         `json:"skelName"`
 	Example            string         `json:"example,omitempty"`
-	Auth               string         `json:"auth"`
+	Auth               AuthMode       `json:"auth"`
 	Require            *Requirement   `json:"require,omitempty"`
 	InputDescription   string         `json:"inputDescription,omitempty"`
 	ArgumentsSensitive bool           `json:"argumentsSensitive,omitempty"`
@@ -155,7 +111,7 @@ type Argument struct {
 }
 
 type Requirement struct {
-	Mode     string            `json:"mode"`
+	Mode     RequirementMode   `json:"mode"`
 	Code     string            `json:"code,omitempty"`
 	Check    *RequirementCheck `json:"check,omitempty"`
 	Children []*Requirement    `json:"children,omitempty"`
@@ -190,12 +146,4 @@ type Trigger struct {
 	ArgumentsSensitive bool           `json:"argumentsSensitive,omitempty"`
 	Arguments          []*Argument    `json:"arguments"`
 	Pos                model.Position `json:"-"`
-}
-
-// Entry is one declaration summary emitted by schema list.
-type Entry struct {
-	Pub      bool   `json:"pub"`
-	Name     string `json:"name"`
-	Kind     string `json:"type"`
-	SkelName string `json:"skelName"`
 }

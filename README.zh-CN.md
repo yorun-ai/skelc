@@ -181,8 +181,10 @@ skelc format --check --output-format json --skel-in ./skel
 引用，并由所属 domain 单独检查。
 `schema diff` 返回包含全部变化的结构化 JSON 报告，并将变化分为
 `COMPATIBLE`、`DANGEROUS` 和 `BREAKING`。每项变化还带有独立的 `change`
-维度，值为 `ADDED`、`REMOVED` 或 `MODIFIED`。diff 只接受 Skel 源文件或目录，不接受
-快照作为输入。`--skel-in` 指定 candidate；省略 `--baseline-skel-in` 时，skelc
+维度，值为 `ADDED`、`REMOVED` 或 `MODIFIED`。domain 名称变化表示 schema
+身份被整体替换：diff 只输出一项 `domain.name.changed`，其中 impact 为
+`BREAKING`、change 为 `MODIFIED`，不再展开下层声明或成员变化。diff 只接受
+Skel 源文件或目录，不接受快照作为输入。`--skel-in` 指定 candidate；省略 `--baseline-skel-in` 时，skelc
 会查找 candidate 所在的 Git 仓库并读取 `HEAD` 中同一路径的内容，因此默认比较
 最近一次已提交版本和当前工作区。如果仓库、提交历史或 `HEAD` 中的目标路径不
 存在，需要显式传入 `--baseline-skel-in`。无论兼容性结论如何，diff 完成后都返回退出码
@@ -224,10 +226,11 @@ for _, diagnostic := range result.Diagnostics {
 
 API 同时提供 `CompileTypeScript` 和 `CompileSkeleton`。parser 与 loader warning 使用同一套结构化诊断，不再维护独立的字符串列表。根 package 与 `go.yorun.ai/skelc/diagnostic` 都会导出稳定的诊断 code 常量，集成方无需重复填写原始字符串。所有公开契约生成器共用一次经过校验的 `internal/codegen/common` 投影，避免 Go、Skel 和 TypeScript 的可见性规则漂移。生成过程在每个文件中标记所有权，以原子方式逐个替换输出；提交失败时回滚所有受影响的目标，删除带标记的过期生成文件，并保留共享输出目录中的无标记文件。
 
-Go 集成可以直接解析 schema 命令的 JSON，无需复制其 wire 结构。根 package
-分别为 `schema list`、`schema get`、`schema snapshot` 和 `schema diff` 导出
-`SchemaEntry`、`SchemaDeclaration`、`SchemaSnapshot` 和 `SchemaDiffReport`，同时
-导出嵌套 schema 类型以及 `SchemaImpact*`、`SchemaChange*` 常量。
+Go 集成通过公开 facade `go.yorun.ai/skelc/schema` 消费 schema 命令 JSON，
+无需复制 wire 结构。该 package 在实现保持 internal 的同时，统一提供响应类型、
+嵌套 wire 类型、带类型的常量，以及严格的 `schema.Decode`、`schema.Validate` 和
+`schema.Encode`，用于拒绝未知字段、尾随 JSON、不支持的格式版本以及不完整的
+规范化结构。根 package `go.yorun.ai/skelc` 继续只负责解析和生成 API。
 
 自定义 generator 可以调用 `skelc.Parse`，并通过与 parser 无关的 `go.yorun.ai/skelc/model` 使用返回的 `*model.Domain`。解析完成的模型已经包含由 skelc 计算好的兼容性 hash。内置的 `GenerateGolang`、`GenerateTypeScript` 和 `GenerateSkeleton` 也接受同一个已解析 domain，因此多个目标可以共享一次解析结果。
 

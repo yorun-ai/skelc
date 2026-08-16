@@ -15,9 +15,10 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
   operations. Every schema subcommand emits pretty-printed JSON, and diff always
   returns the complete report without applying a failure threshold. When an
   explicit baseline is omitted, diff reads the candidate path from Git `HEAD`.
-  The root Go facade exposes the schema JSON response types and classification
-  constants so integrations can decode command output without duplicating the
-  wire structures.
+  The public `go.yorun.ai/skelc/schema` facade exposes strict snapshot
+  `Encode`, `Decode`, and `Validate` functions plus typed constants for all
+  normalized wire enums over the implementation in `internal/schema`. The root
+  Go facade remains focused on parsing and generation.
   The existing `symbol list/get` commands remain available as deprecated
   compatibility entry points.
 

@@ -187,7 +187,9 @@ separately in their owning domain.
 `schema diff` returns a structured JSON report, classifies changes as
 `COMPATIBLE`, `DANGEROUS`, or `BREAKING`, and always includes every detected
 change. Each item also carries an independent `change` value of `ADDED`,
-`REMOVED`, or `MODIFIED`.
+`REMOVED`, or `MODIFIED`. A domain-name change represents replacement of the
+schema identity: diff emits one `domain.name.changed` `BREAKING` / `MODIFIED`
+item and does not expand declaration or member changes beneath it.
 A diff accepts only Skel source files or directories; snapshots are not diff
 inputs. `--skel-in` selects the candidate. When `--baseline-skel-in` is omitted,
 skelc finds the candidate's Git repository and reads the same path from `HEAD`,
@@ -234,11 +236,13 @@ for _, diagnostic := range result.Diagnostics {
 
 The API also provides `CompileTypeScript` and `CompileSkeleton`. Parser and loader warnings use the same structured diagnostic model instead of a separate string list. Stable diagnostic code constants are exported by the root package and by `go.yorun.ai/skelc/diagnostic`, so integrations do not need to repeat raw code strings. All public-contract generators consume one validated `internal/codegen/common` projection, preventing Go, Skel, and TypeScript visibility rules from drifting. Generation marks ownership in every generated file, atomically replaces individual outputs, rolls back every affected target when a commit fails, removes stale marked files, and preserves unmarked files in a shared output directory.
 
-Go integrations can decode schema command JSON without copying its wire
-structures. The root package exports `SchemaEntry` for `schema list`,
-`SchemaDeclaration` for `schema get`, `SchemaSnapshot` for `schema snapshot`,
-and `SchemaDiffReport` for `schema diff`, together with their nested schema
-types and `SchemaImpact*` and `SchemaChange*` constants.
+Go integrations consume schema command JSON through the public facade
+`go.yorun.ai/skelc/schema`. It provides the response and nested wire types,
+typed constants, and strict `schema.Decode`, `schema.Validate`, and
+`schema.Encode` functions while the implementation remains internal. Strict
+decoding rejects unknown fields, trailing JSON values, unsupported format
+versions and malformed normalized structures. The root `go.yorun.ai/skelc`
+package remains focused on parsing and generation.
 
 Custom generators can call `skelc.Parse` and consume the returned `*model.Domain` through the parser-independent `go.yorun.ai/skelc/model` package. Parsed models already contain compatibility hashes calculated by skelc. Built-in generators accept the same parsed domain through `GenerateGolang`, `GenerateTypeScript`, and `GenerateSkeleton`, so several targets can share one parse result.
 

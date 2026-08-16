@@ -131,6 +131,9 @@ func newSchemaDiffCommand() *ucli.Command {
 			}
 			baseline, err := loadSourceSchema(flagSchemaBaselineSkelIn, baselineSkelIn)
 			if err != nil {
+				if gitBaseline != nil {
+					return gitBaseline.remapError(err)
+				}
 				return err
 			}
 			report, err := schemas.Diff(baseline, candidate)
@@ -195,7 +198,7 @@ func filterSchemaEntries(entries []*schemas.Entry, kind string) []*schemas.Entry
 	}
 	filtered := make([]*schemas.Entry, 0, len(entries))
 	for _, entry := range entries {
-		if entry.Kind == kind {
+		if entry.Kind == schemas.DeclarationType(kind) {
 			filtered = append(filtered, entry)
 		}
 	}

@@ -12,7 +12,7 @@ func Entries(document *Document) []*Entry {
 
 func Find(document *Document, kind, skelName string) *Declaration {
 	for _, declaration := range document.Declarations {
-		if declaration.Kind == kind && declaration.SkelName == skelName {
+		if declaration.Kind == DeclarationType(kind) && declaration.SkelName == skelName {
 			return declaration
 		}
 	}

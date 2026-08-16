@@ -330,6 +330,40 @@ func TestRunSkelcSchemaDiffRequiresBaselineWithoutGitHistory(t *testing.T) {
 	}
 }
 
+func TestRunSkelcSchemaDiffRemapsInvalidGitBaselinePath(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git is not installed")
+	}
+	repository := t.TempDir()
+	skelDir := filepath.Join(repository, "skel")
+	writeCLIFile(t, filepath.Join(skelDir, "domain.skel"), "domain demo.user")
+	dataPath := filepath.Join(skelDir, "data.skel")
+	writeCLIFile(t, dataPath, `domain demo.user
+
+pub data User {
+    id string
+}
+`)
+	runSchemaGitCommand(t, repository, "init", "--quiet")
+	runSchemaGitCommand(t, repository, "add", "--all")
+	runSchemaGitCommand(t, repository,
+		"-c", "user.name=Skelc Test", "-c", "user.email=skelc@example.invalid",
+		"-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "invalid baseline",
+	)
+	writeCLIFile(t, dataPath, `domain demo.user
+
+pub data User {
+    id: string
+}
+`)
+
+	result := Run([]string{"schema", "diff", "--skel-in", skelDir})
+	if result.ExitCode != ExitCodeError || !strings.Contains(result.Stderr, "HEAD:skel/data.skel") ||
+		strings.Contains(result.Stderr, "skelc-schema-baseline-") {
+		t.Fatalf("expected stable Git baseline error path: %+v", result)
+	}
+}
+
 func runSchemaGitCommand(t *testing.T, directory string, args ...string) {
 	t.Helper()
 	command := exec.Command("git", append([]string{"-C", directory}, args...)...)

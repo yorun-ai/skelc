@@ -20,6 +20,15 @@ type _GitBaseline struct {
 	archiveRoot string
 }
 
+type _GitBaselineError struct {
+	cause   error
+	message string
+}
+
+func (e *_GitBaselineError) Error() string { return e.message }
+
+func (e *_GitBaselineError) Unwrap() error { return e.cause }
+
 func prepareGitBaseline(ctx context.Context, candidateSkelIn string) (*_GitBaseline, error) {
 	target, err := filepath.Abs(candidateSkelIn)
 	if err != nil {
@@ -86,6 +95,15 @@ func (b *_GitBaseline) cleanup() {
 	if b != nil && b.archiveRoot != "" {
 		_ = os.RemoveAll(b.archiveRoot)
 	}
+}
+
+func (b *_GitBaseline) remapError(err error) error {
+	if b == nil || b.archiveRoot == "" || err == nil {
+		return err
+	}
+	message := strings.ReplaceAll(err.Error(), b.archiveRoot+string(filepath.Separator), "HEAD:")
+	message = strings.ReplaceAll(message, b.archiveRoot, "HEAD:.")
+	return &_GitBaselineError{cause: err, message: message}
 }
 
 func (b *_GitBaseline) remapReportPositions(report *schemas.Report) {

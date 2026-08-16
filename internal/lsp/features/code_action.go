@@ -9,10 +9,30 @@ import (
 	"go.yorun.ai/skelc/internal/compiler"
 )
 
+// CommandShowSchemaCompatibility is the client command used by schema
+// diagnostics and CodeLens entries to display the complete diff report.
+const CommandShowSchemaCompatibility = "skel.showSchemaCompatibility"
+
+type _CompatibilityDiagnosticData struct {
+	Impact string `json:"impact"`
+}
+
 func (s *Service) CodeAction(_ context.Context, params *protocol.CodeActionParams) ([]protocol.CommandOrCodeAction, error) {
 	actions := []protocol.CommandOrCodeAction{}
 	for _, diagnostic := range params.Context.Diagnostics {
 		if len(diagnostic.Data) == 0 {
+			continue
+		}
+		var compatibility _CompatibilityDiagnosticData
+		if json.Unmarshal(diagnostic.Data, &compatibility) == nil && compatibility.Impact != "" {
+			argument, _ := json.Marshal(string(params.TextDocument.URI))
+			actions = append(actions, &protocol.CodeAction{
+				Title: "Show full schema compatibility report", Diagnostics: []protocol.Diagnostic{diagnostic},
+				Command: protocol.Command{
+					Title: "Show full schema compatibility report", Command: CommandShowSchemaCompatibility,
+					Arguments: []protocol.LSPAny{argument},
+				},
+			})
 			continue
 		}
 		var suggestion compiler.DiagnosticSuggestion

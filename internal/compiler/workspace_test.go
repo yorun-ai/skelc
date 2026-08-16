@@ -32,6 +32,22 @@ func TestAnalyzeWorkspaceMergesSameDomainFiles(t *testing.T) {
 	assert.Empty(t, diagnostics)
 }
 
+func TestAnalyzeDomainsContextReturnsSuccessfulInMemoryDomains(t *testing.T) {
+	analyzer := NewWorkspaceAnalyzer()
+	diagnostics, domains, err := analyzer.AnalyzeDomainsContext(t.Context(), []Source{{
+		Path: "/workspace/skel/data.skel", Root: "/workspace/skel",
+		Content: []byte("domain demo.user\ndata User { id: int }\n"),
+	}})
+
+	require.NoError(t, err)
+	require.Empty(t, diagnostics)
+	require.Len(t, domains, 1)
+	assert.Equal(t, "demo.user", domains[0].Name)
+	assert.Equal(t, "/workspace/skel", domains[0].Root)
+	assert.Equal(t, "demo.user", domains[0].Model.Name())
+	require.Len(t, domains[0].Sources, 1)
+}
+
 func TestAnalyzeWorkspaceKeepsSameNamedRootsIndependent(t *testing.T) {
 	diagnostics := AnalyzeWorkspace([]Source{
 		{

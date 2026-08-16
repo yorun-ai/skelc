@@ -21,6 +21,10 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
   Go facade remains focused on parsing and generation.
   The existing `symbol list/get` commands remain available as deprecated
   compatibility entry points.
+- Added schema compatibility support to `skelc lsp`: clients can enable live
+  impact diagnostics against Git `HEAD` or an explicit source baseline, request
+  CodeLens actions, and execute `skel.schema.diff` to retrieve the complete
+  structured report for the current in-memory domain.
 
 ### Changed
 

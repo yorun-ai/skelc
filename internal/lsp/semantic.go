@@ -57,7 +57,7 @@ func (s *_Server) scheduleSemanticAnalysis() {
 	if client == nil {
 		return
 	}
-	s.analysis.Schedule(s.workspace.Snapshot(), s.acceptSemanticAnalysis)
+	s.analysis.Schedule(s.workspace.Snapshot(), s.compatibilityAnalysisOptions(), s.acceptSemanticAnalysis)
 }
 
 func (s *_Server) acceptSemanticAnalysis(result analysis.Result) {

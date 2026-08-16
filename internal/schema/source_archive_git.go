@@ -1,4 +1,4 @@
-package cli
+package schema
 
 import (
 	"archive/tar"
@@ -8,28 +8,25 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
-
-	schemas "go.yorun.ai/skelc/internal/schema"
 )
 
-type _GitBaseline struct {
+type _GitSourceBaseline struct {
 	skelIn      string
 	archiveRoot string
 }
 
-type _GitBaselineError struct {
+type _GitSourceBaselineError struct {
 	cause   error
 	message string
 }
 
-func (e *_GitBaselineError) Error() string { return e.message }
+func (e *_GitSourceBaselineError) Error() string { return e.message }
 
-func (e *_GitBaselineError) Unwrap() error { return e.cause }
+func (e *_GitSourceBaselineError) Unwrap() error { return e.cause }
 
-func prepareGitBaseline(ctx context.Context, candidateSkelIn string) (*_GitBaseline, error) {
+func prepareGitSourceBaseline(ctx context.Context, candidateSkelIn string) (*_GitSourceBaseline, error) {
 	target, err := filepath.Abs(candidateSkelIn)
 	if err != nil {
 		return nil, fmt.Errorf("resolve candidate skel input: %w", err)
@@ -88,25 +85,25 @@ func prepareGitBaseline(ctx context.Context, candidateSkelIn string) (*_GitBasel
 		_ = os.RemoveAll(archiveRoot)
 		return nil, gitHistoryNotFound(target, err)
 	}
-	return &_GitBaseline{skelIn: baselineSkelIn, archiveRoot: archiveRoot}, nil
+	return &_GitSourceBaseline{skelIn: baselineSkelIn, archiveRoot: archiveRoot}, nil
 }
 
-func (b *_GitBaseline) cleanup() {
+func (b *_GitSourceBaseline) cleanup() {
 	if b != nil && b.archiveRoot != "" {
 		_ = os.RemoveAll(b.archiveRoot)
 	}
 }
 
-func (b *_GitBaseline) remapError(err error) error {
+func (b *_GitSourceBaseline) remapError(err error) error {
 	if b == nil || b.archiveRoot == "" || err == nil {
 		return err
 	}
 	message := strings.ReplaceAll(err.Error(), b.archiveRoot+string(filepath.Separator), "HEAD:")
 	message = strings.ReplaceAll(message, b.archiveRoot, "HEAD:.")
-	return &_GitBaselineError{cause: err, message: message}
+	return &_GitSourceBaselineError{cause: err, message: message}
 }
 
-func (b *_GitBaseline) remapReportPositions(report *schemas.Report) {
+func (b *_GitSourceBaseline) remapReportPositions(report *Report) {
 	if b == nil || report == nil {
 		return
 	}
@@ -122,33 +119,12 @@ func (b *_GitBaseline) remapReportPositions(report *schemas.Report) {
 	}
 }
 
-func gitOutput(ctx context.Context, directory string, args ...string) (string, error) {
-	content, err := gitBytes(ctx, directory, args...)
-	return string(content), err
-}
-
-func gitBytes(ctx context.Context, directory string, args ...string) ([]byte, error) {
-	command := exec.CommandContext(ctx, "git", append([]string{"-C", directory, "--literal-pathspecs"}, args...)...)
-	content, err := command.Output()
-	if err == nil {
-		return content, nil
-	}
-	var exitError *exec.ExitError
-	if errors.As(err, &exitError) {
-		message := strings.TrimSpace(string(exitError.Stderr))
-		if message != "" {
-			return nil, fmt.Errorf("git %s: %s", strings.Join(args, " "), message)
-		}
-	}
-	return nil, fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
-}
-
 func gitHistoryNotFound(target string, cause error) error {
-	message := fmt.Sprintf("git history not found for %s; pass an explicit --%s", target, flagSchemaBaselineSkelIn)
+	message := fmt.Sprintf("git history not found for %s", target)
 	if cause != nil {
-		return fmt.Errorf("%s: %w", message, cause)
+		return fmt.Errorf("%w: %s: %v", ErrGitHistoryUnavailable, message, cause)
 	}
-	return errors.New(message)
+	return fmt.Errorf("%w: %s", ErrGitHistoryUnavailable, message)
 }
 
 func extractGitArchive(content []byte, destination string) (bool, error) {
@@ -195,8 +171,4 @@ func extractGitArchive(content []byte, destination string) (bool, error) {
 			continue
 		}
 	}
-}
-
-func pathEscapesRoot(path string) bool {
-	return path == ".." || strings.HasPrefix(path, ".."+string(filepath.Separator)) || filepath.IsAbs(path)
 }

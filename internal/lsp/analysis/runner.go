@@ -9,12 +9,20 @@ import (
 	"go.lsp.dev/uri"
 	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/internal/lsp/workspace"
+	"go.yorun.ai/skelc/internal/schema"
 )
 
 // Result is the semantic diagnostics produced for one workspace revision.
 type Result struct {
 	Revision    uint64
 	Diagnostics map[uri.URI][]protocol.Diagnostic
+}
+
+// CompatibilityOptions controls continuous schema compatibility diagnostics.
+type CompatibilityOptions struct {
+	Enabled           bool
+	IncludeCompatible bool
+	BaselineSkelIn    string
 }
 
 // Runner debounces workspace analysis and cancels superseded work.
@@ -25,15 +33,18 @@ type Runner struct {
 	timer             *time.Timer
 	cancel            context.CancelFunc
 	workspaceAnalyzer *compiler.WorkspaceAnalyzer
+	compatibility     *schema.SourceDiffer
 }
 
 // NewRunner creates a semantic analysis runner.
 func NewRunner(delay time.Duration) *Runner {
-	return &Runner{delay: delay, workspaceAnalyzer: compiler.NewWorkspaceAnalyzer()}
+	return &Runner{
+		delay: delay, workspaceAnalyzer: compiler.NewWorkspaceAnalyzer(), compatibility: schema.NewSourceDiffer(),
+	}
 }
 
 // Schedule replaces pending analysis with analysis of snapshot.
-func (r *Runner) Schedule(snapshot workspace.Snapshot, accept func(Result)) {
+func (r *Runner) Schedule(snapshot workspace.Snapshot, option CompatibilityOptions, accept func(Result)) {
 	r.mu.Lock()
 	r.generation++
 	generation := r.generation
@@ -46,7 +57,7 @@ func (r *Runner) Schedule(snapshot workspace.Snapshot, accept func(Result)) {
 	ctx, cancel := context.WithCancel(context.Background())
 	r.cancel = cancel
 	r.timer = time.AfterFunc(r.delay, func() {
-		r.run(ctx, generation, snapshot, accept)
+		r.run(ctx, generation, snapshot, option, accept)
 	})
 	r.mu.Unlock()
 }
@@ -66,11 +77,14 @@ func (r *Runner) Stop() {
 	}
 }
 
-func (r *Runner) run(ctx context.Context, generation uint64, snapshot workspace.Snapshot, accept func(Result)) {
+func (r *Runner) run(ctx context.Context, generation uint64, snapshot workspace.Snapshot, option CompatibilityOptions, accept func(Result)) {
 	sources, paths := SemanticSources(snapshot.DocumentsMap())
-	diagnostics, err := SemanticDiagnostics(ctx, r.workspaceAnalyzer, sources, paths)
+	diagnostics, domains, err := SemanticWorkspace(ctx, r.workspaceAnalyzer, sources, paths)
 	if err != nil {
 		return
+	}
+	if option.Enabled {
+		appendCompatibilityDiagnostics(ctx, r.compatibility, diagnostics, domains, sources, paths, option)
 	}
 	r.mu.Lock()
 	if generation != r.generation {

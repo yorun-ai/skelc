@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -117,34 +118,24 @@ func newSchemaDiffCommand() *ucli.Command {
 			if cmd.Args().Len() != 0 {
 				return fmt.Errorf("unexpected args for %s %s", commandSchema, commandSchemaDiff)
 			}
-			candidateSkelIn := cmd.String(flagSchemaSkelIn)
-			candidate, err := loadSourceSchema(flagSchemaSkelIn, candidateSkelIn)
-			if err != nil {
+			candidateOption := compiler.Option{SkelIn: cmd.String(flagSchemaSkelIn)}
+			if err := normalizeCompilerOption(&candidateOption); err != nil {
 				return err
 			}
 			baselineSkelIn := strings.TrimSpace(cmd.String(flagSchemaBaselineSkelIn))
-			var gitBaseline *_GitBaseline
-			if baselineSkelIn == "" {
-				gitBaseline, err = prepareGitBaseline(ctx, candidateSkelIn)
-				if err != nil {
+			if baselineSkelIn != "" {
+				baselineOption := compiler.Option{SkelIn: baselineSkelIn}
+				if err := normalizeCompilerOption(&baselineOption); err != nil {
 					return err
 				}
-				defer gitBaseline.cleanup()
-				baselineSkelIn = gitBaseline.skelIn
+				baselineSkelIn = baselineOption.SkelIn
 			}
-			baseline, err := loadSourceSchema(flagSchemaBaselineSkelIn, baselineSkelIn)
+			report, err := schemas.DiffSource(ctx, candidateOption.SkelIn, schemas.SourceDiffOption{BaselineSkelIn: baselineSkelIn})
 			if err != nil {
-				if gitBaseline != nil {
-					return gitBaseline.remapError(err)
+				if errors.Is(err, schemas.ErrGitHistoryUnavailable) {
+					return fmt.Errorf("%w; pass an explicit --%s", err, flagSchemaBaselineSkelIn)
 				}
 				return err
-			}
-			report, err := schemas.Diff(baseline, candidate)
-			if err != nil {
-				return err
-			}
-			if gitBaseline != nil {
-				gitBaseline.remapReportPositions(report)
 			}
 			return writeIndentedJSON(cmd, report, "schema diff")
 		},

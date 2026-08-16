@@ -93,6 +93,12 @@ func ValidateKind(kind string) error {
 	return fmt.Errorf("invalid schema declaration type %q, expected %s", kind, strings.Join(values, "/"))
 }
 
+// DeclarationTypes returns every supported top-level declaration type in
+// stable schema order.
+func DeclarationTypes() []DeclarationType {
+	return append([]DeclarationType{}, declarationKinds...)
+}
+
 func appendDeclarations(
 	document *Document,
 	domain *model.Domain,

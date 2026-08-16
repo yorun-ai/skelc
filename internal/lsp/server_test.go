@@ -47,6 +47,8 @@ func TestServeLifecycle(t *testing.T) {
 	assert.Equal(t, protocol.Boolean(true), result.Capabilities.HoverProvider)
 	assert.Equal(t, protocol.Boolean(true), result.Capabilities.WorkspaceSymbolProvider)
 	assert.Equal(t, protocol.Boolean(true), result.Capabilities.DocumentFormattingProvider)
+	require.NotNil(t, result.Capabilities.CodeLensProvider)
+	assert.Equal(t, []string{commandSchemaDiff}, result.Capabilities.ExecuteCommandProvider.Commands)
 	require.NotNil(t, result.Capabilities.Workspace)
 	require.NotNil(t, result.Capabilities.Workspace.WorkspaceFolders)
 	require.NotNil(t, result.Capabilities.Workspace.WorkspaceFolders.Supported)

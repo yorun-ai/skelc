@@ -8,6 +8,7 @@ import (
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
 	lspsource "go.yorun.ai/skelc/internal/lsp/source"
+	"go.yorun.ai/skelc/internal/schema"
 )
 
 func TestIndexDocumentDefinitionsAndReferences(t *testing.T) {
@@ -30,6 +31,30 @@ data Order {
 		keys = append(keys, occurrence.Key)
 	}
 	assert.Equal(t, []string{"demo.order.Order", "demo.user.User", "demo.order.Order"}, keys)
+}
+
+func TestIndexDocumentCoversEverySchemaDeclarationType(t *testing.T) {
+	document := Build(uri.File("/workspace/all.skel"), "/workspace/all.skel", `domain demo
+actor Caller { via client {} }
+config Runtime eternal {}
+data Record {}
+enum State { READY }
+event Changed { payload {} }
+resource Document {}
+service Documents {}
+task Cleanup {}
+web Portal {}
+`, 1)
+	require.Empty(t, document.ParseDiagnostics)
+	details := make([]string, 0, len(document.Definitions))
+	for _, definition := range document.Definitions {
+		details = append(details, definition.Detail)
+	}
+	expected := make([]string, 0, len(schema.DeclarationTypes()))
+	for _, kind := range schema.DeclarationTypes() {
+		expected = append(expected, string(kind))
+	}
+	assert.ElementsMatch(t, expected, details)
 }
 
 func TestIndexDocumentUsesUTF16Positions(t *testing.T) {

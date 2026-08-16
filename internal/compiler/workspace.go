@@ -54,6 +54,15 @@ type WorkspaceAnalysisStats struct {
 	ReusedDomains   int
 }
 
+// WorkspaceDomain is one successfully analyzed semantic domain in a workspace
+// snapshot. Sources contains the exact in-memory inputs used to build Model.
+type WorkspaceDomain struct {
+	Name    string
+	Root    string
+	Model   *model.Domain
+	Sources []Source
+}
+
 // NewWorkspaceAnalyzer creates an incremental workspace analyzer.
 func NewWorkspaceAnalyzer() *WorkspaceAnalyzer {
 	return &WorkspaceAnalyzer{parses: map[string]_CachedWorkspaceParse{}, domains: map[string]_CachedWorkspaceDomain{}}
@@ -78,6 +87,16 @@ func (w *WorkspaceAnalyzer) AnalyzeContext(ctx context.Context, sources []Source
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	w.stats = WorkspaceAnalysisStats{}
+	diagnostics, _, err := w.analyze(ctx, sources, false)
+	return diagnostics, err
+}
+
+// AnalyzeDomainsContext analyzes a workspace snapshot and returns every
+// semantic domain that compiled successfully alongside its diagnostics.
+func (w *WorkspaceAnalyzer) AnalyzeDomainsContext(ctx context.Context, sources []Source) ([]Diagnostic, []WorkspaceDomain, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.stats = WorkspaceAnalysisStats{}
 	return w.analyze(ctx, sources, false)
 }
 
@@ -88,7 +107,7 @@ func (w *WorkspaceAnalyzer) Stats() WorkspaceAnalysisStats {
 	return w.stats
 }
 
-func (w *WorkspaceAnalyzer) analyze(ctx context.Context, sources []Source, allowMissingImports bool) ([]Diagnostic, error) {
+func (w *WorkspaceAnalyzer) analyze(ctx context.Context, sources []Source, allowMissingImports bool) ([]Diagnostic, []WorkspaceDomain, error) {
 	ordered := append([]Source{}, sources...)
 	slices.SortFunc(ordered, func(left, right Source) int {
 		return strings.Compare(left.Path, right.Path)
@@ -98,7 +117,7 @@ func (w *WorkspaceAnalyzer) analyze(ctx context.Context, sources []Source, allow
 	diagnostics := []Diagnostic{}
 	for _, source := range ordered {
 		if err := ctx.Err(); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		content, syntaxDiagnostics := w.parseWorkspaceSource(source)
 		diagnostics = append(diagnostics, syntaxDiagnostics...)
@@ -162,11 +181,11 @@ func (w *WorkspaceAnalyzer) analyze(ctx context.Context, sources []Source, allow
 	slices.Sort(keys)
 	for _, key := range keys {
 		if err := ctx.Err(); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		w.analyzeWorkspaceDomain(ctx, domains[key], domainsByName, &diagnostics, allowMissingImports)
 		if err := ctx.Err(); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 	contentByPath := make(map[string][]byte, len(ordered))
@@ -191,7 +210,17 @@ func (w *WorkspaceAnalyzer) analyze(ctx context.Context, sources []Source, allow
 			delete(w.domains, key)
 		}
 	}
-	return diagnostics, nil
+	models := make([]WorkspaceDomain, 0, len(keys))
+	for _, key := range keys {
+		domain := domains[key]
+		if domain.state != workspaceDomainComplete || domain.analysis == nil {
+			continue
+		}
+		models = append(models, WorkspaceDomain{
+			Name: domain.name, Root: domain.root, Model: domain.analysis.Model(), Sources: append([]Source{}, domain.sources...),
+		})
+	}
+	return diagnostics, models, nil
 }
 
 func (w *WorkspaceAnalyzer) parseWorkspaceSource(source Source) (*grammar.SkelContent, Diagnostics) {

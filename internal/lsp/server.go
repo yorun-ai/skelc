@@ -16,14 +16,16 @@ import (
 type _Server struct {
 	protocol.UnimplementedServer
 
-	mu             sync.RWMutex
-	workspace      *workspace.Store
-	semantic       map[uri.URI][]protocol.Diagnostic
-	client         protocol.Client
-	analysis       *analysis.Runner
-	snippetSupport bool
-	exit           chan struct{}
-	exitOnce       sync.Once
+	mu                     sync.RWMutex
+	workspace              *workspace.Store
+	semantic               map[uri.URI][]protocol.Diagnostic
+	client                 protocol.Client
+	analysis               *analysis.Runner
+	snippetSupport         bool
+	codeLensRefreshSupport bool
+	schemaCompatibility    _SchemaCompatibilitySettings
+	exit                   chan struct{}
+	exitOnce               sync.Once
 }
 
 type _ReadWriteCloser struct {
@@ -57,19 +59,27 @@ func Serve(ctx context.Context, input io.Reader, output io.Writer) error {
 
 func newServer() *_Server {
 	return &_Server{
-		workspace: workspace.New(),
-		semantic:  map[uri.URI][]protocol.Diagnostic{},
-		exit:      make(chan struct{}),
-		analysis:  analysis.NewRunner(semanticAnalysisDelay),
+		workspace:           workspace.New(),
+		semantic:            map[uri.URI][]protocol.Diagnostic{},
+		exit:                make(chan struct{}),
+		analysis:            analysis.NewRunner(semanticAnalysisDelay),
+		schemaCompatibility: defaultSchemaCompatibilitySettings(),
 	}
 }
 
 func (s *_Server) Initialize(_ context.Context, params *protocol.InitializeParams) (*protocol.InitializeResult, error) {
+	s.mu.Lock()
+	s.schemaCompatibility = decodeInitializationSettings(params.InitializationOptions)
+	s.mu.Unlock()
 	if textDocument := params.Capabilities.TextDocument; textDocument != nil &&
 		textDocument.Completion != nil &&
 		textDocument.Completion.CompletionItem != nil &&
 		textDocument.Completion.CompletionItem.SnippetSupport != nil {
 		s.snippetSupport = *textDocument.Completion.CompletionItem.SnippetSupport
+	}
+	if workspace := params.Capabilities.Workspace; workspace != nil && workspace.CodeLens != nil &&
+		workspace.CodeLens.RefreshSupport != nil {
+		s.codeLensRefreshSupport = *workspace.CodeLens.RefreshSupport
 	}
 	if folders, ok := params.WorkspaceFolders.Get(); ok {
 		for _, folder := range folders {
@@ -84,6 +94,7 @@ func (s *_Server) Initialize(_ context.Context, params *protocol.InitializeParam
 	prepareRename := true
 	workspaceFolders := true
 	change := protocol.TextDocumentSyncKindFull
+	resolveCodeLens := false
 	return &protocol.InitializeResult{
 		Capabilities: protocol.ServerCapabilities{
 			PositionEncoding:           protocol.PositionEncodingKindUTF16,
@@ -97,6 +108,8 @@ func (s *_Server) Initialize(_ context.Context, params *protocol.InitializeParam
 			DocumentFormattingProvider: protocol.Boolean(true),
 			RenameProvider:             &protocol.RenameOptions{PrepareProvider: &prepareRename},
 			CodeActionProvider:         protocol.Boolean(true),
+			CodeLensProvider:           &protocol.CodeLensOptions{ResolveProvider: &resolveCodeLens},
+			ExecuteCommandProvider:     protocol.ExecuteCommandOptions{Commands: []string{commandSchemaDiff}},
 			Workspace: &protocol.WorkspaceOptions{WorkspaceFolders: &protocol.WorkspaceFoldersServerCapabilities{
 				Supported: &workspaceFolders, ChangeNotifications: protocol.Boolean(true),
 			}},

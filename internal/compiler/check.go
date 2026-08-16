@@ -33,7 +33,7 @@ func checkWithAnalyzer(option Option, workspaceAnalyzer *WorkspaceAnalyzer) (Che
 		sources[index].ExpectedDomain = expectedDomain
 	}
 	structural := checkDirectoryStructure(loadResult, sources, expectedDomain)
-	diagnostics, err := workspaceAnalyzer.analyze(context.Background(), sources, true)
+	diagnostics, _, err := workspaceAnalyzer.analyze(context.Background(), sources, true)
 	if err != nil {
 		return CheckResult{}, err
 	}

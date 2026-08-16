@@ -157,16 +157,39 @@ TypeScript 生成也支持 `--pub`，只输出公开 data、enum 和符合条件
 
 ### 引用其他 domain
 
-在 `.skel` 中声明 `import` 后，通过可重复使用的 `--skel-import domain=PATH` 指定外部契约位置。生成 Go module 或 TypeScript 时，再使用对应的 `--go-import`、`--go-module-prefix` 或 `--ts-import` 映射目标语言的 package。完整示例见 [CLI 参考](https://skel.yorun.ai/zh-CN/docs/cli)。
+在 `.skel` 中声明 `import` 后，生成命令通过可重复使用的 `--skel-import domain=PATH` 指定完整的传递依赖图。生成 Go module 或 TypeScript 时，再使用对应的 `--go-import`、`--go-module-prefix` 或 `--ts-import` 映射目标语言的 package。schema 命令不接受依赖映射，而是把 import 符号保留为不透明的完整名称。完整示例见 [CLI 参考](https://skel.yorun.ai/zh-CN/docs/cli)。
 
-### 查询和格式化
+### 查询、生成快照、查看差异和格式化
 
 ```bash
-skelc symbol list --skel-in ./skel
-skelc symbol get demo.user.User --skel-in ./skel
+skelc schema list --skel-in ./skel
+skelc schema list data --skel-in ./skel
+skelc schema get data demo.user.User --skel-in ./skel
+skelc schema snapshot --skel-in ./skel > ./user.schema.json
+skelc schema diff --skel-in ./skel
+skelc schema diff --baseline-skel-in ./previous/skel --skel-in ./skel
 skelc format --skel-in ./skel
 skelc format --check --output-format json --skel-in ./skel
 ```
+
+所有 `schema` 子命令都输出格式化 JSON。`schema list` 返回声明摘要 JSON 数组，
+`schema get TYPE SKEL_NAME` 返回单个完整的规范化声明对象。所有 schema 命令都
+处理完整 domain，每个声明继续保留自己的 `pub` 标记。
+快照 JSON 按确定顺序排列，并带有带版本的 schema 格式标识；`schema snapshot`
+始终把 JSON 写到标准输出，需要保存快照时使用重定向。源码位置可用于实时 diff 时
+的定位，但不会写入制品。import 声明在当前 domain 的快照中保留为不透明的完整
+引用，并由所属 domain 单独检查。
+`schema diff` 返回包含全部变化的结构化 JSON 报告，并将变化分为
+`COMPATIBLE`、`DANGEROUS` 和 `BREAKING`。每项变化还带有独立的 `change`
+维度，值为 `ADDED`、`REMOVED` 或 `MODIFIED`。domain 名称变化表示 schema
+身份被整体替换：diff 只输出一项 `domain.name.changed`，其中 impact 为
+`BREAKING`、change 为 `MODIFIED`，不再展开下层声明或成员变化。diff 只接受
+Skel 源文件或目录，不接受快照作为输入。`--skel-in` 指定 candidate；省略 `--baseline-skel-in` 时，skelc
+会查找 candidate 所在的 Git 仓库并读取 `HEAD` 中同一路径的内容，因此默认比较
+最近一次已提交版本和当前工作区。如果仓库、提交历史或 `HEAD` 中的目标路径不
+存在，需要显式传入 `--baseline-skel-in`。无论兼容性结论如何，diff 完成后都返回退出码
+`0`；命令参数、输入、编译和 schema 错误返回 `1`。现有脚本仍可继续使用
+`symbol list/get`，但它们已经是兼容保留的废弃入口。
 
 `format` 会在验证全部输入后原地修改文件。使用 `--check` 可以只报告格式不规范的文件并以非零状态退出，不修改文件；`--output-format json` 会返回机器可读的变更结果。格式化会先暂存所有待修改文件，再统一提交，保留文件所有者、mode 和平台支持的扩展元数据；如果后续写入或持久化同步失败，已经替换的文件会被恢复。它采用唯一的规范样式：四空格缩进、紧凑的类型与权限标点、字段和参数冒号后保留一个空格、空块保持紧凑，以及顶层声明之间保留一个空行；声明顺序、注释内容和字符串值不会改变。工具集成可以使用全局参数 `--log-format jsonl` 获取机器可读诊断。
 
@@ -203,6 +226,12 @@ for _, diagnostic := range result.Diagnostics {
 
 API 同时提供 `CompileTypeScript` 和 `CompileSkeleton`。parser 与 loader warning 使用同一套结构化诊断，不再维护独立的字符串列表。根 package 与 `go.yorun.ai/skelc/diagnostic` 都会导出稳定的诊断 code 常量，集成方无需重复填写原始字符串。所有公开契约生成器共用一次经过校验的 `internal/codegen/common` 投影，避免 Go、Skel 和 TypeScript 的可见性规则漂移。生成过程在每个文件中标记所有权，以原子方式逐个替换输出；提交失败时回滚所有受影响的目标，删除带标记的过期生成文件，并保留共享输出目录中的无标记文件。
 
+Go 集成通过公开 facade `go.yorun.ai/skelc/schema` 消费 schema 命令 JSON，
+无需复制 wire 结构。该 package 在实现保持 internal 的同时，统一提供响应类型、
+嵌套 wire 类型、带类型的常量，以及严格的 `schema.Decode`、`schema.Validate` 和
+`schema.Encode`，用于拒绝未知字段、尾随 JSON、不支持的格式版本以及不完整的
+规范化结构。根 package `go.yorun.ai/skelc` 继续只负责解析和生成 API。
+
 自定义 generator 可以调用 `skelc.Parse`，并通过与 parser 无关的 `go.yorun.ai/skelc/model` 使用返回的 `*model.Domain`。解析完成的模型已经包含由 skelc 计算好的兼容性 hash。内置的 `GenerateGolang`、`GenerateTypeScript` 和 `GenerateSkeleton` 也接受同一个已解析 domain，因此多个目标可以共享一次解析结果。
 
 ## skelc 与 Vine、vRPC
@@ -221,7 +250,8 @@ skelc 负责读取契约并生成代码，本身不是应用运行时：
 check          校验 Skel 定义
 format         原地格式化 Skel 定义
 lsp            通过标准输入输出运行 Skel 语言服务器
-symbol         列出或查询顶层符号
+schema         列出、查询、生成快照或查看语义 schema 差异
+symbol         废弃的 schema 查询兼容命令
 gen skel       生成公开 Skel 契约
 gen go         在现有 Go module 中生成代码
 gen go-module  生成独立 Go module

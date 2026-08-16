@@ -173,7 +173,7 @@ func parseType(reporter *_DiagnosticReporter, s *grammar.Type) (*model.Type, boo
 		refName, refQualifier, refPos, referenceValid := parseReferenceName(reporter, s.Reference.Name)
 		valid = referenceValid && valid
 		valid = checkCase(reporter, "Enum/Data/TypeParameter", caseTypeCamel, &grammar.Identifier{Value: refName, Pos: refPos}) && valid
-		t.Kind = typeKindReference
+		t.Kind = model.TypeKindUnresolvedReference
 		typeArgs := make([]*model.Type, 0, len(s.Reference.TypeArguments))
 		for _, typeArg := range s.Reference.TypeArguments {
 			parsedTypeArg, argumentValid := parseType(reporter, typeArg)

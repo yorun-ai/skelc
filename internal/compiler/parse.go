@@ -18,8 +18,9 @@ type Option struct {
 }
 
 type Result struct {
-	Domain      *model.Domain
-	Diagnostics Diagnostics
+	Domain        *model.Domain
+	ImportAliases map[string]string
+	Diagnostics   Diagnostics
 }
 
 // Compile loads, resolves, analyzes, and hashes one complete Skel input graph.
@@ -39,7 +40,7 @@ func Compile(option Option) (Result, error) {
 	if err := hasher.FillHashes(parsed); err != nil {
 		return Result{}, err
 	}
-	return Result{Domain: parsed, Diagnostics: diagnostics}, nil
+	return Result{Domain: parsed, ImportAliases: domain.ImportAliases(), Diagnostics: diagnostics}, nil
 }
 
 // CompileImport loads one domain without requiring its dependencies. It
@@ -56,7 +57,7 @@ func CompileImport(skelIn string) (Result, error) {
 	if err := hasher.FillHashes(parsed); err != nil {
 		return Result{}, err
 	}
-	return Result{Domain: parsed, Diagnostics: diagnostics}, nil
+	return Result{Domain: parsed, ImportAliases: domain.ImportAliases(), Diagnostics: diagnostics}, nil
 }
 
 func parseImportedDomains(imports map[string]string, diagnostics *Diagnostics) ([]*analyzer.Analysis, error) {

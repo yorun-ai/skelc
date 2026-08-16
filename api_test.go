@@ -102,6 +102,12 @@ func TestPublicPackagesRespectDependencyBoundaries(t *testing.T) {
 			forbidden: func(path string) bool { return strings.HasPrefix(path, internalPrefix) },
 		},
 		{
+			directory: "schema",
+			forbidden: func(path string) bool {
+				return strings.HasPrefix(path, internalPrefix) && path != internalPrefix+"schema"
+			},
+		},
+		{
 			directory: "internal/codegen/common",
 			forbidden: targetCodegenImport,
 		},

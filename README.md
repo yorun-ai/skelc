@@ -159,16 +159,47 @@ TypeScript generation also accepts `--pub` to emit only public data, enums, and 
 
 ### Reference Other Domains
 
-After declaring an `import` in `.skel`, use repeatable `--skel-import domain=PATH` options to provide the complete transitive dependency graph. skelc analyzes every dependency but generates code only for the `--skel-in` target. When generating a Go module or TypeScript, map the target's direct language-package dependencies with `--go-import`, `--go-module-prefix`, or `--ts-import`. See the [CLI reference](https://skel.yorun.ai/docs/cli) for complete examples.
+After declaring an `import` in `.skel`, generation commands use repeatable `--skel-import domain=PATH` options to provide the complete transitive dependency graph. skelc analyzes every dependency but generates code only for the `--skel-in` target. When generating a Go module or TypeScript, map the target's direct language-package dependencies with `--go-import`, `--go-module-prefix`, or `--ts-import`. Schema commands do not accept dependency mappings; they preserve imported symbols as opaque, fully qualified references. See the [CLI reference](https://skel.yorun.ai/docs/cli) for complete examples.
 
-### Inspect and Format
+### Inspect, Snapshot, Diff, and Format
 
 ```bash
-skelc symbol list --skel-in ./skel
-skelc symbol get demo.user.User --skel-in ./skel
+skelc schema list --skel-in ./skel
+skelc schema list data --skel-in ./skel
+skelc schema get data demo.user.User --skel-in ./skel
+skelc schema snapshot --skel-in ./skel > ./user.schema.json
+skelc schema diff --skel-in ./skel
+skelc schema diff --baseline-skel-in ./previous/skel --skel-in ./skel
 skelc format --skel-in ./skel
 skelc format --check --output-format json --skel-in ./skel
 ```
+
+All `schema` subcommands emit pretty-printed JSON. `schema list` returns a JSON
+array of declaration summaries, while `schema get TYPE SKEL_NAME` returns one
+complete normalized declaration object. All schema commands operate on the
+complete domain, and every declaration retains its `pub` marker. Snapshot JSON
+is deterministically ordered and carries a versioned schema-format
+identifier; `schema snapshot` always writes that JSON to stdout. Redirect it to
+persist a snapshot. Source positions are used for live diff diagnostics
+but are not persisted in the artifact. Imported declarations remain opaque
+fully qualified references in the current domain's snapshot and are checked
+separately in their owning domain.
+`schema diff` returns a structured JSON report, classifies changes as
+`COMPATIBLE`, `DANGEROUS`, or `BREAKING`, and always includes every detected
+change. Each item also carries an independent `change` value of `ADDED`,
+`REMOVED`, or `MODIFIED`. A domain-name change represents replacement of the
+schema identity: diff emits one `domain.name.changed` `BREAKING` / `MODIFIED`
+item and does not expand declaration or member changes beneath it.
+A diff accepts only Skel source files or directories; snapshots are not diff
+inputs. `--skel-in` selects the candidate. When `--baseline-skel-in` is omitted,
+skelc finds the candidate's Git repository and reads the same path from `HEAD`,
+so the default diff is the latest committed version against the working tree.
+If the repository, commit history, or path at `HEAD` is unavailable, provide an
+explicit `--baseline-skel-in`.
+A completed diff returns exit code `0` regardless of its compatibility
+result; command, input, compilation, and schema errors return `1`.
+`symbol list/get` remain available as deprecated compatibility entry points for
+existing scripts.
 
 `format` modifies files in place after validating all inputs. Use `--check` to report unformatted files and exit nonzero without modifying them; `--output-format json` returns a machine-readable change result. Formatting stages every changed file before committing the batch, preserves file ownership, mode, and supported extended metadata, and restores files already replaced if a later write or durability sync fails. It applies one canonical style: four-space indentation, compact type and permission punctuation, one space after field and argument colons, compact empty blocks, and one blank line between top-level declarations. Declaration order and comment or string values are preserved. Tool integrations can request machine-readable diagnostics with the global `--log-format jsonl` option.
 
@@ -205,6 +236,14 @@ for _, diagnostic := range result.Diagnostics {
 
 The API also provides `CompileTypeScript` and `CompileSkeleton`. Parser and loader warnings use the same structured diagnostic model instead of a separate string list. Stable diagnostic code constants are exported by the root package and by `go.yorun.ai/skelc/diagnostic`, so integrations do not need to repeat raw code strings. All public-contract generators consume one validated `internal/codegen/common` projection, preventing Go, Skel, and TypeScript visibility rules from drifting. Generation marks ownership in every generated file, atomically replaces individual outputs, rolls back every affected target when a commit fails, removes stale marked files, and preserves unmarked files in a shared output directory.
 
+Go integrations consume schema command JSON through the public facade
+`go.yorun.ai/skelc/schema`. It provides the response and nested wire types,
+typed constants, and strict `schema.Decode`, `schema.Validate`, and
+`schema.Encode` functions while the implementation remains internal. Strict
+decoding rejects unknown fields, trailing JSON values, unsupported format
+versions and malformed normalized structures. The root `go.yorun.ai/skelc`
+package remains focused on parsing and generation.
+
 Custom generators can call `skelc.Parse` and consume the returned `*model.Domain` through the parser-independent `go.yorun.ai/skelc/model` package. Parsed models already contain compatibility hashes calculated by skelc. Built-in generators accept the same parsed domain through `GenerateGolang`, `GenerateTypeScript`, and `GenerateSkeleton`, so several targets can share one parse result.
 
 ## skelc, Vine, and vRPC
@@ -223,7 +262,8 @@ After upgrading skelc, regenerate the code and run type checks and tests in its 
 check          validate Skel definitions
 format         format Skel definitions in place
 lsp            run the Skel language server over stdio
-symbol         list or inspect top-level symbols
+schema         list, inspect, snapshot, or diff semantic schemas
+symbol         deprecated schema query compatibility commands
 gen skel       generate public Skel contracts
 gen go         generate code inside an existing Go module
 gen go-module  generate a standalone Go module

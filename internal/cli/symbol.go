@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 
 	ucli "github.com/urfave/cli/v3"
 	"go.yorun.ai/skelc/internal/compiler"
+	schemas "go.yorun.ai/skelc/internal/schema"
 	"go.yorun.ai/skelc/model"
 )
 
@@ -20,17 +20,12 @@ const (
 	flagSymbolSkelIn = "skel-in"
 )
 
-type _Symbol struct {
-	Pub      bool   `json:"pub"`
-	Name     string `json:"name"`
-	Kind     string `json:"type"`
-	SkelName string `json:"skelName"`
-}
+type _Symbol = schemas.Entry
 
 func newSymbolCommand() *ucli.Command {
 	return &ucli.Command{
 		Name:               commandSymbol,
-		Usage:              "inspect skel symbols",
+		Usage:              "deprecated schema query compatibility commands",
 		HideHelpCommand:    true,
 		CustomHelpTemplate: groupCommandHelpTemplate,
 		Commands: []*ucli.Command{
@@ -186,61 +181,16 @@ func maxSymbolKindWidth(symbols []*_Symbol) int {
 }
 
 func buildSymbols(domain *model.Domain) []*_Symbol {
-	symbols := make([]*_Symbol, 0)
-	for _, enum := range domain.Enums() {
-		symbols = append(symbols, &_Symbol{Pub: enum.Pub, Name: enum.Name, Kind: "enum", SkelName: enum.SkelName})
+	document, err := schemas.Project(domain, nil)
+	if err != nil {
+		return nil
 	}
-	for _, data := range domain.Data() {
-		symbols = append(symbols, &_Symbol{Pub: data.Pub, Name: data.Name, Kind: "data", SkelName: data.SkelName})
-	}
-	for _, config := range domain.Configs() {
-		symbols = append(symbols, &_Symbol{Pub: config.Pub, Name: config.Name, Kind: "config", SkelName: config.SkelName})
-	}
-	for _, event := range domain.Events() {
-		symbols = append(symbols, &_Symbol{Pub: event.Pub, Name: event.Name, Kind: "event", SkelName: event.SkelName})
-	}
-	for _, actor := range domain.Actors() {
-		symbols = append(symbols, &_Symbol{Pub: actor.Pub, Name: actor.Name, Kind: "actor", SkelName: actor.SkelName})
-	}
-	for _, service := range domain.Services() {
-		symbols = append(symbols, &_Symbol{Pub: service.Pub, Name: service.Name, Kind: "service", SkelName: service.SkelName})
-	}
-	for _, web := range domain.Webs() {
-		symbols = append(symbols, &_Symbol{Name: web.Name, Kind: "web", SkelName: web.SkelName})
-	}
-	for _, task := range domain.Tasks() {
-		symbols = append(symbols, &_Symbol{Name: task.Name, Kind: "task", SkelName: task.SkelName})
-	}
-	sort.Slice(symbols, func(i int, j int) bool {
-		iKindOrder := symbolKindOrder(symbols[i].Kind)
-		jKindOrder := symbolKindOrder(symbols[j].Kind)
-		if iKindOrder == jKindOrder {
-			return symbols[i].SkelName < symbols[j].SkelName
+	entries := schemas.Entries(document)
+	symbols := make([]*_Symbol, 0, len(entries))
+	for _, entry := range entries {
+		if entry.Kind != "resource" {
+			symbols = append(symbols, entry)
 		}
-		return iKindOrder < jKindOrder
-	})
-	return symbols
-}
-
-func symbolKindOrder(kind string) int {
-	switch kind {
-	case "actor":
-		return 1
-	case "config":
-		return 2
-	case "data":
-		return 3
-	case "enum":
-		return 4
-	case "event":
-		return 5
-	case "service":
-		return 6
-	case "task":
-		return 7
-	case "web":
-		return 8
-	default:
-		return 99
 	}
+	return symbols
 }

@@ -6,6 +6,22 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+### Added
+
+- Added a unified `schema` command group for listing and inspecting declarations,
+  producing deterministic versioned JSON schema snapshots, and diffing two Skel
+  source inputs with `COMPATIBLE`, `DANGEROUS`, and `BREAKING` change classes.
+  Diff items independently identify `ADDED`, `REMOVED`, and `MODIFIED`
+  operations. Every schema subcommand emits pretty-printed JSON, and diff always
+  returns the complete report without applying a failure threshold. When an
+  explicit baseline is omitted, diff reads the candidate path from Git `HEAD`.
+  The public `go.yorun.ai/skelc/schema` facade exposes strict snapshot
+  `Encode`, `Decode`, and `Validate` functions plus typed constants for all
+  normalized wire enums over the implementation in `internal/schema`. The root
+  Go facade remains focused on parsing and generation.
+  The existing `symbol list/get` commands remain available as deprecated
+  compatibility entry points.
+
 ## [0.12.0] - 2026-08-16
 
 ### Changed

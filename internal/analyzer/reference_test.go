@@ -71,7 +71,7 @@ func TestParseTypeMapAndNullable(t *testing.T) {
 	if typ.Map.Key.Kind != model.TypeKindScalar || typ.Map.Key.Scalar != model.ScalarString {
 		t.Fatalf("unexpected map key: %+v", typ.Map.Key)
 	}
-	if typ.Map.Value.Kind != typeKindReference || typ.Map.Value.SkelName != "User" {
+	if typ.Map.Value.Kind != model.TypeKindUnresolvedReference || typ.Map.Value.SkelName != "User" {
 		t.Fatalf("unexpected map value: %+v", typ.Map.Value)
 	}
 }

@@ -13,10 +13,12 @@ type TypeParameter struct {
 	Name string
 }
 
-// Type describes a resolved semantic type.
+// Type describes a semantic type. Named references may remain unresolved while
+// a domain is undergoing semantic analysis.
 //
 // Kind selects the corresponding Scalar, List, Map, Enum, Data, or
-// TypeParameter field. TypeArguments applies to generic data references.
+// TypeParameter field. An unresolved named reference uses SkelName while it is
+// being analyzed. TypeArguments applies to generic data references.
 type Type struct {
 	// Pos is the type expression's source position.
 	Pos Position
@@ -116,6 +118,9 @@ func (t *Type) containsBinaryType(visited map[*Data]bool) bool {
 type TypeKind int
 
 const (
+	// TypeKindUnresolvedReference identifies a named reference that has not yet
+	// been resolved during semantic analysis.
+	TypeKindUnresolvedReference TypeKind = -1
 	// TypeKindScalar identifies a built-in scalar type.
 	TypeKindScalar TypeKind = 2
 	// TypeKindList identifies a list type.

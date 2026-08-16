@@ -111,9 +111,6 @@ func runCLICommand(command *ucli.Command, args []string, stdin io.Reader, stdout
 
 	err := command.Run(context.Background(), args)
 	if err != nil {
-		if exitError, ok := err.(interface{ ExitCode() int }); ok {
-			return Result{ExitCode: exitError.ExitCode(), Stderr: stderr.String()}
-		}
 		if diagnostics, ok := err.(interface{ DiagnosticEntries() compiler.Diagnostics }); ok {
 			return Result{
 				ExitCode: ExitCodeError,

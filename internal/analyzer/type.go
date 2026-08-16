@@ -2,10 +2,7 @@ package analyzer
 
 import "go.yorun.ai/skelc/model"
 
-const (
-	typeKindReference model.TypeKind = -1
-	typeKindNone      model.TypeKind = 0
-)
+const typeKindNone model.TypeKind = 0
 
 const scalarNone model.Scalar = 0
 
@@ -33,7 +30,7 @@ func fixTypeRef(reporter *_DiagnosticReporter, t *model.Type, refCtx *_RefContex
 	}
 
 	switch t.Kind {
-	case typeKindReference:
+	case model.TypeKindUnresolvedReference:
 		refName := t.SkelName
 		refQualifier := t.ExternalAlias
 		if refQualifier != "" {
@@ -117,7 +114,7 @@ func fixTypeRef(reporter *_DiagnosticReporter, t *model.Type, refCtx *_RefContex
 
 	case model.TypeKindMap:
 		keyValid := fixTypeRef(reporter, t.Map.Key, refCtx)
-		if keyValid && !(refCtx.allowUnresolvedImports && t.Map.Key.Kind == typeKindReference) {
+		if keyValid && !(refCtx.allowUnresolvedImports && t.Map.Key.Kind == model.TypeKindUnresolvedReference) {
 			keyValid = checkTypeCanBeMapKey(reporter, t.Map.Key)
 		}
 		return fixTypeRef(reporter, t.Map.Value, refCtx) && keyValid

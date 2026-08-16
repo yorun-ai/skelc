@@ -7,8 +7,6 @@ import (
 	"go.yorun.ai/skelc/model"
 )
 
-const unresolvedReferenceTypeKind model.TypeKind = -1
-
 func projectRequirement(value *model.PermissionRequire) *Requirement {
 	if value == nil {
 		return nil
@@ -47,7 +45,7 @@ func projectType(value *model.Type) *Type {
 	}
 	result := &Type{Nullable: value.Nullable}
 	switch value.Kind {
-	case unresolvedReferenceTypeKind:
+	case model.TypeKindUnresolvedReference:
 		result.Kind = TypeKindImportedReference
 		result.Name = value.SkelName
 		if value.ExternalAlias != "" {

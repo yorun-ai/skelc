@@ -2,7 +2,6 @@ package cli
 
 import (
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -28,12 +27,20 @@ pub resource User {
 	if listResult.ExitCode != ExitCodeSuccess {
 		t.Fatalf("unexpected list result: %+v", listResult)
 	}
-	if listResult.Stdout != "pub  data      demo.user.User\npub  resource  demo.user.User\n" {
-		t.Fatalf("unexpected list output:\n%s", listResult.Stdout)
+	var entries []*schemas.Entry
+	if err := json.Unmarshal([]byte(listResult.Stdout), &entries); err != nil {
+		t.Fatalf("decode list result: %v\n%s", err, listResult.Stdout)
+	}
+	if len(entries) != 2 || entries[0].Kind != "data" || entries[1].Kind != "resource" {
+		t.Fatalf("unexpected list entries: %+v", entries)
 	}
 	filteredResult := Run([]string{"schema", "list", "data", "--skel-in", dir})
-	if filteredResult.ExitCode != ExitCodeSuccess || filteredResult.Stdout != "pub  data  demo.user.User\n" {
+	if filteredResult.ExitCode != ExitCodeSuccess {
 		t.Fatalf("unexpected filtered list result: %+v", filteredResult)
+	}
+	entries = nil
+	if err := json.Unmarshal([]byte(filteredResult.Stdout), &entries); err != nil || len(entries) != 1 || entries[0].Kind != "data" {
+		t.Fatalf("unexpected filtered list entries: %+v, err=%v", entries, err)
 	}
 
 	missingTypeResult := Run([]string{"schema", "get", "demo.user.User", "--skel-in", dir})
@@ -45,17 +52,9 @@ pub resource User {
 	if getResult.ExitCode != ExitCodeSuccess {
 		t.Fatalf("unexpected get result: %+v", getResult)
 	}
-	if getResult.Stdout != "pub data demo.user.User\n  name: User\n  members:\n    - id: string\n" {
-		t.Fatalf("unexpected get text output:\n%s", getResult.Stdout)
-	}
-
-	getJSONResult := Run([]string{"schema", "get", "data", "demo.user.User", "--output-format", "json", "--skel-in", dir})
-	if getJSONResult.ExitCode != ExitCodeSuccess {
-		t.Fatalf("unexpected get JSON result: %+v", getJSONResult)
-	}
 	var declaration schemas.Declaration
-	if err := json.Unmarshal([]byte(getJSONResult.Stdout), &declaration); err != nil {
-		t.Fatalf("decode declaration: %v\n%s", err, getJSONResult.Stdout)
+	if err := json.Unmarshal([]byte(getResult.Stdout), &declaration); err != nil {
+		t.Fatalf("decode declaration: %v\n%s", err, getResult.Stdout)
 	}
 	if declaration.Data == nil || len(declaration.Data.Members) != 1 || declaration.Data.Members[0].Name != "id" {
 		t.Fatalf("unexpected declaration: %+v", declaration)
@@ -77,9 +76,8 @@ func TestRunSkelcSchemaQueryRejectsInvalidType(t *testing.T) {
 	}
 }
 
-func TestRunSkelcSchemaExportPublicDocument(t *testing.T) {
+func TestRunSkelcSchemaSnapshotFullDocument(t *testing.T) {
 	dir := t.TempDir()
-	output := filepath.Join(t.TempDir(), "nested", "user.schema.json")
 	writeCLIFile(t, filepath.Join(dir, "domain.skel"), `domain demo.user`)
 	writeCLIFile(t, filepath.Join(dir, "data.skel"), `domain demo.user
 
@@ -92,25 +90,84 @@ data InternalUser {
 }
 `)
 
-	result := Run([]string{"schema", "export", "--skel-in", dir, "--schema-out", output})
-	if result.ExitCode != ExitCodeSuccess || result.Stdout != "" || result.Stderr != "" {
-		t.Fatalf("unexpected export result: %+v", result)
+	result := Run([]string{"schema", "snapshot", "--skel-in", dir})
+	if result.ExitCode != ExitCodeSuccess || result.Stdout == "" || result.Stderr != "" {
+		t.Fatalf("unexpected snapshot result: %+v", result)
 	}
-	file, err := os.Open(output)
+	document, err := schemas.Decode(strings.NewReader(result.Stdout))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
-	document, err := schemas.Decode(file)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if document.Scope != schemas.ScopePublic || len(document.Declarations) != 1 || document.Declarations[0].SkelName != "demo.user.User" {
+	if len(document.Declarations) != 2 || schemas.Find(document, "data", "demo.user.User") == nil {
 		t.Fatalf("unexpected schema: %+v", document)
+	}
+	internal := schemas.Find(document, "data", "demo.user.InternalUser")
+	if internal == nil || internal.Pub {
+		t.Fatalf("expected private declaration in full schema: %+v", internal)
 	}
 }
 
-func TestRunSkelcSchemaCompareReturnsDedicatedExitCode(t *testing.T) {
+func TestRunSkelcSchemaSnapshotKeepsImportsOpaque(t *testing.T) {
+	source := t.TempDir()
+	aliasSource := t.TempDir()
+	writeCLIFile(t, filepath.Join(source, "domain.skel"), `domain demo.order`)
+	writeCLIFile(t, filepath.Join(aliasSource, "domain.skel"), `domain demo.order`)
+	sourceSchema := `domain demo.order
+
+import demo.user as identity
+
+pub data Order {
+    owner: identity.User
+}
+
+pub service OrderService {
+    require identity.User:read
+
+    method get {
+        output Order
+    }
+}
+`
+	writeCLIFile(t, filepath.Join(source, "schema.skel"), sourceSchema)
+	writeCLIFile(t, filepath.Join(aliasSource, "schema.skel"), strings.ReplaceAll(sourceSchema, "identity", "account"))
+
+	shallow := Run([]string{"schema", "snapshot", "--skel-in", source})
+	if shallow.ExitCode != ExitCodeSuccess {
+		t.Fatalf("export with opaque imports failed: %+v", shallow)
+	}
+	aliasSnapshot := Run([]string{"schema", "snapshot", "--skel-in", aliasSource})
+	if aliasSnapshot.ExitCode != ExitCodeSuccess {
+		t.Fatalf("snapshot with alternate import alias failed: %+v", aliasSnapshot)
+	}
+	if shallow.Stdout != aliasSnapshot.Stdout {
+		t.Fatalf("import alias changed schema output:\nidentity alias:\n%s\naccount alias:\n%s", shallow.Stdout, aliasSnapshot.Stdout)
+	}
+	document, err := schemas.Decode(strings.NewReader(shallow.Stdout))
+	if err != nil {
+		t.Fatal(err)
+	}
+	order := schemas.Find(document, "data", "demo.order.Order")
+	if order == nil || order.Data.Members[0].Type.Kind != "importedReference" || order.Data.Members[0].Type.Name != "demo.user.User" {
+		t.Fatalf("unexpected imported data reference: %+v", order)
+	}
+	service := schemas.Find(document, "service", "demo.order.OrderService")
+	if service == nil || service.Service.Require == nil || service.Service.Require.Mode != "reference" ||
+		service.Service.Require.Check.Resource != "demo.user.User" {
+		t.Fatalf("unexpected imported permission reference: %+v", service)
+	}
+	diff := Run([]string{
+		"schema", "diff", "--baseline-skel-in", source, "--skel-in", aliasSource,
+	})
+	var diffReport schemas.Report
+	if err := json.Unmarshal([]byte(diff.Stdout), &diffReport); err != nil {
+		t.Fatalf("decode diff report: %v\n%s", err, diff.Stdout)
+	}
+	if diff.ExitCode != ExitCodeSuccess || !diffReport.Compatible || len(diffReport.Changes) != 0 {
+		t.Fatalf("source diff should not require imports or observe aliases: %+v", diff)
+	}
+}
+
+func TestRunSkelcSchemaDiffOutputsCompleteReport(t *testing.T) {
 	baseline := t.TempDir()
 	candidate := t.TempDir()
 	writeCLIFile(t, filepath.Join(baseline, "domain.skel"), `domain demo.user`)
@@ -129,26 +186,49 @@ pub data User {
 }
 `)
 
-	result := Run([]string{"schema", "compare", "--against-skel-in", baseline, "--skel-in", candidate})
-	if result.ExitCode != ExitCodeIncompatible {
-		t.Fatalf("expected incompatibility exit code, got %+v", result)
+	result := Run([]string{"schema", "diff", "--baseline-skel-in", baseline, "--skel-in", candidate})
+	if result.ExitCode != ExitCodeSuccess {
+		t.Fatalf("expected completed diff, got %+v", result)
 	}
-	if result.Stderr != "" || !strings.Contains(result.Stdout, "data.member.added") || !strings.Contains(result.Stdout, "incompatible: 1 breaking") {
-		t.Fatalf("unexpected comparison output: %+v", result)
+	var report schemas.Report
+	if err := json.Unmarshal([]byte(result.Stdout), &report); err != nil {
+		t.Fatalf("decode diff report: %v\n%s", err, result.Stdout)
 	}
-
-	allowed := Run([]string{
-		"schema", "compare", "--against-skel-in", baseline, "--skel-in", candidate, "--fail-on", "none",
-	})
-	if allowed.ExitCode != ExitCodeSuccess {
-		t.Fatalf("fail-on none should succeed: %+v", allowed)
+	if result.Stderr != "" || report.Compatible || report.Summary.Breaking != 1 || report.Changes[0].Code != "data.member.added" {
+		t.Fatalf("unexpected diff output: %+v", result)
 	}
 }
 
-func TestRunSkelcSchemaCompareSnapshotToSourceJSON(t *testing.T) {
+func TestRunSkelcSchemaDiffChecksPrivateDeclarations(t *testing.T) {
 	baseline := t.TempDir()
 	candidate := t.TempDir()
-	snapshot := filepath.Join(t.TempDir(), "baseline.schema.json")
+	writeCLIFile(t, filepath.Join(baseline, "domain.skel"), `domain demo.user`)
+	writeCLIFile(t, filepath.Join(baseline, "data.skel"), `domain demo.user
+
+data InternalUser {
+    id: string
+}
+`)
+	writeCLIFile(t, filepath.Join(candidate, "domain.skel"), `domain demo.user`)
+	writeCLIFile(t, filepath.Join(candidate, "data.skel"), `domain demo.user
+
+data InternalUser {
+    id: string
+    name: string
+}
+`)
+
+	result := Run([]string{
+		"schema", "diff", "--baseline-skel-in", baseline, "--skel-in", candidate,
+	})
+	if result.ExitCode != ExitCodeSuccess || !strings.Contains(result.Stdout, "data.member.added") {
+		t.Fatalf("expected private declaration incompatibility: %+v", result)
+	}
+}
+
+func TestRunSkelcSchemaDiffReportsDangerousSourceChange(t *testing.T) {
+	baseline := t.TempDir()
+	candidate := t.TempDir()
 	writeCLIFile(t, filepath.Join(baseline, "domain.skel"), `domain demo.user`)
 	writeCLIFile(t, filepath.Join(baseline, "data.skel"), `domain demo.user
 
@@ -165,16 +245,11 @@ pub enum UserStatus {
 }
 `)
 
-	exportResult := Run([]string{"schema", "export", "--skel-in", baseline, "--schema-out", snapshot})
-	if exportResult.ExitCode != ExitCodeSuccess {
-		t.Fatalf("export failed: %+v", exportResult)
-	}
 	result := Run([]string{
-		"schema", "compare", "--against", snapshot, "--skel-in", candidate,
-		"--output-format", "json", "--fail-on", "dangerous",
+		"schema", "diff", "--baseline-skel-in", baseline, "--skel-in", candidate,
 	})
-	if result.ExitCode != ExitCodeIncompatible || result.Stderr != "" {
-		t.Fatalf("unexpected comparison result: %+v", result)
+	if result.ExitCode != ExitCodeSuccess || result.Stderr != "" {
+		t.Fatalf("unexpected diff result: %+v", result)
 	}
 	var report schemas.Report
 	if err := json.Unmarshal([]byte(result.Stdout), &report); err != nil {

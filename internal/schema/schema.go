@@ -9,13 +9,6 @@ const (
 	FormatVersion = 1
 )
 
-type Scope string
-
-const (
-	ScopeAll    Scope = "all"
-	ScopePublic Scope = "public"
-)
-
 var declarationKinds = []string{
 	"actor", "config", "data", "enum", "event", "resource", "service", "task", "web",
 }
@@ -24,7 +17,6 @@ type Document struct {
 	Format        string         `json:"format"`
 	FormatVersion int            `json:"formatVersion"`
 	Domain        string         `json:"domain"`
-	Scope         Scope          `json:"scope"`
 	Description   string         `json:"description,omitempty"`
 	Declarations  []*Declaration `json:"declarations"`
 }

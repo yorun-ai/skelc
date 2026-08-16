@@ -52,9 +52,6 @@ func Validate(document *Document) error {
 	if document.Domain == "" {
 		return fmt.Errorf("schema domain is required")
 	}
-	if err := ValidateScope(document.Scope); err != nil {
-		return err
-	}
 	if document.Declarations == nil {
 		return fmt.Errorf("schema declarations are required")
 	}
@@ -73,9 +70,6 @@ func Validate(document *Document) error {
 		seen[key] = true
 		if err := validateDeclarationBody(declaration); err != nil {
 			return fmt.Errorf("schema declaration %s: %w", declaration.SkelName, err)
-		}
-		if document.Scope == ScopePublic && !declaration.Pub {
-			return fmt.Errorf("public schema contains non-pub declaration %s", declaration.SkelName)
 		}
 	}
 	return nil
@@ -325,6 +319,20 @@ func validateRequirement(value *Requirement) error {
 		if value.Code == "" {
 			return fmt.Errorf("code permission requirement has no code")
 		}
+	case "reference":
+		if value.Check == nil || value.Check.Resource == "" || value.Check.Action == "" {
+			return fmt.Errorf("reference permission requirement is incomplete")
+		}
+		for _, argument := range value.Check.Arguments {
+			if argument == nil || argument.Name == "" && argument.JSONPath == "" {
+				return fmt.Errorf("reference permission requirement has an unnamed argument")
+			}
+			if argument.Type != nil {
+				if err := validateType(argument.Type); err != nil {
+					return err
+				}
+			}
+		}
 	case "check":
 		if value.Check == nil || value.Check.Resource == "" || value.Check.Check == "" {
 			return fmt.Errorf("check permission requirement is incomplete")
@@ -364,7 +372,7 @@ func validateType(value *Type) error {
 		return fmt.Errorf("type is required")
 	}
 	switch value.Kind {
-	case "scalar", "enum", "data", "typeParameter", "reference":
+	case "scalar", "enum", "data", "typeParameter", "importedReference":
 		if value.Name == "" {
 			return fmt.Errorf("%s type has no name", value.Kind)
 		}

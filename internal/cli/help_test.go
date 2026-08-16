@@ -49,13 +49,10 @@ func TestRunSkelcSchemaHelpShowsSubcommandsAndOptions(t *testing.T) {
 	if result.ExitCode != ExitCodeSuccess {
 		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
 	}
-	for _, expected := range []string{"list [TYPE]", "get TYPE SKEL_NAME", "list OPTIONS:", "get OPTIONS:", "export OPTIONS:", "compare OPTIONS:", "--schema-out", "--against", "--fail-on"} {
+	for _, expected := range []string{"list [TYPE]", "get TYPE SKEL_NAME", "list OPTIONS:", "get OPTIONS:", "snapshot OPTIONS:", "diff OPTIONS:", "--baseline-skel-in"} {
 		if !strings.Contains(result.Stdout, expected) {
 			t.Fatalf("expected %q in stdout: %q", expected, result.Stdout)
 		}
-	}
-	if strings.Contains(result.Stdout, "--type") {
-		t.Fatalf("did not expect removed --type flag: %q", result.Stdout)
 	}
 }
 

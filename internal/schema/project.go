@@ -5,43 +5,31 @@ import (
 	"slices"
 	"strings"
 
-	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/model"
 )
 
 const unresolvedReferenceTypeKind model.TypeKind = -1
 
-func Project(domain *model.Domain, scope Scope) (*Document, error) {
+func Project(domain *model.Domain, importAliases map[string]string) (*Document, error) {
 	if domain == nil {
 		return nil, fmt.Errorf("cannot project a nil domain")
 	}
-	if err := ValidateScope(scope); err != nil {
-		return nil, err
-	}
 	document := &Document{
-		Format: Format, FormatVersion: FormatVersion, Domain: domain.Name(), Scope: scope,
+		Format: Format, FormatVersion: FormatVersion, Domain: domain.Name(),
 		Description: domain.Description(), Declarations: []*Declaration{},
 	}
-	if scope == ScopePublic {
-		view, err := common.BuildPublicView(domain)
-		if err != nil {
-			return nil, err
-		}
-		appendDeclarations(document, domain, view.Enums, view.Data, view.Configs, view.Events,
-			view.Actors, view.Resources, view.Services, nil, nil)
-	} else {
-		appendDeclarations(document, domain, domain.Enums(), domain.Data(), domain.Configs(), domain.Events(),
-			domain.Actors(), domain.Resources(), domain.Services(), domain.Webs(), domain.Tasks())
+	aliases := make(map[string]string, len(importAliases)+len(domain.Imports()))
+	for alias, name := range importAliases {
+		aliases[alias] = name
 	}
+	for _, imported := range domain.Imports() {
+		aliases[imported.Alias] = imported.Name
+	}
+	appendDeclarations(document, domain, aliases, domain.Enums(), domain.Data(), domain.Configs(), domain.Events(),
+		domain.Actors(), domain.Resources(), domain.Services(), domain.Webs(), domain.Tasks())
+	normalizeReferenceNames(document, domain.Name(), aliases)
 	slices.SortFunc(document.Declarations, compareDeclarations)
 	return document, nil
-}
-
-func ValidateScope(scope Scope) error {
-	if scope != ScopeAll && scope != ScopePublic {
-		return fmt.Errorf("invalid schema scope %q, expected all/public", scope)
-	}
-	return nil
 }
 
 func ValidateKind(kind string) error {
@@ -54,6 +42,7 @@ func ValidateKind(kind string) error {
 func appendDeclarations(
 	document *Document,
 	domain *model.Domain,
+	importAliases map[string]string,
 	enums []*model.Enum,
 	data []*model.Data,
 	configs []*model.Data,
@@ -83,10 +72,10 @@ func appendDeclarations(
 		document.Declarations = append(document.Declarations, projectResource(value))
 	}
 	for _, value := range services {
-		document.Declarations = append(document.Declarations, projectService(domain, value))
+		document.Declarations = append(document.Declarations, projectService(domain.Name(), importAliases, value))
 	}
 	for _, value := range webs {
-		document.Declarations = append(document.Declarations, projectWeb(domain, value))
+		document.Declarations = append(document.Declarations, projectWeb(domain.Name(), importAliases, value))
 	}
 	for _, value := range tasks {
 		document.Declarations = append(document.Declarations, projectTask(value))
@@ -179,7 +168,7 @@ func projectResourceChecks(values []*model.ResourceCheck) []*ResourceCheck {
 	return checks
 }
 
-func projectService(domain *model.Domain, value *model.Service) *Declaration {
+func projectService(domainName string, importAliases map[string]string, value *model.Service) *Declaration {
 	methods := make([]*Method, 0, len(value.Methods))
 	for _, method := range value.Methods {
 		methods = append(methods, projectMethod(method))
@@ -188,7 +177,7 @@ func projectService(domain *model.Domain, value *model.Service) *Declaration {
 		Metadata: metadata(value.Description, value.Deprecated, value.DeprecatedReason),
 		Pub:      value.Pub, Name: value.Name, Kind: "service", SkelName: value.SkelName, Pos: value.Pos,
 		Service: &ServiceSchema{
-			Audiences: projectAudiences(domain, value.Audiences), Auth: normalizedAuth(value.Auth),
+			Audiences: projectAudiences(domainName, importAliases, value.Audiences), Auth: normalizedAuth(value.Auth),
 			Require: projectRequirement(value.Require), Methods: methods,
 		},
 	}
@@ -227,7 +216,11 @@ func projectRequirementExpr(value *model.PermissionExpr) *Requirement {
 	if value == nil {
 		return nil
 	}
-	result := &Requirement{Mode: string(value.Mode), Code: value.Code}
+	mode := string(value.Mode)
+	if mode == "" && value.Check != nil {
+		mode = "reference"
+	}
+	result := &Requirement{Mode: mode, Code: value.Code}
 	if value.Check != nil {
 		arguments := make([]*RequirementCheckArgument, 0, len(value.Check.Arguments))
 		for _, argument := range value.Check.Arguments {
@@ -244,11 +237,11 @@ func projectRequirementExpr(value *model.PermissionExpr) *Requirement {
 	return result
 }
 
-func projectWeb(domain *model.Domain, value *model.Web) *Declaration {
+func projectWeb(domainName string, importAliases map[string]string, value *model.Web) *Declaration {
 	return &Declaration{
 		Metadata: metadata(value.Description, value.Deprecated, value.DeprecatedReason),
 		Name:     value.Name, Kind: "web", SkelName: value.SkelName, Pos: value.Pos,
-		Web: &WebSchema{Audiences: projectAudiences(domain, value.Audiences)},
+		Web: &WebSchema{Audiences: projectAudiences(domainName, importAliases, value.Audiences)},
 	}
 }
 
@@ -268,23 +261,12 @@ func projectTask(value *model.Task) *Declaration {
 	}
 }
 
-func projectAudiences(domain *model.Domain, values []*model.ActorAudience) []*Audience {
+func projectAudiences(domainName string, importAliases map[string]string, values []*model.ActorAudience) []*Audience {
 	audiences := make([]*Audience, 0, len(values))
 	for _, value := range values {
-		audiences = append(audiences, &Audience{Actor: actorSkelName(domain, value.Actor), Via: value.Via, Pos: value.Pos})
+		audiences = append(audiences, &Audience{Actor: canonicalReferenceName(domainName, importAliases, value.Actor), Via: value.Via, Pos: value.Pos})
 	}
 	return audiences
-}
-
-func actorSkelName(domain *model.Domain, name string) string {
-	if alias, localName, ok := strings.Cut(name, "."); ok {
-		for _, imported := range domain.Imports() {
-			if imported.Alias == alias {
-				return imported.Name + "." + localName
-			}
-		}
-	}
-	return domain.Name() + "." + name
 }
 
 func projectType(value *model.Type) *Type {
@@ -294,7 +276,7 @@ func projectType(value *model.Type) *Type {
 	result := &Type{Nullable: value.Nullable}
 	switch value.Kind {
 	case unresolvedReferenceTypeKind:
-		result.Kind = "reference"
+		result.Kind = "importedReference"
 		result.Name = value.SkelName
 		if value.ExternalAlias != "" {
 			result.Name = value.ExternalAlias + "." + value.SkelName
@@ -340,6 +322,105 @@ func normalizedAuth(value model.AuthMode) string {
 		return string(model.AuthModeUnset)
 	}
 	return string(value)
+}
+
+func normalizeReferenceNames(document *Document, domainName string, importAliases map[string]string) {
+	for _, declaration := range document.Declarations {
+		normalizeDeclarationReferences(declaration, domainName, importAliases)
+	}
+}
+
+func normalizeDeclarationReferences(declaration *Declaration, domainName string, importAliases map[string]string) {
+	if declaration.Data != nil {
+		normalizeDataReferences(declaration.Data, domainName, importAliases)
+	}
+	if declaration.Actor != nil {
+		normalizeDataReferences(declaration.Actor.AuthCredential, domainName, importAliases)
+		normalizeDataReferences(declaration.Actor.AuthInfo, domainName, importAliases)
+	}
+	if declaration.Resource != nil {
+		normalizeResourceCheckReferences(declaration.Resource.Checks, domainName, importAliases)
+		for _, action := range declaration.Resource.Actions {
+			normalizeResourceCheckReferences(action.Checks, domainName, importAliases)
+		}
+	}
+	if declaration.Service != nil {
+		normalizeRequirementReferences(declaration.Service.Require, domainName, importAliases)
+		for _, method := range declaration.Service.Methods {
+			normalizeArgumentReferences(method.Arguments, domainName, importAliases)
+			normalizeTypeReference(method.Result, domainName, importAliases)
+			normalizeRequirementReferences(method.Require, domainName, importAliases)
+		}
+	}
+	if declaration.Task != nil {
+		for _, trigger := range declaration.Task.Triggers {
+			normalizeArgumentReferences(trigger.Arguments, domainName, importAliases)
+		}
+	}
+}
+
+func normalizeDataReferences(value *DataSchema, domainName string, importAliases map[string]string) {
+	if value == nil {
+		return
+	}
+	for _, member := range value.Members {
+		normalizeTypeReference(member.Type, domainName, importAliases)
+	}
+}
+
+func normalizeResourceCheckReferences(values []*ResourceCheck, domainName string, importAliases map[string]string) {
+	for _, check := range values {
+		normalizeArgumentReferences(check.Arguments, domainName, importAliases)
+	}
+}
+
+func normalizeArgumentReferences(values []*Argument, domainName string, importAliases map[string]string) {
+	for _, argument := range values {
+		normalizeTypeReference(argument.Type, domainName, importAliases)
+	}
+}
+
+func normalizeTypeReference(value *Type, domainName string, importAliases map[string]string) {
+	if value == nil {
+		return
+	}
+	if value.Kind == "importedReference" {
+		value.Name = canonicalReferenceName(domainName, importAliases, value.Name)
+	}
+	for _, argument := range value.Arguments {
+		normalizeTypeReference(argument, domainName, importAliases)
+	}
+	normalizeTypeReference(value.Element, domainName, importAliases)
+	normalizeTypeReference(value.Key, domainName, importAliases)
+	normalizeTypeReference(value.Value, domainName, importAliases)
+}
+
+func normalizeRequirementReferences(value *Requirement, domainName string, importAliases map[string]string) {
+	if value == nil {
+		return
+	}
+	if value.Check != nil {
+		value.Check.Resource = canonicalReferenceName(domainName, importAliases, value.Check.Resource)
+		for _, argument := range value.Check.Arguments {
+			normalizeTypeReference(argument.Type, domainName, importAliases)
+		}
+	}
+	for _, child := range value.Children {
+		normalizeRequirementReferences(child, domainName, importAliases)
+	}
+}
+
+func canonicalReferenceName(domainName string, importAliases map[string]string, name string) string {
+	if name == "" {
+		return ""
+	}
+	if alias, localName, ok := strings.Cut(name, "."); ok {
+		if importedDomain := importAliases[alias]; importedDomain != "" {
+			return importedDomain + "." + localName
+		}
+		return name
+	}
+	return domainName + "." + name
 }
 
 func compareDeclarations(left, right *Declaration) int {

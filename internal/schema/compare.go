@@ -36,7 +36,6 @@ type Report struct {
 	Compatible      bool      `json:"compatible"`
 	BaselineDomain  string    `json:"baselineDomain"`
 	CandidateDomain string    `json:"candidateDomain"`
-	Scope           Scope     `json:"scope"`
 	Summary         Summary   `json:"summary"`
 	Changes         []*Change `json:"changes"`
 }
@@ -48,12 +47,9 @@ func Compare(baseline, candidate *Document) (*Report, error) {
 	if err := Validate(candidate); err != nil {
 		return nil, fmt.Errorf("candidate: %w", err)
 	}
-	if baseline.Scope != candidate.Scope {
-		return nil, fmt.Errorf("schema scope mismatch: baseline is %s, candidate is %s", baseline.Scope, candidate.Scope)
-	}
 	comparison := &_Comparison{report: &Report{
 		Compatible: true, BaselineDomain: baseline.Domain, CandidateDomain: candidate.Domain,
-		Scope: candidate.Scope, Changes: []*Change{},
+		Changes: []*Change{},
 	}}
 	if baseline.Domain != candidate.Domain {
 		comparison.add(ImpactBreaking, "domain.name.changed", candidate.Domain,
@@ -663,7 +659,7 @@ func typeDisplay(value *Type) string {
 		result = "list<" + typeDisplay(value.Element) + ">"
 	case "map":
 		result = "map<" + typeDisplay(value.Key) + ", " + typeDisplay(value.Value) + ">"
-	case "data", "reference":
+	case "data", "importedReference":
 		result = value.Name
 		if len(value.Arguments) > 0 {
 			arguments := make([]string, 0, len(value.Arguments))

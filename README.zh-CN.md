@@ -157,28 +157,31 @@ TypeScript 生成也支持 `--pub`，只输出公开 data、enum 和符合条件
 
 ### 引用其他 domain
 
-在 `.skel` 中声明 `import` 后，通过可重复使用的 `--skel-import domain=PATH` 指定外部契约位置。生成 Go module 或 TypeScript 时，再使用对应的 `--go-import`、`--go-module-prefix` 或 `--ts-import` 映射目标语言的 package。完整示例见 [CLI 参考](https://skel.yorun.ai/zh-CN/docs/cli)。
+在 `.skel` 中声明 `import` 后，生成命令通过可重复使用的 `--skel-import domain=PATH` 指定完整的传递依赖图。生成 Go module 或 TypeScript 时，再使用对应的 `--go-import`、`--go-module-prefix` 或 `--ts-import` 映射目标语言的 package。schema 命令不接受依赖映射，而是把 import 符号保留为不透明的完整名称。完整示例见 [CLI 参考](https://skel.yorun.ai/zh-CN/docs/cli)。
 
-### 查询、导出、比较和格式化
+### 查询、生成快照、查看差异和格式化
 
 ```bash
 skelc schema list --skel-in ./skel
 skelc schema list data --skel-in ./skel
 skelc schema get data demo.user.User --skel-in ./skel
-skelc schema get data demo.user.User --output-format json --skel-in ./skel
-skelc schema export --skel-in ./skel --schema-out ./user.schema.json
-skelc schema compare --against ./released/user.schema.json --skel-in ./skel
+skelc schema snapshot --skel-in ./skel > ./user.schema.json
+skelc schema diff --baseline-skel-in ./previous/skel --skel-in ./skel
 skelc format --skel-in ./skel
 skelc format --check --output-format json --skel-in ./skel
 ```
 
-`schema list` 返回声明摘要，`schema get TYPE SKEL_NAME` 返回单个完整的规范化
-声明：默认使用便于阅读的详情树，传 `--output-format json` 时返回无损 JSON
-对象；两者默认包含完整 domain。
-`schema export/compare` 默认只处理公开契约。导出的 JSON 按确定顺序排列，
-并带有带版本的 schema 格式标识；源码位置可用于实时比较时的定位，但不会写入制品。
-`schema compare` 将变化分为 compatible、dangerous 和 breaking；达到
-`--fail-on` 指定的失败阈值时返回退出码 `2`。现有脚本仍可继续使用
+所有 `schema` 子命令都输出格式化 JSON。`schema list` 返回声明摘要 JSON 数组，
+`schema get TYPE SKEL_NAME` 返回单个完整的规范化声明对象。所有 schema 命令都
+处理完整 domain，每个声明继续保留自己的 `pub` 标记。
+快照 JSON 按确定顺序排列，并带有带版本的 schema 格式标识；`schema snapshot`
+始终把 JSON 写到标准输出，需要保存快照时使用重定向。源码位置可用于实时 diff 时
+的定位，但不会写入制品。import 声明在当前 domain 的快照中保留为不透明的完整
+引用，并由所属 domain 单独检查。
+`schema diff` 返回包含全部变化的结构化 JSON 报告，并将变化分为
+compatible、dangerous 和 breaking。diff 只接受通过 `--baseline-skel-in` 和
+`--skel-in` 指定的新旧 Skel 源文件或目录，不接受快照作为输入。无论兼容性结论如何，diff 完成后都返回退出码
+`0`；命令参数、输入、编译和 schema 错误返回 `1`。现有脚本仍可继续使用
 `symbol list/get`，但它们已经是兼容保留的废弃入口。
 
 `format` 会在验证全部输入后原地修改文件。使用 `--check` 可以只报告格式不规范的文件并以非零状态退出，不修改文件；`--output-format json` 会返回机器可读的变更结果。格式化会先暂存所有待修改文件，再统一提交，保留文件所有者、mode 和平台支持的扩展元数据；如果后续写入或持久化同步失败，已经替换的文件会被恢复。它采用唯一的规范样式：四空格缩进、紧凑的类型与权限标点、字段和参数冒号后保留一个空格、空块保持紧凑，以及顶层声明之间保留一个空行；声明顺序、注释内容和字符串值不会改变。工具集成可以使用全局参数 `--log-format jsonl` 获取机器可读诊断。
@@ -234,7 +237,7 @@ skelc 负责读取契约并生成代码，本身不是应用运行时：
 check          校验 Skel 定义
 format         原地格式化 Skel 定义
 lsp            通过标准输入输出运行 Skel 语言服务器
-schema         列出、查询、导出或比较语义 schema
+schema         列出、查询、生成快照或查看语义 schema 差异
 symbol         废弃的 schema 查询兼容命令
 gen skel       生成公开 Skel 契约
 gen go         在现有 Go module 中生成代码

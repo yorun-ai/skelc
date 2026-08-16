@@ -40,9 +40,9 @@ func TestEncodeDecodeRoundTripOmitsSourcePositions(t *testing.T) {
 
 func TestDecodeRejectsUnknownAndIncompleteFields(t *testing.T) {
 	for _, input := range []string{
-		`{"format":"yorun.skel.schema","formatVersion":1,"domain":"demo","scope":"public","unknown":true,"declarations":[]}`,
-		`{"format":"yorun.skel.schema","formatVersion":1,"domain":"demo","scope":"public"}`,
-		`{"format":"yorun.skel.schema","formatVersion":1,"domain":"demo","scope":"public","declarations":[{"pub":true,"name":"User","type":"data","skelName":"demo.User","data":{"members":[{"name":"id","type":null}]}}]}`,
+		`{"format":"yorun.skel.schema","formatVersion":1,"domain":"demo","unknown":true,"declarations":[]}`,
+		`{"format":"yorun.skel.schema","formatVersion":1,"domain":"demo"}`,
+		`{"format":"yorun.skel.schema","formatVersion":1,"domain":"demo","declarations":[{"pub":true,"name":"User","type":"data","skelName":"demo.User","data":{"members":[{"name":"id","type":null}]}}]}`,
 	} {
 		if _, err := Decode(strings.NewReader(input)); err == nil {
 			t.Fatalf("expected invalid schema to fail: %s", input)
@@ -113,7 +113,7 @@ func TestCompareRecognizesDeclarationTypeChangeWithoutNamespaceCollision(t *test
 
 func newTestDocument(declarations ...*Declaration) *Document {
 	return &Document{
-		Format: Format, FormatVersion: FormatVersion, Domain: "demo.user", Scope: ScopePublic,
+		Format: Format, FormatVersion: FormatVersion, Domain: "demo.user",
 		Declarations: declarations,
 	}
 }

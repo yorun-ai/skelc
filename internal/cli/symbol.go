@@ -181,7 +181,7 @@ func maxSymbolKindWidth(symbols []*_Symbol) int {
 }
 
 func buildSymbols(domain *model.Domain) []*_Symbol {
-	document, err := schemas.Project(domain, schemas.ScopeAll)
+	document, err := schemas.Project(domain, nil)
 	if err != nil {
 		return nil
 	}

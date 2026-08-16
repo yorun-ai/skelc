@@ -22,9 +22,8 @@ type Result struct {
 const (
 	commandSkelc = "skelc"
 
-	ExitCodeSuccess      = 0
-	ExitCodeError        = 1
-	ExitCodeIncompatible = 2
+	ExitCodeSuccess = 0
+	ExitCodeError   = 1
 
 	flagLogFormat = "log-format"
 

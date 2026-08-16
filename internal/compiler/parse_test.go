@@ -486,6 +486,9 @@ data Booking {
 	if result.Domain.Name() != "demo.booker" {
 		t.Fatalf("unexpected domain name: %s", result.Domain.Name())
 	}
+	if result.ImportAliases["user"] != "demo.user" {
+		t.Fatalf("unexpected import aliases: %#v", result.ImportAliases)
+	}
 }
 
 func TestParseReturnsErrorWhenDomainFileMissing(t *testing.T) {

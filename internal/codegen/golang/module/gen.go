@@ -10,7 +10,7 @@ import (
 const goModFilename = "go.mod"
 
 const (
-	goVersion      = "1.26.5"
+	goVersion      = "1.26.6"
 	decimalModule  = "github.com/shopspring/decimal"
 	decimalVersion = "v1.4.0"
 	vineModule     = "go.yorun.ai/vine"

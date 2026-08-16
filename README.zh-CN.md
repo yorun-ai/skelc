@@ -21,7 +21,7 @@ skelc 是 Skel 契约语言的编译器和命令行工具。你可以用 `.skel`
 
 ## 安装
 
-需要 Go 1.26.5 或更高版本：
+需要 Go 1.26.6 或更高版本：
 
 ```bash
 go install go.yorun.ai/skelc/cmd/skelc@latest

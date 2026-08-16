@@ -98,7 +98,7 @@ func TestGeneratedCloneModuleCompilesAndIsolatesValues(t *testing.T) {
 	}
 	writeCloneConsumerFile(t, filepath.Join(consumerDir, "go.mod"), `module example.com/generated/cloneconsumer
 
-go 1.26.5
+go 1.26.6
 
 require example.com/generated/clonefixture v0.0.0
 
@@ -190,6 +190,154 @@ func TestCloneValueIsolation(t *testing.T) {
 	output, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("compile and test generated clone module: %v\n%s", err, output)
+	}
+}
+
+func TestGeneratedCloneModuleUsesCurrentImportedCloneMethods(t *testing.T) {
+	rootDir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatalf("resolve current clone fixture directory: %v", err)
+	}
+	providerRegularDir := filepath.Join(rootDir, "provider")
+	providerDir := filepath.Join(rootDir, "providerpub")
+	consumerDir := filepath.Join(rootDir, "consumer")
+	runnerDir := filepath.Join(rootDir, "runner")
+	if err := os.MkdirAll(runnerDir, 0o755); err != nil {
+		t.Fatalf("create current clone runner directory: %v", err)
+	}
+
+	tItem := &model.TypeParameter{Name: "TItem"}
+	child := &model.Data{
+		Pub:  true,
+		Name: "Child",
+		Members: []*model.DataMember{
+			{Name: "content", Type: scalarTypeForTest(model.ScalarBinary)},
+		},
+	}
+	page := &model.Data{
+		Pub:            true,
+		Name:           "Page",
+		TypeParameters: []*model.TypeParameter{tItem},
+		Members: []*model.DataMember{
+			{Name: "items", Type: listTypeForTest(&model.Type{
+				Kind:          model.TypeKindTypeParameter,
+				TypeParameter: tItem,
+			})},
+		},
+	}
+	providerDomain := newModelDomainForTest(t, model.DomainSpec{
+		Name: "demo.current",
+		Data: []*model.Data{child, page},
+	})
+	if err := golang.Generate(providerDomain, golang.Option{
+		Out:             providerRegularDir,
+		PubOut:          providerDir,
+		AsModule:        true,
+		Module:          "example.com/generated/current",
+		PubModule:       "example.com/generated/currentpub",
+		CompilerVersion: "v0.12.0",
+		VineVersion:     golang.DefaultVineVersion,
+	}); err != nil {
+		t.Fatalf("generate current clone provider modules: %v", err)
+	}
+	providerData := readFileForTest(t, filepath.Join(providerDir, "data.go"))
+	for _, fragment := range []string{
+		"func (v Child) Clone() Child",
+		"func (v Page[TItem]) CloneBy(",
+	} {
+		if !strings.Contains(providerData, fragment) {
+			t.Fatalf("current clone provider missing %q:\n%s", fragment, providerData)
+		}
+	}
+
+	childType := externalDataTypeForTest(child, "demo.current")
+	pageType := externalDataTypeForTest(page, "demo.current", childType)
+	envelope := &model.Data{
+		Name: "Envelope",
+		Members: []*model.DataMember{
+			{Name: "child", Type: childType},
+			{Name: "page", Type: pageType},
+		},
+	}
+	consumerDomain := newModelDomainForTest(t, model.DomainSpec{
+		Name: "demo.currentconsumer",
+		Imports: []*model.Import{{
+			Name:   "demo.current",
+			Alias:  "current",
+			Domain: providerDomain,
+		}},
+		Data: []*model.Data{envelope},
+	})
+	if err := golang.Generate(consumerDomain, golang.Option{
+		Out:             consumerDir,
+		AsModule:        true,
+		Module:          "example.com/generated/currentconsumer",
+		CompilerVersion: "v0.12.0",
+		VineVersion:     golang.DefaultVineVersion,
+		Imports: map[string]string{
+			"demo.current": "example.com/generated/currentpub",
+		},
+	}); err != nil {
+		t.Fatalf("generate current clone consumer module: %v", err)
+	}
+	consumerData := readFileForTest(t, filepath.Join(consumerDir, "data.go"))
+	for _, fragment := range []string{
+		"Clone() currentpub.Child",
+		"CloneBy(func(currentpub.Child) currentpub.Child) currentpub.Page[currentpub.Child]",
+	} {
+		if !strings.Contains(consumerData, fragment) {
+			t.Fatalf("current clone consumer fast path missing %q:\n%s", fragment, consumerData)
+		}
+	}
+
+	writeCloneConsumerFile(t, filepath.Join(runnerDir, "go.mod"), `module example.com/generated/currentrunner
+
+go 1.26.6
+
+require (
+	example.com/generated/currentconsumer v0.0.0
+	example.com/generated/currentpub v0.0.0
+)
+
+replace example.com/generated/currentconsumer => ../consumer
+
+replace example.com/generated/currentpub => ../providerpub
+`)
+	writeCloneConsumerFile(t, filepath.Join(runnerDir, "clone_test.go"), `package currentrunner_test
+
+import (
+	"testing"
+
+	consumer "example.com/generated/currentconsumer"
+	current "example.com/generated/currentpub"
+)
+
+func TestCurrentImportedValueIsolation(t *testing.T) {
+	source := consumer.Envelope{
+		Child: current.Child{Content: []byte{1, 2}},
+		Page: current.Page[current.Child]{
+			Items: []current.Child{{Content: []byte{3, 4}}},
+		},
+	}
+	cloned := source.Clone()
+	cloned.Child.Content[0] = 11
+	cloned.Page.Items[0].Content[0] = 13
+
+	if source.Child.Content[0] != 1 {
+		t.Fatalf("current non-generic clone changed source: %v", source.Child.Content)
+	}
+	if source.Page.Items[0].Content[0] != 3 {
+		t.Fatalf("current generic clone changed source: %v", source.Page.Items)
+	}
+}
+`)
+
+	command := exec.Command("go", "test", "-mod=mod", "./...")
+	command.Dir = runnerDir
+	command.Env = append(os.Environ(), "GOWORK=off")
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("compile and test current imported clone methods: %v\n%s", err, output)
 	}
 }
 
@@ -340,7 +488,7 @@ func (v *Page[TItem]) Validate(path string) error {
 
 	writeCloneConsumerFile(t, filepath.Join(runnerDir, "go.mod"), `module example.com/generated/legacyrunner
 
-go 1.26.5
+go 1.26.6
 
 require (
 	example.com/generated/legacy v0.0.0

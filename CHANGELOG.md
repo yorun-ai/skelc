@@ -6,6 +6,8 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-08-17
+
 ### Added
 
 - Added a unified `schema` command group for listing and inspecting declarations,

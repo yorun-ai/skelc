@@ -1,14 +1,45 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	ucli "github.com/urfave/cli/v3"
 	schemas "go.yorun.ai/skelc/internal/schema"
 )
+
+type _ErrorWriter struct {
+	err error
+}
+
+func (w _ErrorWriter) Write([]byte) (int, error) {
+	return 0, w.err
+}
+
+func TestWriteIndentedJSONUsesStableEncoding(t *testing.T) {
+	var output bytes.Buffer
+	cmd := &ucli.Command{Writer: &output}
+	if err := writeIndentedJSON(cmd, map[string]string{"value": "<>&"}, "test value"); err != nil {
+		t.Fatal(err)
+	}
+	if output.String() != "{\n  \"value\": \"<>&\"\n}\n" {
+		t.Fatalf("unexpected JSON output:\n%s", output.String())
+	}
+}
+
+func TestWriteIndentedJSONReturnsWriterErrors(t *testing.T) {
+	want := errors.New("write failed")
+	cmd := &ucli.Command{Writer: _ErrorWriter{err: want}}
+	err := writeIndentedJSON(cmd, map[string]string{"value": "test"}, "test value")
+	if !errors.Is(err, want) {
+		t.Fatalf("expected writer error, got %v", err)
+	}
+}
 
 func TestRunSkelcSchemaListAndGet(t *testing.T) {
 	dir := t.TempDir()

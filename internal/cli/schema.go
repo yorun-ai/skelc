@@ -97,7 +97,10 @@ func newSchemaSnapshotCommand() *ucli.Command {
 			if err != nil {
 				return err
 			}
-			return schemas.Encode(cmd.Root().Writer, document)
+			if err := schemas.Validate(document); err != nil {
+				return err
+			}
+			return writeIndentedJSON(cmd, document, "schema snapshot")
 		},
 	}
 }
@@ -237,10 +240,11 @@ func loadSourceSchema(flagName, skelIn string) (*schemas.Document, error) {
 }
 
 func writeIndentedJSON(cmd *ucli.Command, value any, context string) error {
-	content, err := json.MarshalIndent(value, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal %s: %w", context, err)
+	encoder := json.NewEncoder(cmd.Root().Writer)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(value); err != nil {
+		return fmt.Errorf("encode %s: %w", context, err)
 	}
-	_, _ = fmt.Fprintf(cmd.Root().Writer, "%s\n", content)
 	return nil
 }

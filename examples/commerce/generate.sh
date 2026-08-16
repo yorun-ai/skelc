@@ -7,6 +7,7 @@ output_root=${1:-"$script_dir/generated"}
 identity_skel="$script_dir/identity/skel"
 order_skel="$script_dir/order/skel"
 identity_public="$output_root/public/identity"
+identity_go_public="$output_root/go/identitypub"
 
 cd "$repo_root"
 
@@ -21,7 +22,9 @@ GOWORK=off go run ./cmd/skelc gen skel \
 GOWORK=off go run ./cmd/skelc gen go-module \
   --skel-in "$identity_skel" \
   --go-out "$output_root/go/identity" \
-  --go-module example.com/yorun/commerce/identity
+  --go-module example.com/yorun/commerce/identity \
+  --go-pub-out "$identity_go_public" \
+  --go-pub-module example.com/yorun/commerce/identitypub
 
 GOWORK=off go run ./cmd/skelc gen ts \
   --skel-in "$identity_skel" \
@@ -41,7 +44,7 @@ GOWORK=off go run ./cmd/skelc gen skel \
 GOWORK=off go run ./cmd/skelc gen go-module \
   --skel-in "$order_skel" \
   --skel-import "identity.user=$identity_skel" \
-  --go-import identity.user=example.com/yorun/commerce/identity \
+  --go-import identity.user=example.com/yorun/commerce/identitypub \
   --go-out "$output_root/go/order" \
   --go-module example.com/yorun/commerce/order
 
@@ -56,6 +59,7 @@ GOWORK=off go run ./cmd/skelc gen ts \
 test -f "$identity_public/domain.skel"
 test -f "$output_root/public/order/event.skel"
 test -f "$output_root/go/identity/go.mod"
+test -f "$identity_go_public/go.mod"
 test -f "$output_root/go/order/go.mod"
 test -f "$output_root/go/order/config.go"
 test -f "$output_root/go/order/event.go"

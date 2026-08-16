@@ -35,10 +35,30 @@ jobs:
       - name: Run go vet
         run: GOWORK=off go vet ./...
 
-      - name: Exercise examples
+      - name: Exercise and compile examples
         run: |
-          ./examples/quickstart/generate.sh "$RUNNER_TEMP/skelc-quickstart"
-          ./examples/commerce/generate.sh "$RUNNER_TEMP/skelc-commerce"
+          quickstart_out="$RUNNER_TEMP/skelc-quickstart"
+          commerce_out="$RUNNER_TEMP/skelc-commerce"
+
+          ./examples/quickstart/generate.sh "$quickstart_out"
+          (
+            cd "$quickstart_out/go"
+            GOWORK=off go test -mod=mod ./...
+          )
+
+          ./examples/commerce/generate.sh "$commerce_out"
+          (
+            cd "$commerce_out/go/identitypub"
+            GOWORK=off go test -mod=mod ./...
+          )
+          for module in identity order; do
+            (
+              cd "$commerce_out/go/$module"
+              go mod edit \
+                -replace example.com/yorun/commerce/identitypub=../identitypub
+              GOWORK=off go test -mod=mod ./...
+            )
+          done
 
   ci-checks:
     name: CI / Required Checks

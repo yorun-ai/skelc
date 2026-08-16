@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"go.yorun.ai/skelc/internal/codegen/golang/view"
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func mustView(t *testing.T, mode view.Mode, domain *model.Domain) *view.Domain {

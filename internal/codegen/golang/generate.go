@@ -6,10 +6,10 @@ import (
 
 	"go.yorun.ai/skelc/internal/codegen/common"
 	gomodule "go.yorun.ai/skelc/internal/codegen/golang/module"
-	"go.yorun.ai/skelc/internal/codegen/golang/schema"
 	"go.yorun.ai/skelc/internal/codegen/golang/source"
 	"go.yorun.ai/skelc/internal/codegen/golang/view"
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/codegen/golang/vineschema"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 type _Gen struct {
@@ -151,7 +151,7 @@ func (g *_Gen) gen() error {
 	}); err != nil {
 		return err
 	}
-	return schema.GenerateValidated(schema.Option{
+	return vineschema.GenerateValidated(vineschema.Option{
 		Domain:          g.domain,
 		View:            g.view,
 		Mode:            g.mode,

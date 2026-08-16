@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func TestEncodeDecodeRoundTripOmitsSourcePositions(t *testing.T) {
@@ -107,6 +107,8 @@ func completeTestDocument() *Document {
 						{Metadata: metadata, Name: "item", Type: &Type{Kind: TypeKindTypeParameter, Name: "T"}},
 						{Metadata: metadata, Name: "status", Type: &Type{Kind: TypeKindEnum, Name: "demo.contract.Status"}},
 						{Metadata: metadata, Name: "parent", Type: &Type{Kind: TypeKindData, Name: "demo.contract.Page", Nullable: true, Arguments: []*Type{stringType()}}},
+						{Metadata: metadata, Name: "runtime", Type: &Type{Kind: TypeKindConfig, Name: "demo.contract.Runtime"}},
+						{Metadata: metadata, Name: "changed", Type: &Type{Kind: TypeKindEvent, Name: "demo.contract.UserChanged"}},
 						{Metadata: metadata, Name: "external", Type: &Type{Kind: TypeKindImportedReference, Name: "external.users.User", Arguments: []*Type{intType()}}},
 						{Metadata: metadata, Name: "index", Type: &Type{Kind: TypeKindMap, Key: stringType(), Value: &Type{Kind: TypeKindList, Element: &Type{Kind: TypeKindImportedReference, Name: "external.users.User", Nullable: true}}}},
 					},

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func (s *_hashState) triggerHash(trigger *model.TaskTrigger) string {

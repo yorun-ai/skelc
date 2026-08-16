@@ -6,7 +6,7 @@ import (
 
 	"go.yorun.ai/skelc/internal/codegen/common"
 	gomodule "go.yorun.ai/skelc/internal/codegen/golang/module"
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func (g *_Gen) resolveExternalTypeImports() error {

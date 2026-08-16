@@ -3,7 +3,7 @@ package common
 import (
 	"fmt"
 
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func validateActor(actor *model.Actor) error {

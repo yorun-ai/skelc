@@ -1,8 +1,8 @@
 package analyzer
 
 import (
+	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/parser/grammar"
-	"go.yorun.ai/skelc/model"
 )
 
 func parseWeb(reporter *_DiagnosticReporter, gw *grammar.Web, pub bool) (*model.Web, bool) {

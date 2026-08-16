@@ -1,6 +1,6 @@
 package analyzer
 
-import "go.yorun.ai/skelc/model"
+import "go.yorun.ai/skelc/internal/model"
 
 const typeKindNone model.TypeKind = 0
 

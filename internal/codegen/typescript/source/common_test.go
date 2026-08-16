@@ -4,7 +4,7 @@ import (
 	"sort"
 	"testing"
 
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func TestCastTypeMapsBinaryToUint8Array(t *testing.T) {

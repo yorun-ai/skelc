@@ -1,4 +1,4 @@
-package schema
+package vineschema
 
 // The schema model is local template data. Generated Go code still targets
 // go.yorun.ai/vine/core/skel, but the compiler does not need to link that

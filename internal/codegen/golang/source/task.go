@@ -3,9 +3,9 @@ package source
 import (
 	"fmt"
 
+	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/internal/util/sliceutil"
-	"go.yorun.ai/skelc/model"
 )
 
 const taskGoFilename = "task.go"

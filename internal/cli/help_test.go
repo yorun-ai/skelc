@@ -56,6 +56,22 @@ func TestRunSkelcSchemaHelpShowsSubcommandsAndOptions(t *testing.T) {
 	}
 }
 
+func TestRunSkelcSymbolHelpMarksSubcommandsDeprecated(t *testing.T) {
+	result := Run([]string{"symbol", "--help"})
+
+	if result.ExitCode != ExitCodeSuccess {
+		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
+	}
+	for _, expected := range []string{
+		"deprecated: list skel symbols; use schema list",
+		"deprecated: get a skel symbol; use schema get",
+	} {
+		if !strings.Contains(result.Stdout, expected) {
+			t.Fatalf("expected %q in stdout: %q", expected, result.Stdout)
+		}
+	}
+}
+
 func TestRunSkelcGenHelpShowsSubcommandOptions(t *testing.T) {
 	result := Run([]string{"gen", "--help"})
 

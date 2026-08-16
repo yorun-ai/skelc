@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/alecthomas/participle/v2/lexer"
+	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/parser/grammar"
 	"go.yorun.ai/skelc/internal/util/nameutil"
-	"go.yorun.ai/skelc/model"
 )
 
 func parseTask(reporter *_DiagnosticReporter, gt *grammar.Task) (*model.Task, bool) {

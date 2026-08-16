@@ -1,6 +1,6 @@
 package hasher
 
-import "go.yorun.ai/skelc/model"
+import "go.yorun.ai/skelc/internal/model"
 
 func (s *_hashState) resourceHash(resource *model.Resource) string {
 	return s.memoHash("resource", resource.SkelName, func() string {

@@ -1,6 +1,6 @@
 package source
 
-import "go.yorun.ai/skelc/model"
+import "go.yorun.ai/skelc/internal/model"
 
 func methodArgumentsContainBinary(method *model.Method) bool {
 	for _, argument := range method.Arguments {

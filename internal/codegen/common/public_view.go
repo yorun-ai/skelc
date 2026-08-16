@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 // PublicView contains declarations that belong to a domain's public contract.

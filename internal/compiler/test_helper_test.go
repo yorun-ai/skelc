@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"go.yorun.ai/skelc/internal/loader"
+	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/parser/grammar"
-	"go.yorun.ai/skelc/model"
 )
 
 func parseDomain(t *testing.T, files map[string]string) *model.Domain {

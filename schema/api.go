@@ -1,7 +1,3 @@
-// Package schema exposes the stable JSON wire contract emitted by skelc schema
-// commands. It is a public facade over the internal schema implementation and
-// can be used by integrations that consume schema list, get, snapshot, or diff
-// output.
 package schema
 
 import (
@@ -46,6 +42,10 @@ const (
 	TypeKindEnum = internalschema.TypeKindEnum
 	// TypeKindData identifies a normalized data reference.
 	TypeKindData = internalschema.TypeKindData
+	// TypeKindConfig identifies a normalized config reference.
+	TypeKindConfig = internalschema.TypeKindConfig
+	// TypeKindEvent identifies a normalized event reference.
+	TypeKindEvent = internalschema.TypeKindEvent
 	// TypeKindTypeParameter identifies a generic type parameter.
 	TypeKindTypeParameter = internalschema.TypeKindTypeParameter
 	// TypeKindImportedReference identifies an unresolved imported-domain type.

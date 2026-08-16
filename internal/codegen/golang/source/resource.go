@@ -3,8 +3,8 @@ package source
 import (
 	"fmt"
 
+	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/util/nameutil"
-	"go.yorun.ai/skelc/model"
 )
 
 const resourceGoFilename = "resource.go"

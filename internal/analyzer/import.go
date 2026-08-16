@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func (p *Analysis) skelName(name string) string {

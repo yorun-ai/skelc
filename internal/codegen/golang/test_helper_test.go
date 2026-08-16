@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/util/nameutil"
-	"go.yorun.ai/skelc/model"
 )
 
 func readFileForTest(t *testing.T, path string) string {

@@ -2,7 +2,7 @@
 // validation, and compatibility diffing for the compiler and CLI.
 package schema
 
-import "go.yorun.ai/skelc/model"
+import "go.yorun.ai/skelc/internal/model"
 
 const (
 	// Format identifies schema snapshot JSON produced by skelc.
@@ -41,6 +41,8 @@ const (
 	TypeKindScalar            TypeKind = "scalar"
 	TypeKindEnum              TypeKind = "enum"
 	TypeKindData              TypeKind = "data"
+	TypeKindConfig            TypeKind = "config"
+	TypeKindEvent             TypeKind = "event"
 	TypeKindTypeParameter     TypeKind = "typeParameter"
 	TypeKindImportedReference TypeKind = "importedReference"
 	TypeKindList              TypeKind = "list"

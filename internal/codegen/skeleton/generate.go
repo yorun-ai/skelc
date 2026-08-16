@@ -5,7 +5,7 @@ import (
 	"text/template"
 
 	"go.yorun.ai/skelc/internal/codegen/common"
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 type _Gen struct {

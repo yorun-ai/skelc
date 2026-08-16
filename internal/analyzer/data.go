@@ -4,9 +4,9 @@ import (
 	"strings"
 
 	"github.com/alecthomas/participle/v2/lexer"
+	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/parser/grammar"
 	"go.yorun.ai/skelc/internal/skelmeta"
-	"go.yorun.ai/skelc/model"
 )
 
 func parseData(reporter *_DiagnosticReporter, gs *grammar.Data) (*model.Data, bool) {

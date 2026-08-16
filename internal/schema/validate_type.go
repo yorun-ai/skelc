@@ -76,7 +76,7 @@ func validateType(value *Type) error {
 		return fmt.Errorf("type is required")
 	}
 	switch value.Kind {
-	case TypeKindScalar, TypeKindEnum, TypeKindData, TypeKindTypeParameter, TypeKindImportedReference:
+	case TypeKindScalar, TypeKindEnum, TypeKindData, TypeKindConfig, TypeKindEvent, TypeKindTypeParameter, TypeKindImportedReference:
 		if value.Name == "" {
 			return fmt.Errorf("%s type has no name", value.Kind)
 		}

@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"go.yorun.ai/skelc/internal/codegen/common"
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func TestGenerateModule(t *testing.T) {

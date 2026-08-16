@@ -8,7 +8,7 @@ import (
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
 	skeldiagnostic "go.yorun.ai/skelc/diagnostic"
-	"go.yorun.ai/skelc/model"
+	"go.yorun.ai/skelc/internal/model"
 )
 
 func TestToProtocolConvertsUTF16RangeAndRelatedInformation(t *testing.T) {

@@ -92,8 +92,12 @@ jobs:
             tar -C dist -czf "dist/$archive.tar.gz" "$archive"
           done
 
-          dist/skelc_${version}_linux_amd64/skelc version --output-format json |
-            grep -F "\"version\":\"$RELEASE_TAG\""
+          release_binary="dist/skelc_${version}_linux_amd64/skelc"
+          actual_version="$("$release_binary" version | jq -er '.version')"
+          if [[ "$actual_version" != "$RELEASE_TAG" ]]; then
+            echo "Built skelc version $actual_version does not match release tag $RELEASE_TAG"
+            exit 1
+          fi
 
       - name: Create checksums
         run: |

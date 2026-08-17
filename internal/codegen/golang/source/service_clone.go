@@ -144,7 +144,7 @@ func cloneTypeSupported(
 			return false
 		}
 		if type_.ExternalDomain != "" || type_.ExternalImportPath != "" {
-			// TODO(v0.14.0): Require imported generated data to provide Clone or
+			// TODO(v0.15.0): Require imported generated data to provide Clone or
 			// CloneBy and remove the v0.12 rolling-compatibility fallback.
 			for _, argument := range type_.TypeArguments {
 				if !cloneTypeSupported(argument, completed, active, typeParameterCloners) {

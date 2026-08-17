@@ -176,11 +176,12 @@ skelc format --check --output-format json --skel-in ./skel
 
 All `schema` subcommands emit pretty-printed JSON. `schema list` returns a JSON
 array of declaration summaries, while `schema get TYPE SKEL_NAME` returns one
-complete normalized declaration object. All schema commands operate on the
-complete domain, and every declaration retains its `pub` marker. Snapshot JSON
-is deterministically ordered and carries a versioned schema-format
-identifier; `schema snapshot` always writes that JSON to stdout. Redirect it to
-persist a snapshot. Source positions are used for live diff diagnostics
+complete normalized declaration object or JSON `null` when that declaration
+does not exist; both are successful query results. All schema commands operate
+on the complete domain, and every declaration retains its `pub` marker.
+Snapshot JSON is deterministically ordered and carries a versioned
+schema-format identifier; `schema snapshot` always writes that JSON to stdout.
+Redirect it to persist a snapshot. Source positions are used for live diff diagnostics
 but are not persisted in the artifact. Imported declarations remain opaque
 fully qualified references in the current domain's snapshot and are checked
 separately in their owning domain.
@@ -196,8 +197,11 @@ skelc finds the candidate's Git repository and reads the same path from `HEAD`,
 so the default diff is the latest committed version against the working tree.
 If the repository, commit history, or path at `HEAD` is unavailable, provide an
 explicit `--baseline-skel-in`.
-A completed diff returns exit code `0` regardless of its compatibility
-result; command, input, compilation, and schema errors return `1`.
+A completed schema command returns exit code `0`. A command failure returns a
+nonzero exit code and writes a JSON object containing stable `code` and
+human-readable `message` fields to stdout; stderr is reserved for zero or more
+logs and diagnostics. A completed diff returns exit code `0` regardless of its
+compatibility result.
 `symbol list/get` remain available as deprecated compatibility entry points for
 existing scripts.
 

@@ -76,7 +76,9 @@ pub resource User {
 	}
 
 	missingTypeResult := Run([]string{"schema", "get", "demo.user.User", "--skel-in", dir})
-	if missingTypeResult.ExitCode != ExitCodeError || !strings.Contains(missingTypeResult.Stderr, "expected TYPE SKEL_NAME") {
+	missingTypeError := decodeSchemaCommandError(t, missingTypeResult)
+	if missingTypeResult.ExitCode != ExitCodeError || missingTypeResult.Stderr != "" ||
+		missingTypeError.Code != schemas.ErrorCodeInvalidArgument || !strings.Contains(missingTypeError.Message, "expected TYPE SKEL_NAME") {
 		t.Fatalf("expected missing type error: %+v", missingTypeResult)
 	}
 
@@ -91,6 +93,11 @@ pub resource User {
 	if declaration.Data == nil || len(declaration.Data.Members) != 1 || declaration.Data.Members[0].Name != "id" {
 		t.Fatalf("unexpected declaration: %+v", declaration)
 	}
+
+	missingResult := Run([]string{"schema", "get", "web", "demo.user.Missing", "--skel-in", dir})
+	if missingResult.ExitCode != ExitCodeSuccess || missingResult.Stdout != "null\n" || missingResult.Stderr != "" {
+		t.Fatalf("unexpected missing declaration result: %+v", missingResult)
+	}
 }
 
 func TestRunSkelcSchemaQueryRejectsInvalidType(t *testing.T) {
@@ -102,8 +109,52 @@ func TestRunSkelcSchemaQueryRejectsInvalidType(t *testing.T) {
 		{"schema", "get", "unknown", "demo.user.User", "--skel-in", dir},
 	} {
 		result := Run(args)
-		if result.ExitCode != ExitCodeError || !strings.Contains(result.Stderr, "invalid schema declaration type") {
+		commandError := decodeSchemaCommandError(t, result)
+		if result.ExitCode != ExitCodeError || result.Stderr != "" ||
+			commandError.Code != schemas.ErrorCodeInvalidArgument || !strings.Contains(commandError.Message, "invalid schema declaration type") {
 			t.Fatalf("expected invalid type error for %v: %+v", args, result)
+		}
+	}
+}
+
+func TestRunSkelcSchemaErrorsUseStdoutResult(t *testing.T) {
+	invalidSource := t.TempDir()
+	writeCLIFile(t, filepath.Join(invalidSource, "domain.skel"), "domain demo.user")
+	writeCLIFile(t, filepath.Join(invalidSource, "data.skel"), "domain demo.user\n\ndata User { id string }")
+
+	for _, test := range []struct {
+		name string
+		args []string
+		code schemas.ErrorCode
+	}{
+		{name: "snapshot argument", args: []string{"schema", "snapshot"}, code: schemas.ErrorCodeInvalidArgument},
+		{name: "diff argument", args: []string{"schema", "diff"}, code: schemas.ErrorCodeInvalidArgument},
+		{name: "compilation", args: []string{"schema", "list", "--skel-in", invalidSource}, code: schemas.ErrorCodeCompilationFailed},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			result := Run(test.args)
+			if result.ExitCode != ExitCodeError {
+				t.Fatalf("expected error result: %+v", result)
+			}
+			commandError := decodeSchemaCommandError(t, result)
+			if commandError.Code != test.code || commandError.Message == "" {
+				t.Fatalf("unexpected command error: %+v", commandError)
+			}
+		})
+	}
+}
+
+func TestRunSkelcSchemaParserErrorsUseStdoutResult(t *testing.T) {
+	for _, args := range [][]string{
+		{"schema", "unknown"},
+		{"schema", "list", "--unknown"},
+		{"--log-format", "unknown", "schema", "list"},
+	} {
+		result := Run(args)
+		commandError := decodeSchemaCommandError(t, result)
+		if result.ExitCode != ExitCodeError || result.Stderr != "" ||
+			commandError.Code != schemas.ErrorCodeInvalidArgument || commandError.Message == "" {
+			t.Fatalf("expected structured parser error for %v: %+v", args, result)
 		}
 	}
 }
@@ -354,9 +405,11 @@ func TestRunSkelcSchemaDiffRequiresBaselineWithoutGitHistory(t *testing.T) {
 	writeCLIFile(t, filepath.Join(dir, "domain.skel"), "domain demo.user")
 
 	result := Run([]string{"schema", "diff", "--skel-in", dir})
-	if result.ExitCode != ExitCodeError ||
-		!strings.Contains(result.Stderr, "git history not found") ||
-		!strings.Contains(result.Stderr, "--baseline-skel-in") {
+	commandError := decodeSchemaCommandError(t, result)
+	if result.ExitCode != ExitCodeError || result.Stderr != "" ||
+		commandError.Code != schemas.ErrorCodeGitHistoryNotFound ||
+		!strings.Contains(commandError.Message, "git history not found") ||
+		!strings.Contains(commandError.Message, "--baseline-skel-in") {
 		t.Fatalf("expected missing Git history guidance: %+v", result)
 	}
 }
@@ -389,10 +442,21 @@ pub data User {
 `)
 
 	result := Run([]string{"schema", "diff", "--skel-in", skelDir})
-	if result.ExitCode != ExitCodeError || !strings.Contains(result.Stderr, "HEAD:skel/data.skel") ||
-		strings.Contains(result.Stderr, "skelc-schema-baseline-") {
+	commandError := decodeSchemaCommandError(t, result)
+	if result.ExitCode != ExitCodeError || commandError.Code != schemas.ErrorCodeCommandFailed ||
+		!strings.Contains(commandError.Message, "HEAD:skel/data.skel") ||
+		strings.Contains(commandError.Message, "skelc-schema-baseline-") {
 		t.Fatalf("expected stable Git baseline error path: %+v", result)
 	}
+}
+
+func decodeSchemaCommandError(t *testing.T, result Result) *schemas.CommandError {
+	t.Helper()
+	commandError := new(schemas.CommandError)
+	if err := json.Unmarshal([]byte(result.Stdout), commandError); err != nil {
+		t.Fatalf("decode schema command error: %v\n%s", err, result.Stdout)
+	}
+	return commandError
 }
 
 func runSchemaGitCommand(t *testing.T, directory string, args ...string) {

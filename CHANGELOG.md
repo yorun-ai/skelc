@@ -6,6 +6,14 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+### Changed
+
+- Schema commands now keep results and logs on separate streams. Successful
+  results remain on stdout, `schema get` returns JSON `null` with exit code `0`
+  when a declaration is absent, and genuine failures write a stable
+  `{code,message}` JSON object to stdout with a nonzero exit code while keeping
+  logs and diagnostics on stderr
+
 ## [0.13.0] - 2026-08-17
 
 ### Added

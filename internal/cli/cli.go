@@ -101,16 +101,33 @@ func newCommand() *ucli.Command {
 
 func runCLICommand(command *ucli.Command, args []string, stdin io.Reader, stdout io.Writer) (result Result) {
 	rawLogFormat := rawLogFormatFromArgs(args)
+	isSchemaCommand := schemaCommandRequested(args)
 
 	var stderr strings.Builder
+	var schemaStdout strings.Builder
 
 	command.Reader = stdin
 	command.Writer = stdout
+	if isSchemaCommand {
+		command.Writer = &schemaStdout
+	}
 	command.ErrWriter = &stderr
 	command.ExitErrHandler = func(_ context.Context, _ *ucli.Command, _ error) {}
 
 	err := command.Run(context.Background(), args)
 	if err != nil {
+		if failure, ok := err.(*_SchemaCommandFailure); ok {
+			if writeErr := writeIndentedJSONTo(stdout, failure.commandError()); writeErr != nil {
+				return Result{ExitCode: ExitCodeError, Stderr: logutil.Format(logutil.Error("write schema error result: %s", writeErr), rawLogFormat)}
+			}
+			return Result{ExitCode: ExitCodeError, Stderr: schemaFailureLogs(failure, rawLogFormat)}
+		}
+		if isSchemaCommand {
+			if writeErr := writeInvalidSchemaCommandErrorTo(stdout, err.Error()); writeErr != nil {
+				return Result{ExitCode: ExitCodeError, Stderr: logutil.Format(logutil.Error("write schema error result: %s", writeErr), rawLogFormat)}
+			}
+			return Result{ExitCode: ExitCodeError}
+		}
 		if diagnostics, ok := err.(interface{ DiagnosticEntries() compiler.Diagnostics }); ok {
 			return Result{
 				ExitCode: ExitCodeError,
@@ -133,6 +150,11 @@ func runCLICommand(command *ucli.Command, args []string, stdin io.Reader, stdout
 	}
 	if stderr.Len() > 0 {
 		return Result{ExitCode: ExitCodeError, Stderr: logutil.Format(logutil.Error("%s", stderr.String()), rawLogFormat)}
+	}
+	if isSchemaCommand {
+		if _, err := io.WriteString(stdout, schemaStdout.String()); err != nil {
+			return Result{ExitCode: ExitCodeError, Stderr: logutil.Format(logutil.Error("write schema result: %s", err), rawLogFormat)}
+		}
 	}
 	return Result{ExitCode: ExitCodeSuccess, Stderr: stderr.String()}
 }

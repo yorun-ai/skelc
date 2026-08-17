@@ -173,7 +173,8 @@ skelc format --check --output-format json --skel-in ./skel
 ```
 
 所有 `schema` 子命令都输出格式化 JSON。`schema list` 返回声明摘要 JSON 数组，
-`schema get TYPE SKEL_NAME` 返回单个完整的规范化声明对象。所有 schema 命令都
+`schema get TYPE SKEL_NAME` 返回单个完整的规范化声明对象；声明不存在时
+返回 JSON `null`，两者都属于成功查询。所有 schema 命令都
 处理完整 domain，每个声明继续保留自己的 `pub` 标记。
 快照 JSON 按确定顺序排列，并带有带版本的 schema 格式标识；`schema snapshot`
 始终把 JSON 写到标准输出，需要保存快照时使用重定向。源码位置可用于实时 diff 时
@@ -187,8 +188,10 @@ skelc format --check --output-format json --skel-in ./skel
 Skel 源文件或目录，不接受快照作为输入。`--skel-in` 指定 candidate；省略 `--baseline-skel-in` 时，skelc
 会查找 candidate 所在的 Git 仓库并读取 `HEAD` 中同一路径的内容，因此默认比较
 最近一次已提交版本和当前工作区。如果仓库、提交历史或 `HEAD` 中的目标路径不
-存在，需要显式传入 `--baseline-skel-in`。无论兼容性结论如何，diff 完成后都返回退出码
-`0`；命令参数、输入、编译和 schema 错误返回 `1`。现有脚本仍可继续使用
+存在，需要显式传入 `--baseline-skel-in`。schema 命令正常完成时返回退出码 `0`。
+真正的命令失败会返回非零退出码，并在 stdout 输出只包含稳定 `code` 和
+供人阅读的 `message` 的 JSON 对象；stderr 只保留零到多条日志和诊断。
+无论兼容性结论如何，diff 完成后都返回退出码 `0`。现有脚本仍可继续使用
 `symbol list/get`，但它们已经是兼容保留的废弃入口。
 
 `format` 会在验证全部输入后原地修改文件。使用 `--check` 可以只报告格式不规范的文件并以非零状态退出，不修改文件；`--output-format json` 会返回机器可读的变更结果。格式化会先暂存所有待修改文件，再统一提交，保留文件所有者、mode 和平台支持的扩展元数据；如果后续写入或持久化同步失败，已经替换的文件会被恢复。它采用唯一的规范样式：四空格缩进、紧凑的类型与权限标点、字段和参数冒号后保留一个空格、空块保持紧凑，以及顶层声明之间保留一个空行；声明顺序、注释内容和字符串值不会改变。工具集成可以使用全局参数 `--log-format jsonl` 获取机器可读诊断。

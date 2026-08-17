@@ -74,6 +74,15 @@ const (
 	RequirementModeAll = internalschema.RequirementModeAll
 	// RequirementModeAny requires at least one child expression.
 	RequirementModeAny = internalschema.RequirementModeAny
+
+	// ErrorCodeInvalidArgument identifies invalid schema command arguments.
+	ErrorCodeInvalidArgument = internalschema.ErrorCodeInvalidArgument
+	// ErrorCodeCompilationFailed identifies invalid or uncompilable Skel input.
+	ErrorCodeCompilationFailed = internalschema.ErrorCodeCompilationFailed
+	// ErrorCodeGitHistoryNotFound identifies an unavailable implicit Git baseline.
+	ErrorCodeGitHistoryNotFound = internalschema.ErrorCodeGitHistoryNotFound
+	// ErrorCodeCommandFailed identifies any other schema command failure.
+	ErrorCodeCommandFailed = internalschema.ErrorCodeCommandFailed
 )
 
 // DeclarationType identifies a top-level Skel declaration in schema JSON.
@@ -90,6 +99,12 @@ type AuthMode = internalschema.AuthMode
 
 // RequirementMode identifies one node in a normalized permission expression.
 type RequirementMode = internalschema.RequirementMode
+
+// ErrorCode identifies a schema command failure for programmatic consumers.
+type ErrorCode = internalschema.ErrorCode
+
+// CommandError is emitted on stdout when a schema command fails.
+type CommandError = internalschema.CommandError
 
 // Document is the versioned normalized domain emitted by schema snapshot.
 type Document = internalschema.Document

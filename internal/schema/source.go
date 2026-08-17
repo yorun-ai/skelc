@@ -2,6 +2,7 @@ package schema
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,10 @@ import (
 
 	"go.yorun.ai/skelc/internal/compiler"
 )
+
+// ErrSourceCompilation identifies a source input that could not be compiled
+// while preparing a schema diff.
+var ErrSourceCompilation = errors.New("schema source compilation failed")
 
 // SourceDiffOption configures a source compatibility comparison.
 type SourceDiffOption struct {
@@ -126,7 +131,7 @@ func (d *SourceDiffer) DiffWorkspaceDomain(ctx context.Context, candidate compil
 func projectSource(skelIn string) (*Document, error) {
 	result, err := compiler.CompileImport(skelIn)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", ErrSourceCompilation, err)
 	}
 	return Project(result.Domain, result.ImportAliases)
 }

@@ -171,16 +171,18 @@ skelc schema snapshot --skel-in ./skel > ./user.schema.json
 skelc schema diff --skel-in ./skel
 skelc schema diff --baseline-skel-in ./previous/skel --skel-in ./skel
 skelc format --skel-in ./skel
-skelc format --check --output-format json --skel-in ./skel
+skelc format --check --skel-in ./skel
 ```
 
-All `schema` subcommands emit pretty-printed JSON. `schema list` returns a JSON
+All non-LSP commands emit one pretty-printed JSON result on stdout; help remains
+text and LSP uses JSON-RPC. `schema list` returns a JSON
 array of declaration summaries, while `schema get TYPE SKEL_NAME` returns one
-complete normalized declaration object. All schema commands operate on the
-complete domain, and every declaration retains its `pub` marker. Snapshot JSON
-is deterministically ordered and carries a versioned schema-format
-identifier; `schema snapshot` always writes that JSON to stdout. Redirect it to
-persist a snapshot. Source positions are used for live diff diagnostics
+complete normalized declaration object or JSON `null` when that declaration
+does not exist; both are successful query results. All schema commands operate
+on the complete domain, and every declaration retains its `pub` marker.
+Snapshot JSON is deterministically ordered and carries a versioned
+schema-format identifier; `schema snapshot` always writes that JSON to stdout.
+Redirect it to persist a snapshot. Source positions are used for live diff diagnostics
 but are not persisted in the artifact. Imported declarations remain opaque
 fully qualified references in the current domain's snapshot and are checked
 separately in their owning domain.
@@ -196,14 +198,30 @@ skelc finds the candidate's Git repository and reads the same path from `HEAD`,
 so the default diff is the latest committed version against the working tree.
 If the repository, commit history, or path at `HEAD` is unavailable, provide an
 explicit `--baseline-skel-in`.
-A completed diff returns exit code `0` regardless of its compatibility
-result; command, input, compilation, and schema errors return `1`.
-`symbol list/get` remain available as deprecated compatibility entry points for
-existing scripts.
+A satisfied result returns exit code `0`; `check` and `format --check` return
+`1` after completing with an unsatisfied result, and a command failure returns
+`2`. Failures write a JSON object containing stable `code` and human-readable
+`message` fields to stdout; stderr is reserved for zero or more logs and
+diagnostics, encoded as JSONL by default. Use `--log-format text` for
+human-readable stderr. A completed diff returns exit code `0` regardless of its
+compatibility result. Public result and error types are available from
+`go.yorun.ai/skelc/command`.
 
-`format` modifies files in place after validating all inputs. Use `--check` to report unformatted files and exit nonzero without modifying them; `--output-format json` returns a machine-readable change result. Formatting stages every changed file before committing the batch, preserves file ownership, mode, and supported extended metadata, and restores files already replaced if a later write or durability sync fails. It applies one canonical style: four-space indentation, compact type and permission punctuation, one space after field and argument colons, compact empty blocks, and one blank line between top-level declarations. Declaration order and comment or string values are preserved. Tool integrations can request machine-readable diagnostics with the global `--log-format jsonl` option.
+`format` modifies files in place after validating all inputs and returns
+`{changed,files}`. Use `--check` to report unformatted files and exit `1`
+without modifying them. Formatting stages every changed file before committing
+the batch, preserves file ownership, mode, and supported extended metadata, and
+restores files already replaced if a later write or durability sync fails. It
+applies one canonical style: four-space indentation, compact type and permission
+punctuation, one space after field and argument colons, compact empty blocks,
+and one blank line between top-level declarations. Declaration order and
+comment or string values are preserved.
 
-`check` recovers at declaration, block-member, closing-brace, and decorator boundaries and reports up to 50 independent syntax and semantic diagnostics per domain in one run. Invalid declarations are isolated so dependent errors do not cascade. JSONL diagnostics include a stable code, severity, exact range, related locations, and an optional fix suggestion.
+`check` returns `{valid,diagnostics}`. It recovers at declaration, block-member,
+closing-brace, and decorator boundaries and reports up to 50 independent syntax
+and semantic diagnostics per domain in one run. Invalid declarations are
+isolated so dependent errors do not cascade. Diagnostics include a stable code,
+severity, exact range, related locations, and an optional fix suggestion.
 
 `skelc lsp` provides recoverable syntax and workspace-wide semantic diagnostics, diagnostic quick fixes, editor formatting, keyword and type completion, declaration hover details, hierarchical document and workspace symbols, definition and reference navigation, and safe top-level declaration rename. It also exposes schema compatibility diagnostics, a CodeLens entry point, and the `skel.schema.diff` execute command. Compatibility checks compare the current in-memory domain with the same source directory at Git `HEAD`, or with an explicitly configured baseline. `BREAKING`, `DANGEROUS`, and optionally `COMPATIBLE` changes map to warning, information, and hint diagnostics; the command always returns the complete structured report. Duplicate declarations include the first declaration as related information. Semantic analysis uses the current in-memory contents of every document and merges same-domain files only within one source directory. Like `skelc check`, it leaves imports unresolved; full import-graph validation happens during generation with explicit import path mappings. Parsed syntax trees are cached, and superseded analysis is cancelled immediately.
 
@@ -263,7 +281,6 @@ check          validate Skel definitions
 format         format Skel definitions in place
 lsp            run the Skel language server over stdio
 schema         list, inspect, snapshot, or diff semantic schemas
-symbol         deprecated schema query compatibility commands
 gen skel       generate public Skel contracts
 gen go         generate code inside an existing Go module
 gen go-module  generate a standalone Go module

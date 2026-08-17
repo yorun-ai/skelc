@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"encoding/json"
+	"go.yorun.ai/skelc/internal/command"
 	"runtime"
 	"runtime/debug"
 	"testing"
@@ -12,39 +14,27 @@ func TestRunSkelcVersion(t *testing.T) {
 	if result.ExitCode != ExitCodeSuccess {
 		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
 	}
-	info, err := versionInfo()
-	if err != nil {
-		t.Fatal(err)
+	info := new(command.VersionResult)
+	if err := json.Unmarshal([]byte(result.Stdout), info); err != nil {
+		t.Fatalf("decode version result: %v\n%s", err, result.Stdout)
 	}
-	expected := info.TextString() + "\n"
-	if result.Stdout != expected {
-		t.Fatalf("unexpected stdout: %q", result.Stdout)
+	if info.Name != cliName || info.Version == "" || info.Platform == "" {
+		t.Fatalf("unexpected version result: %+v", info)
 	}
 	if result.Stderr != "" {
 		t.Fatalf("unexpected stderr: %q", result.Stderr)
 	}
 }
 
-func TestRunSkelcVersionJSON(t *testing.T) {
+func TestRunSkelcVersionRejectsOutputFormat(t *testing.T) {
 	result := Run([]string{"version", "--output-format", "json"})
 
-	if result.ExitCode != ExitCodeSuccess {
-		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
+	commandError := new(command.Error)
+	if err := json.Unmarshal([]byte(result.Stdout), commandError); err != nil {
+		t.Fatalf("decode command error: %v\n%s", err, result.Stdout)
 	}
-	info, err := versionInfo()
-	if err != nil {
-		t.Fatal(err)
-	}
-	json, err := info.JSONString()
-	if err != nil {
-		t.Fatal(err)
-	}
-	expected := json + "\n"
-	if result.Stdout != expected {
-		t.Fatalf("unexpected stdout: %q", result.Stdout)
-	}
-	if result.Stderr != "" {
-		t.Fatalf("unexpected stderr: %q", result.Stderr)
+	if result.ExitCode != ExitCodeError || commandError.Code != command.ErrorCodeInvalidArgument {
+		t.Fatalf("unexpected result: %+v", result)
 	}
 }
 
@@ -54,8 +44,12 @@ func TestRunSkelcVersionRejectsLegacyJSONFlag(t *testing.T) {
 	if result.ExitCode != ExitCodeError {
 		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
 	}
-	if result.Stderr == "" {
-		t.Fatal("expected stderr")
+	commandError := new(command.Error)
+	if err := json.Unmarshal([]byte(result.Stdout), commandError); err != nil {
+		t.Fatalf("decode command error: %v\n%s", err, result.Stdout)
+	}
+	if result.Stderr != "" || commandError.Code != command.ErrorCodeInvalidArgument {
+		t.Fatalf("unexpected result: %+v", result)
 	}
 }
 

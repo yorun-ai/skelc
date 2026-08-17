@@ -6,6 +6,24 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+### Changed
+
+- All non-LSP commands now emit one pretty-printed JSON result on stdout; text
+  result modes and `--output-format` have been removed. `check` embeds all
+  diagnostics in its result, generation reports completion while writing
+  non-fatal diagnostics to stderr, and `schema get` returns JSON `null` when absent.
+  Exit codes distinguish success (`0`), a completed unsatisfied check (`1`),
+  and command failure (`2`); failures emit a stable `{code,message}` JSON object
+  while stderr remains reserved for logs and diagnostics. stderr logs now
+  default to JSONL; `--log-format text` selects human-readable text
+- Added the public `go.yorun.ai/skelc/command` facade for command results, error
+  codes, and exit-code constants
+
+### Removed
+
+- Removed the deprecated `symbol list/get` commands. Use `schema list/get` for
+  declaration inspection
+
 ## [0.13.0] - 2026-08-17
 
 ### Added

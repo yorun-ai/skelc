@@ -13,16 +13,7 @@ func TestRunSkelcGenTS(t *testing.T) {
 	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
 
 	result := Run([]string{"gen", "ts", "--skel-in", dir, "--ts-out", tsOut})
-
-	if result.ExitCode != ExitCodeSuccess {
-		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
-	}
-	if result.Stdout != "" {
-		t.Fatalf("unexpected stdout: %q", result.Stdout)
-	}
-	if result.Stderr != "" {
-		t.Fatalf("unexpected stderr: %q", result.Stderr)
-	}
+	assertGenerationResult(t, result)
 	assertFileMissing(t, filepath.Join(tsOut, "package.json"))
 }
 
@@ -56,20 +47,18 @@ func TestRunSkelcGenTSUsesFlagNamesForSharedValidationErrors(t *testing.T) {
 		{
 			name:     "missing module identity",
 			args:     []string{"gen", "ts", "--skel-in", dir, "--ts-out", t.TempDir(), "--ts-as-module"},
-			expected: "Error: missing flag ts-module or ts-module-scope",
+			expected: "missing flag ts-module or ts-module-scope",
 		},
 		{
 			name:     "module requires module output",
 			args:     []string{"gen", "ts", "--skel-in", dir, "--ts-out", t.TempDir(), "--ts-module", "@acme/user"},
-			expected: "Error: flag ts-module requires ts-as-module",
+			expected: "flag ts-module requires ts-as-module",
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			result := Run(test.args)
-			if result.ExitCode != ExitCodeError || result.Stderr != test.expected {
-				t.Fatalf("unexpected result: exit=%d stderr=%q", result.ExitCode, result.Stderr)
-			}
+			assertCommandErrorMessage(t, result, test.expected)
 		})
 	}
 }

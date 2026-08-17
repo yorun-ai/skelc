@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"go.yorun.ai/skelc/internal/codegen/output"
+	"go.yorun.ai/skelc/internal/command"
 	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/internal/optionvalidation"
 )
@@ -45,6 +47,18 @@ func formatGenerationError(err error) error {
 		return err
 	}
 	return errors.New(message)
+}
+
+func generationCommandFailure(err error) error {
+	code := command.ErrorCodeCompilationFailed
+	var validationError *optionvalidation.ValidationError
+	switch {
+	case errors.As(err, &validationError):
+		code = command.ErrorCodeInvalidArgument
+	case errors.Is(err, output.ErrOutputOperation):
+		code = command.ErrorCodeCommandFailed
+	}
+	return commandFailure(code, formatGenerationError(err))
 }
 
 func normalizeCompilerOption(option *compiler.Option) error {

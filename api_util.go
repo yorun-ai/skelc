@@ -37,7 +37,7 @@ func normalizeGolangOption(option GolangOption) (golang.Option, error) {
 		return golang.Option{}, optionvalidation.NewValidationError(optionvalidation.FieldGoOutput, optionvalidation.RuleRequired, "Go output is required")
 	}
 	if err := gomodule.ValidateVineVersion(option.VineVersion); err != nil {
-		return golang.Option{}, err
+		return golang.Option{}, optionvalidation.NewValidationError(optionvalidation.FieldGoVineVersion, optionvalidation.RuleInvalid, err.Error())
 	}
 	modulePrefix := strings.TrimSpace(option.ModulePrefix)
 	module := strings.TrimSpace(option.Module)
@@ -89,7 +89,8 @@ func normalizeGolangOption(option GolangOption) (golang.Option, error) {
 	if !option.AsModule {
 		name := filepath.Base(out)
 		if !nameutil.IsSnakeCase(name) || gotoken.Lookup(name).IsKeyword() {
-			return golang.Option{}, fmt.Errorf("go output directory name %q is not a valid package name", name)
+			return golang.Option{}, optionvalidation.NewValidationError(optionvalidation.FieldGoOutput, optionvalidation.RuleInvalid,
+				fmt.Sprintf("go output directory name %q is not a valid package name", name))
 		}
 	}
 	pubOut, err := optionalAbsolutePath(pubOutValue)
@@ -102,7 +103,7 @@ func normalizeGolangOption(option GolangOption) (golang.Option, error) {
 	}
 	for _, path := range imports {
 		if err := validateVersionedImport(path, "go"); err != nil {
-			return golang.Option{}, err
+			return golang.Option{}, optionvalidation.NewValidationError(optionvalidation.FieldGoImport, optionvalidation.RuleInvalid, err.Error())
 		}
 	}
 
@@ -125,7 +126,8 @@ func validateGolangImports(domain *model.Domain, option golang.Option) error {
 			return fmt.Errorf("generated model contains nil import")
 		}
 		if option.Imports[domainImport.Name] == "" && option.ModulePrefix == "" {
-			return fmt.Errorf("missing Go import for domain %s; set Imports[%q] or ModulePrefix", domainImport.Name, domainImport.Name)
+			return optionvalidation.NewValidationError(optionvalidation.FieldGoImport, optionvalidation.RuleRequired,
+				fmt.Sprintf("missing Go import for domain %s; set Imports[%q] or ModulePrefix", domainImport.Name, domainImport.Name))
 		}
 	}
 	return nil
@@ -159,7 +161,7 @@ func normalizeTypeScriptOption(option TypeScriptOption) (typescript.Option, erro
 	}
 	for _, path := range imports {
 		if err := validateVersionedImport(path, "TypeScript"); err != nil {
-			return typescript.Option{}, err
+			return typescript.Option{}, optionvalidation.NewValidationError(optionvalidation.FieldTypeScriptImport, optionvalidation.RuleInvalid, err.Error())
 		}
 	}
 
@@ -179,7 +181,8 @@ func validateTypeScriptImports(domain *model.Domain, option typescript.Option) e
 			return fmt.Errorf("generated model contains nil import")
 		}
 		if option.Imports[domainImport.Name] == "" && option.ModuleScope == "" {
-			return fmt.Errorf("missing TypeScript import for domain %s; set Imports[%q] or ModuleScope", domainImport.Name, domainImport.Name)
+			return optionvalidation.NewValidationError(optionvalidation.FieldTypeScriptImport, optionvalidation.RuleRequired,
+				fmt.Sprintf("missing TypeScript import for domain %s; set Imports[%q] or ModuleScope", domainImport.Name, domainImport.Name))
 		}
 	}
 	return nil
@@ -247,17 +250,19 @@ func normalizePathMap(values map[string]string) (map[string]string, error) {
 		value := values[key]
 		normalizedKey := strings.TrimSpace(key)
 		if normalizedKey == "" {
-			return nil, fmt.Errorf("Skel import domain is required")
+			return nil, optionvalidation.NewValidationError(optionvalidation.FieldSkelImport, optionvalidation.RuleInvalid, "Skel import domain is required")
 		}
 		if strings.TrimSpace(value) == "" {
-			return nil, fmt.Errorf("Skel import path for domain %s is required", normalizedKey)
+			return nil, optionvalidation.NewValidationError(optionvalidation.FieldSkelImport, optionvalidation.RuleRequired,
+				fmt.Sprintf("Skel import path for domain %s is required", normalizedKey))
 		}
 		path, err := absolutePath(value)
 		if err != nil {
 			return nil, err
 		}
 		if _, exists := normalized[normalizedKey]; exists {
-			return nil, fmt.Errorf("duplicate Skel import domain %s", normalizedKey)
+			return nil, optionvalidation.NewValidationError(optionvalidation.FieldSkelImport, optionvalidation.RuleInvalid,
+				fmt.Sprintf("duplicate Skel import domain %s", normalizedKey))
 		}
 		normalized[normalizedKey] = path
 	}
@@ -273,17 +278,19 @@ func normalizeImportMap(values map[string]string) (map[string]string, error) {
 		value := values[key]
 		normalizedKey := strings.TrimSpace(key)
 		if normalizedKey == "" {
-			return nil, fmt.Errorf("Go import domain is required")
+			return nil, optionvalidation.NewValidationError(optionvalidation.FieldGoImport, optionvalidation.RuleInvalid, "Go import domain is required")
 		}
 		value = strings.TrimSpace(value)
 		if value == "" {
-			return nil, fmt.Errorf("Go import path for domain %s is required", normalizedKey)
+			return nil, optionvalidation.NewValidationError(optionvalidation.FieldGoImport, optionvalidation.RuleRequired,
+				fmt.Sprintf("Go import path for domain %s is required", normalizedKey))
 		}
 		if err := checkNoTrailingSlash(value, "Go import", optionvalidation.FieldGoImport); err != nil {
 			return nil, err
 		}
 		if _, exists := normalized[normalizedKey]; exists {
-			return nil, fmt.Errorf("duplicate Go import domain %s", normalizedKey)
+			return nil, optionvalidation.NewValidationError(optionvalidation.FieldGoImport, optionvalidation.RuleInvalid,
+				fmt.Sprintf("duplicate Go import domain %s", normalizedKey))
 		}
 		normalized[normalizedKey] = value
 	}
@@ -298,14 +305,16 @@ func normalizeTypeScriptImportMap(values map[string]string) (map[string]string, 
 	for _, key := range sortedMapKeys(values) {
 		normalizedKey := strings.TrimSpace(key)
 		if normalizedKey == "" {
-			return nil, fmt.Errorf("TypeScript import domain is required")
+			return nil, optionvalidation.NewValidationError(optionvalidation.FieldTypeScriptImport, optionvalidation.RuleInvalid, "TypeScript import domain is required")
 		}
 		value := strings.TrimRight(strings.TrimSpace(values[key]), "/")
 		if value == "" {
-			return nil, fmt.Errorf("TypeScript import path for domain %s is required", normalizedKey)
+			return nil, optionvalidation.NewValidationError(optionvalidation.FieldTypeScriptImport, optionvalidation.RuleRequired,
+				fmt.Sprintf("TypeScript import path for domain %s is required", normalizedKey))
 		}
 		if _, exists := normalized[normalizedKey]; exists {
-			return nil, fmt.Errorf("duplicate TypeScript import domain %s", normalizedKey)
+			return nil, optionvalidation.NewValidationError(optionvalidation.FieldTypeScriptImport, optionvalidation.RuleInvalid,
+				fmt.Sprintf("duplicate TypeScript import domain %s", normalizedKey))
 		}
 		normalized[normalizedKey] = value
 	}

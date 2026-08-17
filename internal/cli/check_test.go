@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/command"
 	"go.yorun.ai/skelc/internal/compiler"
 )
 
@@ -13,19 +14,13 @@ func TestRunSkelcCheck(t *testing.T) {
 	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
 
 	result := Run([]string{"check", "--skel-in", dir})
-
-	if result.ExitCode != ExitCodeSuccess {
-		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
-	}
-	if result.Stdout != "" {
-		t.Fatalf("unexpected stdout: %q", result.Stdout)
-	}
-	if result.Stderr != "" {
-		t.Fatalf("unexpected stderr: %q", result.Stderr)
+	checked := decodeCheckResult(t, result)
+	if result.ExitCode != ExitCodeSuccess || !checked.Valid || len(checked.Diagnostics) != 0 || result.Stderr != "" {
+		t.Fatalf("unexpected result: %+v", result)
 	}
 }
 
-func TestRunSkelcCheckRejectsAllow(t *testing.T) {
+func TestRunSkelcCheckReturnsSyntaxDiagnostics(t *testing.T) {
 	dir := t.TempDir()
 	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
 	writeCLIFile(t, dir+"/service.skel", `domain demo.user
@@ -41,70 +36,42 @@ service UserService {
 }`)
 
 	result := Run([]string{"check", "--skel-in", dir})
-
-	if result.ExitCode != ExitCodeError {
-		t.Fatalf("expected error exit code, got %d", result.ExitCode)
-	}
-	if result.Stdout != "" {
-		t.Fatalf("unexpected stdout: %q", result.Stdout)
-	}
-	if !strings.Contains(result.Stderr, `unexpected token "allow"`) {
-		t.Fatalf("expected syntax error for allow, got stderr=%q", result.Stderr)
+	checked := decodeCheckResult(t, result)
+	if result.ExitCode != ExitCodeUnsatisfied || checked.Valid ||
+		!checkDiagnosticsContain(checked, `unexpected token "allow"`) || result.Stderr != "" {
+		t.Fatalf("unexpected check result: %+v", result)
 	}
 }
 
-func TestRunSkelcCheckWritesJSONLLoaderWarnings(t *testing.T) {
+func TestRunSkelcCheckIncludesLoaderWarnings(t *testing.T) {
 	dir := t.TempDir()
 	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
 	writeCLIFile(t, dir+"/.hidden.skel", `domain demo.user`)
 
-	result := Run([]string{"check", "--log-format", "jsonl", "--skel-in", dir})
-
-	if result.ExitCode != ExitCodeSuccess {
-		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
-	}
-	entry := &_LogEntry{}
-	if err := json.Unmarshal([]byte(strings.TrimSpace(result.Stdout)), entry); err != nil {
-		t.Fatalf("parse stdout jsonl: %v\n%s", err, result.Stdout)
-	}
-	if entry.Level != logLevelWarn {
-		t.Fatalf("unexpected level: %q", entry.Level)
-	}
-	if !strings.Contains(entry.Message, ".hidden.skel ignored (HIDDEN_FILE)") {
-		t.Fatalf("unexpected message: %q", entry.Message)
+	for _, args := range [][]string{
+		{"check", "--skel-in", dir},
+		{"check", "--log-format", "jsonl", "--skel-in", dir},
+	} {
+		result := Run(args)
+		checked := decodeCheckResult(t, result)
+		if result.ExitCode != ExitCodeSuccess || !checked.Valid || len(checked.Diagnostics) != 1 ||
+			checked.Diagnostics[0].Severity != compiler.DiagnosticSeverityWarning ||
+			!strings.Contains(checked.Diagnostics[0].Message, ".hidden.skel ignored (HIDDEN_FILE)") {
+			t.Fatalf("unexpected loader warning result: %+v", result)
+		}
 	}
 }
 
-func TestRunSkelcCheckWritesTextLoaderWarnings(t *testing.T) {
-	dir := t.TempDir()
-	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
-	writeCLIFile(t, dir+"/.hidden.skel", `domain demo.user`)
-
-	result := Run([]string{"check", "--skel-in", dir})
-	if result.ExitCode != ExitCodeSuccess || !strings.Contains(result.Stdout, ".hidden.skel ignored (HIDDEN_FILE)") {
-		t.Fatalf("unexpected result: %+v", result)
+func TestRunSkelcCheckErrorsUseCommandResult(t *testing.T) {
+	result := Run([]string{"check"})
+	commandError := decodeCommandError(t, result)
+	if result.ExitCode != ExitCodeError || result.Stderr != "" ||
+		commandError.Code != command.ErrorCodeInvalidArgument || commandError.Message != "missing flag skel-in" {
+		t.Fatalf("unexpected command error: %+v", result)
 	}
 }
 
-func TestRunSkelcCheckWritesJSONLErrors(t *testing.T) {
-	result := Run([]string{"--log-format", "jsonl", "check"})
-
-	if result.ExitCode != ExitCodeError {
-		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
-	}
-	entry := &_LogEntry{}
-	if err := json.Unmarshal([]byte(strings.TrimSpace(result.Stderr)), entry); err != nil {
-		t.Fatalf("parse stderr jsonl: %v\n%s", err, result.Stderr)
-	}
-	if entry.Level != logLevelError {
-		t.Fatalf("unexpected level: %q", entry.Level)
-	}
-	if entry.Message != "missing flag skel-in" {
-		t.Fatalf("unexpected message: %q", entry.Message)
-	}
-}
-
-func TestRunSkelcCheckWritesMultipleStructuredSyntaxDiagnostics(t *testing.T) {
+func TestRunSkelcCheckReturnsMultipleStructuredSyntaxDiagnostics(t *testing.T) {
 	dir := t.TempDir()
 	writeCLIFile(t, dir+"/domain.skel", "domain demo.user")
 	writeCLIFile(t, dir+"/types.skel", `domain demo.user
@@ -114,24 +81,15 @@ data User {
 }
 `)
 
-	result := Run([]string{"check", "--log-format", "jsonl", "--skel-in", dir})
-	if result.ExitCode != ExitCodeError {
-		t.Fatalf("expected check failure: %+v", result)
+	result := Run([]string{"check", "--skel-in", dir})
+	checked := decodeCheckResult(t, result)
+	if result.ExitCode != ExitCodeUnsatisfied || checked.Valid || len(checked.Diagnostics) != 2 {
+		t.Fatalf("expected two diagnostics: %+v", result)
 	}
-	lines := strings.Split(strings.TrimSpace(result.Stderr), "\n")
-	if len(lines) != 2 {
-		t.Fatalf("expected two diagnostics, got %d: %s", len(lines), result.Stderr)
-	}
-	for _, line := range lines {
-		entry := &_LogEntry{}
-		if err := json.Unmarshal([]byte(line), entry); err != nil {
-			t.Fatal(err)
-		}
-		if !strings.HasPrefix(entry.Code, "syntax.") || entry.Severity != compiler.DiagnosticSeverityError {
-			t.Fatalf("unexpected structured diagnostic: %+v", entry)
-		}
-		if entry.Range.End.Column <= entry.Range.Start.Column {
-			t.Fatalf("expected non-empty diagnostic range: %+v", entry.Range)
+	for _, item := range checked.Diagnostics {
+		if !strings.HasPrefix(item.Code, "syntax.") || item.Severity != compiler.DiagnosticSeverityError ||
+			item.Range.End.Column <= item.Range.Start.Column {
+			t.Fatalf("unexpected structured diagnostic: %+v", item)
 		}
 	}
 }
@@ -147,15 +105,9 @@ data Booking {
 }`)
 
 	result := Run([]string{"check", "--skel-in", dir})
-
-	if result.ExitCode != ExitCodeSuccess {
-		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
-	}
-	if result.Stdout != "" {
-		t.Fatalf("unexpected stdout: %q", result.Stdout)
-	}
-	if result.Stderr != "" {
-		t.Fatalf("unexpected stderr: %q", result.Stderr)
+	checked := decodeCheckResult(t, result)
+	if result.ExitCode != ExitCodeSuccess || !checked.Valid || len(checked.Diagnostics) != 0 {
+		t.Fatalf("unexpected result: %+v", result)
 	}
 }
 
@@ -171,12 +123,10 @@ data invalidName {
 `)
 
 	result := Run([]string{"check", "--skel-in", dir})
-
-	if result.ExitCode != ExitCodeError || !strings.Contains(result.Stderr, "Data") {
-		t.Fatalf("expected local naming diagnostic, got exit=%d stderr=%q", result.ExitCode, result.Stderr)
-	}
-	if strings.Contains(result.Stderr, "skel import") {
-		t.Fatalf("check must continue allowing unresolved imports, got stderr=%q", result.Stderr)
+	checked := decodeCheckResult(t, result)
+	if result.ExitCode != ExitCodeUnsatisfied || !checkDiagnosticsContain(checked, "Data") ||
+		checkDiagnosticsContain(checked, "skel import") {
+		t.Fatalf("unexpected result: %+v", result)
 	}
 }
 
@@ -189,44 +139,11 @@ data Order { missing: MissingOrder }
 `)
 
 	result := Run([]string{"check", "--skel-in", dir})
-
-	if result.ExitCode != ExitCodeError {
-		t.Fatalf("expected error exit code, got %d", result.ExitCode)
-	}
-	if !strings.Contains(result.Stderr, "definition of MissingUser not found") ||
-		!strings.Contains(result.Stderr, "definition of MissingOrder not found") {
-		t.Fatalf("expected both semantic errors, got stderr=%q", result.Stderr)
-	}
-	if strings.Count(result.Stderr, "Error: ") != 2 {
-		t.Fatalf("expected two text diagnostics, got stderr=%q", result.Stderr)
-	}
-}
-
-func TestRunSkelcCheckReportsMultipleJSONLErrors(t *testing.T) {
-	dir := t.TempDir()
-	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
-	writeCLIFile(t, dir+"/types.skel", `domain demo.user
-data User { missing: MissingUser }
-data Order { missing: MissingOrder }
-`)
-
-	result := Run([]string{"--log-format", "jsonl", "check", "--skel-in", dir})
-
-	if result.ExitCode != ExitCodeError {
-		t.Fatalf("expected error exit code, got %d", result.ExitCode)
-	}
-	lines := strings.Split(strings.TrimSpace(result.Stderr), "\n")
-	if len(lines) != 2 {
-		t.Fatalf("expected two JSONL diagnostics, got stderr=%q", result.Stderr)
-	}
-	for _, line := range lines {
-		entry := &_LogEntry{}
-		if err := json.Unmarshal([]byte(line), entry); err != nil {
-			t.Fatalf("parse stderr jsonl: %v\n%s", err, result.Stderr)
-		}
-		if entry.Level != logLevelError {
-			t.Fatalf("unexpected level: %q", entry.Level)
-		}
+	checked := decodeCheckResult(t, result)
+	if result.ExitCode != ExitCodeUnsatisfied || len(checked.Diagnostics) != 2 ||
+		!checkDiagnosticsContain(checked, "definition of MissingUser not found") ||
+		!checkDiagnosticsContain(checked, "definition of MissingOrder not found") {
+		t.Fatalf("unexpected result: %+v", result)
 	}
 }
 
@@ -237,15 +154,11 @@ func TestRunSkelcCheckReportsSyntaxErrorsFromMultipleFiles(t *testing.T) {
 	writeCLIFile(t, dir+"/order.skel", "domain demo.user\ndata Order {")
 
 	result := Run([]string{"check", "--skel-in", dir})
-
-	if result.ExitCode != ExitCodeError {
-		t.Fatalf("expected error exit code, got %d", result.ExitCode)
-	}
-	if strings.Count(result.Stderr, "Error: ") != 2 {
-		t.Fatalf("expected two syntax diagnostics, got stderr=%q", result.Stderr)
-	}
-	if !strings.Contains(result.Stderr, "user.skel") || !strings.Contains(result.Stderr, "order.skel") {
-		t.Fatalf("expected both source paths, got stderr=%q", result.Stderr)
+	checked := decodeCheckResult(t, result)
+	if result.ExitCode != ExitCodeUnsatisfied || len(checked.Diagnostics) != 2 ||
+		!strings.Contains(checked.Diagnostics[0].Range.Start.File+checked.Diagnostics[1].Range.Start.File, "user.skel") ||
+		!strings.Contains(checked.Diagnostics[0].Range.Start.File+checked.Diagnostics[1].Range.Start.File, "order.skel") {
+		t.Fatalf("unexpected result: %+v", result)
 	}
 }
 
@@ -254,8 +167,26 @@ func TestRunSkelcCheckPreservesDomainFileRestrictions(t *testing.T) {
 	writeCLIFile(t, dir+"/domain.skel", "domain demo.user\ndata User {}\n")
 
 	result := Run([]string{"check", "--skel-in", dir})
-
-	if result.ExitCode != ExitCodeError || !strings.Contains(result.Stderr, "can only contain domain declaration and @desc") {
-		t.Fatalf("expected domain file restriction, got exit=%d stderr=%q", result.ExitCode, result.Stderr)
+	checked := decodeCheckResult(t, result)
+	if result.ExitCode != ExitCodeUnsatisfied || !checkDiagnosticsContain(checked, "can only contain domain declaration and @desc") {
+		t.Fatalf("unexpected result: %+v", result)
 	}
+}
+
+func decodeCheckResult(t *testing.T, result Result) *command.CheckResult {
+	t.Helper()
+	checked := new(command.CheckResult)
+	if err := json.Unmarshal([]byte(result.Stdout), checked); err != nil {
+		t.Fatalf("decode check result: %v\n%s", err, result.Stdout)
+	}
+	return checked
+}
+
+func checkDiagnosticsContain(result *command.CheckResult, substring string) bool {
+	for _, item := range result.Diagnostics {
+		if strings.Contains(item.Message, substring) {
+			return true
+		}
+	}
+	return false
 }

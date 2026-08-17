@@ -7,7 +7,9 @@ type Field string
 
 const (
 	FieldSkelInput                Field = "skel.input"
+	FieldSkelImport               Field = "skel.import"
 	FieldGoOutput                 Field = "go.output"
+	FieldGoVineVersion            Field = "go.vine-version"
 	FieldGoModuleIdentity         Field = "go.module-identity"
 	FieldGoPublicOutput           Field = "go.public-output"
 	FieldGoPublicModule           Field = "go.public-module"
@@ -15,6 +17,7 @@ const (
 	FieldGoModulePrefix           Field = "go.module-prefix"
 	FieldGoImport                 Field = "go.import"
 	FieldTypeScriptOutput         Field = "typescript.output"
+	FieldTypeScriptImport         Field = "typescript.import"
 	FieldTypeScriptModuleIdentity Field = "typescript.module-identity"
 	FieldTypeScriptModule         Field = "typescript.module"
 	FieldTypeScriptModuleScope    Field = "typescript.module-scope"
@@ -30,6 +33,7 @@ const (
 	RuleRequiresModule       Rule = "requires-module"
 	RuleRequiresPublicOutput Rule = "requires-public-output"
 	RuleNoTrailingSlash      Rule = "no-trailing-slash"
+	RuleInvalid              Rule = "invalid"
 )
 
 // ValidationError carries a typed field/rule pair and an API-facing message.

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	ucli "github.com/urfave/cli/v3"
+	"go.yorun.ai/skelc/internal/command"
 	"go.yorun.ai/skelc/internal/compiler"
 )
 
@@ -24,15 +25,22 @@ func newCheckCommand() *ucli.Command {
 		Action: func(_ context.Context, cmd *ucli.Command) error {
 			option, err := parseCheckCommand(cmd)
 			if err != nil {
-				return err
+				return commandFailure(command.ErrorCodeInvalidArgument, err)
 			}
 			result, err := compiler.Check(option)
 			if err != nil {
-				return err
+				return commandFailure(command.ErrorCodeCompilationFailed, err)
 			}
-			printDiagnostics(cmd, result.Diagnostics)
-			if result.Diagnostics.HasErrors() {
-				return result.Diagnostics.Failures()
+			diagnostics := result.Diagnostics
+			if diagnostics == nil {
+				diagnostics = compiler.Diagnostics{}
+			}
+			valid := !diagnostics.HasErrors()
+			if err := writeJSONResult(cmd, command.CheckResult{Valid: valid, Diagnostics: diagnostics}, "check result"); err != nil {
+				return commandFailure(command.ErrorCodeCommandFailed, err)
+			}
+			if !valid {
+				return commandUnsatisfied()
 			}
 			return nil
 		},

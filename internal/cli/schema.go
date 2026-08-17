@@ -2,12 +2,12 @@ package cli
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 
 	ucli "github.com/urfave/cli/v3"
+	"go.yorun.ai/skelc/internal/command"
 	"go.yorun.ai/skelc/internal/compiler"
 	schemas "go.yorun.ai/skelc/internal/schema"
 )
@@ -47,14 +47,14 @@ func newSchemaListCommand() *ucli.Command {
 		Action: func(_ context.Context, cmd *ucli.Command) error {
 			kind, err := parseSchemaListKind(cmd)
 			if err != nil {
-				return err
+				return commandFailure(command.ErrorCodeInvalidArgument, err)
 			}
 			document, err := loadQuerySchema(cmd)
 			if err != nil {
 				return err
 			}
 			entries := filterSchemaEntries(schemas.Entries(document), kind)
-			return writeIndentedJSON(cmd, entries, "schema declarations")
+			return writeSchemaResult(cmd, entries, "schema declarations")
 		},
 	}
 }
@@ -68,17 +68,14 @@ func newSchemaGetCommand() *ucli.Command {
 		Action: func(_ context.Context, cmd *ucli.Command) error {
 			kind, skelName, err := parseSchemaGetArguments(cmd)
 			if err != nil {
-				return err
+				return commandFailure(command.ErrorCodeInvalidArgument, err)
 			}
 			document, err := loadQuerySchema(cmd)
 			if err != nil {
 				return err
 			}
 			declaration := schemas.Find(document, kind, skelName)
-			if declaration == nil {
-				return fmt.Errorf("schema declaration not found: %s %s", kind, skelName)
-			}
-			return writeIndentedJSON(cmd, declaration, "schema declaration")
+			return writeSchemaResult(cmd, declaration, "schema declaration")
 		},
 	}
 }
@@ -92,16 +89,17 @@ func newSchemaSnapshotCommand() *ucli.Command {
 		},
 		Action: func(_ context.Context, cmd *ucli.Command) error {
 			if cmd.Args().Len() != 0 {
-				return fmt.Errorf("unexpected args for %s %s", commandSchema, commandSchemaSnapshot)
+				return commandFailure(command.ErrorCodeInvalidArgument,
+					fmt.Errorf("unexpected args for %s %s", commandSchema, commandSchemaSnapshot))
 			}
-			document, err := loadSourceSchema(flagSchemaSkelIn, cmd.String(flagSchemaSkelIn))
+			document, err := loadSourceSchema(cmd, flagSchemaSkelIn, cmd.String(flagSchemaSkelIn))
 			if err != nil {
 				return err
 			}
 			if err := schemas.Validate(document); err != nil {
-				return err
+				return commandFailure(command.ErrorCodeCommandFailed, err)
 			}
-			return writeIndentedJSON(cmd, document, "schema snapshot")
+			return writeSchemaResult(cmd, document, "schema snapshot")
 		},
 	}
 }
@@ -116,28 +114,34 @@ func newSchemaDiffCommand() *ucli.Command {
 		},
 		Action: func(ctx context.Context, cmd *ucli.Command) error {
 			if cmd.Args().Len() != 0 {
-				return fmt.Errorf("unexpected args for %s %s", commandSchema, commandSchemaDiff)
+				return commandFailure(command.ErrorCodeInvalidArgument,
+					fmt.Errorf("unexpected args for %s %s", commandSchema, commandSchemaDiff))
 			}
 			candidateOption := compiler.Option{SkelIn: cmd.String(flagSchemaSkelIn)}
 			if err := normalizeCompilerOption(&candidateOption); err != nil {
-				return err
+				return commandFailure(command.ErrorCodeInvalidArgument, err)
 			}
 			baselineSkelIn := strings.TrimSpace(cmd.String(flagSchemaBaselineSkelIn))
 			if baselineSkelIn != "" {
 				baselineOption := compiler.Option{SkelIn: baselineSkelIn}
 				if err := normalizeCompilerOption(&baselineOption); err != nil {
-					return err
+					return commandFailure(command.ErrorCodeInvalidArgument, err)
 				}
 				baselineSkelIn = baselineOption.SkelIn
 			}
 			report, err := schemas.DiffSource(ctx, candidateOption.SkelIn, schemas.SourceDiffOption{BaselineSkelIn: baselineSkelIn})
 			if err != nil {
-				if errors.Is(err, schemas.ErrGitHistoryUnavailable) {
-					return fmt.Errorf("%w; pass an explicit --%s", err, flagSchemaBaselineSkelIn)
+				switch {
+				case errors.Is(err, schemas.ErrGitHistoryUnavailable):
+					return commandFailure(command.ErrorCodeGitHistoryNotFound,
+						fmt.Errorf("%w; pass an explicit --%s", err, flagSchemaBaselineSkelIn))
+				case errors.Is(err, schemas.ErrSourceCompilation):
+					return commandFailure(command.ErrorCodeCompilationFailed, err)
+				default:
+					return commandFailure(command.ErrorCodeCommandFailed, err)
 				}
-				return err
 			}
-			return writeIndentedJSON(cmd, report, "schema diff")
+			return writeSchemaResult(cmd, report, "schema diff")
 		},
 	}
 }
@@ -202,40 +206,43 @@ func filterSchemaEntries(entries []*schemas.Entry, kind string) []*schemas.Entry
 func loadQuerySchema(cmd *ucli.Command) (*schemas.Document, error) {
 	option := compiler.Option{SkelIn: cmd.String(flagSchemaSkelIn)}
 	if err := normalizeCompilerOption(&option); err != nil {
-		return nil, err
+		return nil, commandFailure(command.ErrorCodeInvalidArgument, err)
 	}
 	result, err := compiler.CompileImport(option.SkelIn)
 	if err != nil {
-		return nil, err
+		return nil, commandFailure(command.ErrorCodeCompilationFailed, err)
 	}
-	return schemas.Project(result.Domain, result.ImportAliases)
-}
-
-func loadSourceSchema(flagName, skelIn string) (*schemas.Document, error) {
-	if strings.TrimSpace(skelIn) == "" {
-		return nil, fmt.Errorf("missing flag %s", flagName)
-	}
-	option := compiler.Option{SkelIn: skelIn}
-	if err := normalizeCompilerOption(&option); err != nil {
-		return nil, err
-	}
-	shallow, err := compiler.CompileImport(option.SkelIn)
+	writeWarningLogs(cmd, result.Diagnostics)
+	document, err := schemas.Project(result.Domain, result.ImportAliases)
 	if err != nil {
-		return nil, err
-	}
-	document, err := schemas.Project(shallow.Domain, shallow.ImportAliases)
-	if err != nil {
-		return nil, err
+		return nil, commandFailure(command.ErrorCodeCommandFailed, err)
 	}
 	return document, nil
 }
 
-func writeIndentedJSON(cmd *ucli.Command, value any, context string) error {
-	encoder := json.NewEncoder(cmd.Root().Writer)
-	encoder.SetEscapeHTML(false)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(value); err != nil {
-		return fmt.Errorf("encode %s: %w", context, err)
+func loadSourceSchema(cmd *ucli.Command, flagName, skelIn string) (*schemas.Document, error) {
+	if strings.TrimSpace(skelIn) == "" {
+		return nil, commandFailure(command.ErrorCodeInvalidArgument, fmt.Errorf("missing flag %s", flagName))
+	}
+	option := compiler.Option{SkelIn: skelIn}
+	if err := normalizeCompilerOption(&option); err != nil {
+		return nil, commandFailure(command.ErrorCodeInvalidArgument, err)
+	}
+	shallow, err := compiler.CompileImport(option.SkelIn)
+	if err != nil {
+		return nil, commandFailure(command.ErrorCodeCompilationFailed, err)
+	}
+	writeWarningLogs(cmd, shallow.Diagnostics)
+	document, err := schemas.Project(shallow.Domain, shallow.ImportAliases)
+	if err != nil {
+		return nil, commandFailure(command.ErrorCodeCommandFailed, err)
+	}
+	return document, nil
+}
+
+func writeSchemaResult(cmd *ucli.Command, value any, context string) error {
+	if err := writeJSONResult(cmd, value, context); err != nil {
+		return commandFailure(command.ErrorCodeCommandFailed, err)
 	}
 	return nil
 }

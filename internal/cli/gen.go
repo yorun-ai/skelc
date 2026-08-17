@@ -7,6 +7,7 @@ import (
 
 	ucli "github.com/urfave/cli/v3"
 	"go.yorun.ai/skelc"
+	"go.yorun.ai/skelc/internal/command"
 )
 
 const (
@@ -57,18 +58,17 @@ func newGenGoCommand() *ucli.Command {
 		Action: func(_ context.Context, cmd *ucli.Command) error {
 			input, option, err := parseGenGoCommand(cmd)
 			if err != nil {
-				return err
+				return commandFailure(command.ErrorCodeInvalidArgument, err)
 			}
 			option.CompilerVersion, err = compilerVersion()
 			if err != nil {
-				return err
+				return commandFailure(command.ErrorCodeCommandFailed, err)
 			}
 			result, err := skelc.CompileGolang(input, option)
 			if err != nil {
-				return formatGenerationError(err)
+				return generationCommandFailure(err)
 			}
-			printDiagnostics(cmd, result.Diagnostics)
-			return nil
+			return writeGenerationResult(cmd, result)
 		},
 	}
 }
@@ -81,18 +81,17 @@ func newGenGoModuleCommand() *ucli.Command {
 		Action: func(_ context.Context, cmd *ucli.Command) error {
 			input, option, err := parseGenGoModuleCommand(cmd)
 			if err != nil {
-				return err
+				return commandFailure(command.ErrorCodeInvalidArgument, err)
 			}
 			option.CompilerVersion, err = compilerVersion()
 			if err != nil {
-				return err
+				return commandFailure(command.ErrorCodeCommandFailed, err)
 			}
 			result, err := skelc.CompileGolang(input, option)
 			if err != nil {
-				return formatGenerationError(err)
+				return generationCommandFailure(err)
 			}
-			printDiagnostics(cmd, result.Diagnostics)
-			return nil
+			return writeGenerationResult(cmd, result)
 		},
 	}
 }
@@ -105,14 +104,13 @@ func newGenTSCommand() *ucli.Command {
 		Action: func(_ context.Context, cmd *ucli.Command) error {
 			input, option, err := parseGenTSCommand(cmd)
 			if err != nil {
-				return err
+				return commandFailure(command.ErrorCodeInvalidArgument, err)
 			}
 			result, err := skelc.CompileTypeScript(input, option)
 			if err != nil {
-				return formatGenerationError(err)
+				return generationCommandFailure(err)
 			}
-			printDiagnostics(cmd, result.Diagnostics)
-			return nil
+			return writeGenerationResult(cmd, result)
 		},
 	}
 }
@@ -125,16 +123,23 @@ func newGenSkelCommand() *ucli.Command {
 		Action: func(_ context.Context, cmd *ucli.Command) error {
 			input, option, err := parseGenSkelCommand(cmd)
 			if err != nil {
-				return err
+				return commandFailure(command.ErrorCodeInvalidArgument, err)
 			}
 			result, err := skelc.CompileSkeleton(input, option)
 			if err != nil {
-				return formatGenerationError(err)
+				return generationCommandFailure(err)
 			}
-			printDiagnostics(cmd, result.Diagnostics)
-			return nil
+			return writeGenerationResult(cmd, result)
 		},
 	}
+}
+
+func writeGenerationResult(cmd *ucli.Command, result skelc.CompileResult) error {
+	writeWarningLogs(cmd, result.Diagnostics)
+	if err := writeJSONResult(cmd, command.GenerationResult{Generated: true}, "generation result"); err != nil {
+		return commandFailure(command.ErrorCodeCommandFailed, err)
+	}
+	return nil
 }
 
 func compilerVersion() (string, error) {

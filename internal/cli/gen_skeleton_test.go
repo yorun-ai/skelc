@@ -14,12 +14,7 @@ func TestRunSkelcGenSkelRequiresPub(t *testing.T) {
 
 	result := Run([]string{"gen", "skel", "--skel-in", dir, "--skel-out", skelOut})
 
-	if result.ExitCode != ExitCodeError {
-		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
-	}
-	if result.Stderr != "Error: flag pub is required for gen skel" {
-		t.Fatalf("unexpected stderr: %q", result.Stderr)
-	}
+	assertCommandErrorMessage(t, result, "flag pub is required for gen skel")
 }
 
 func TestRunSkelcGenSkel(t *testing.T) {
@@ -60,16 +55,7 @@ pub service UserService {
 `)
 
 	result := Run([]string{"gen", "skel", "--pub", "--skel-in", dir, "--skel-out", skelOut})
-
-	if result.ExitCode != ExitCodeSuccess {
-		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
-	}
-	if result.Stdout != "" {
-		t.Fatalf("unexpected stdout: %q", result.Stdout)
-	}
-	if result.Stderr != "" {
-		t.Fatalf("unexpected stderr: %q", result.Stderr)
-	}
+	assertGenerationResult(t, result)
 
 	typesContent, err := os.ReadFile(filepath.Join(skelOut, "types.skel"))
 	if err != nil {

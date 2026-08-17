@@ -1,12 +1,14 @@
 package cli
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"go.yorun.ai/skelc/internal/codegen/common"
+	"go.yorun.ai/skelc/internal/command"
 )
 
 func TestRunSkelcGenGo(t *testing.T) {
@@ -15,15 +17,44 @@ func TestRunSkelcGenGo(t *testing.T) {
 	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
 
 	result := Run([]string{"gen", "go", "--skel-in", dir, "--go-out", goOut})
+	assertGenerationResult(t, result)
+}
 
-	if result.ExitCode != ExitCodeSuccess {
-		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
+func TestRunSkelcGenGoWritesWarningsToJSONLLogs(t *testing.T) {
+	dir := t.TempDir()
+	goOut := filepath.Join(t.TempDir(), "skeled")
+	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
+	writeCLIFile(t, dir+"/.hidden.skel", `domain demo.user`)
+
+	result := Run([]string{"--log-format", "jsonl", "gen", "go", "--skel-in", dir, "--go-out", goOut})
+	generated := new(command.GenerationResult)
+	if err := json.Unmarshal([]byte(result.Stdout), generated); err != nil {
+		t.Fatal(err)
 	}
-	if result.Stdout != "" {
-		t.Fatalf("unexpected stdout: %q", result.Stdout)
+	var warning struct {
+		Level    string `json:"level"`
+		Code     string `json:"code"`
+		Severity string `json:"severity"`
 	}
-	if result.Stderr != "" {
-		t.Fatalf("unexpected stderr: %q", result.Stderr)
+	if err := json.Unmarshal([]byte(strings.TrimSpace(result.Stderr)), &warning); err != nil {
+		t.Fatal(err)
+	}
+	if result.ExitCode != ExitCodeSuccess || !generated.Generated ||
+		warning.Level != "warn" || warning.Code != "loader.ignored-hidden-file" || warning.Severity != "warning" {
+		t.Fatalf("unexpected generation result: %+v", result)
+	}
+}
+
+func TestRunSkelcGenGoClassifiesOutputFailures(t *testing.T) {
+	dir := t.TempDir()
+	writeCLIFile(t, filepath.Join(dir, "domain.skel"), `domain demo.user`)
+	blockedParent := filepath.Join(t.TempDir(), "blocked")
+	writeCLIFile(t, blockedParent, "not a directory")
+
+	result := Run([]string{"gen", "go", "--skel-in", dir, "--go-out", filepath.Join(blockedParent, "skeled")})
+	commandError := decodeCommandError(t, result)
+	if result.ExitCode != ExitCodeError || commandError.Code != command.ErrorCodeCommandFailed {
+		t.Fatalf("expected generation output failure: %+v", result)
 	}
 }
 
@@ -109,16 +140,7 @@ func TestRunSkelcGenGoModule(t *testing.T) {
 	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
 
 	result := Run([]string{"gen", "go-module", "--skel-in", dir, "--go-out", goOut, "--go-module-prefix", "github.com/acme/skel"})
-
-	if result.ExitCode != ExitCodeSuccess {
-		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
-	}
-	if result.Stdout != "" {
-		t.Fatalf("unexpected stdout: %q", result.Stdout)
-	}
-	if result.Stderr != "" {
-		t.Fatalf("unexpected stderr: %q", result.Stderr)
-	}
+	assertGenerationResult(t, result)
 	assertFileContains(t, filepath.Join(goOut, "go.mod"), "go.yorun.ai/vine v0.13.1")
 }
 
@@ -142,12 +164,7 @@ func TestRunSkelcGenGoModuleRejectsLowGoVineVersion(t *testing.T) {
 
 	result := Run([]string{"gen", "go-module", "--skel-in", dir, "--go-out", goOut, "--go-module-prefix", "github.com/acme/skel", "--go-vine-version", "v0.8.0"})
 
-	if result.ExitCode != ExitCodeError {
-		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
-	}
-	if result.Stderr != "Error: go-vine-version v0.8.0 is lower than minimum v0.13.1" {
-		t.Fatalf("unexpected stderr: %q", result.Stderr)
-	}
+	assertCommandErrorMessage(t, result, "go-vine-version v0.8.0 is lower than minimum v0.13.1")
 }
 
 func TestRunSkelcGenGoModuleRejectsGoVineVersionWithoutVPrefix(t *testing.T) {
@@ -157,12 +174,7 @@ func TestRunSkelcGenGoModuleRejectsGoVineVersionWithoutVPrefix(t *testing.T) {
 
 	result := Run([]string{"gen", "go-module", "--skel-in", dir, "--go-out", goOut, "--go-module-prefix", "github.com/acme/skel", "--go-vine-version", "1.2.3"})
 
-	if result.ExitCode != ExitCodeError {
-		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
-	}
-	if result.Stderr != "Error: go-vine-version 1.2.3 must be v-prefixed semantic version" {
-		t.Fatalf("unexpected stderr: %q", result.Stderr)
-	}
+	assertCommandErrorMessage(t, result, "go-vine-version 1.2.3 must be v-prefixed semantic version")
 }
 
 func TestRunSkelcGenGoModuleRejectsPubFlag(t *testing.T) {
@@ -221,12 +233,7 @@ func TestRunSkelcGenGoModuleRejectsMissingModulePrefix(t *testing.T) {
 
 	result := Run([]string{"gen", "go-module", "--skel-in", dir, "--go-out", goOut})
 
-	if result.ExitCode != ExitCodeError {
-		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
-	}
-	if result.Stderr != "Error: missing flag go-module or go-module-prefix" {
-		t.Fatalf("unexpected stderr: %q", result.Stderr)
-	}
+	assertCommandErrorMessage(t, result, "missing flag go-module or go-module-prefix")
 }
 
 func TestRunSkelcGenGoModuleUsesFlagNameForSharedValidationError(t *testing.T) {
@@ -239,9 +246,7 @@ func TestRunSkelcGenGoModuleUsesFlagNameForSharedValidationError(t *testing.T) {
 		"--go-module-prefix", "github.com/acme/skel/",
 	})
 
-	if result.ExitCode != ExitCodeError || result.Stderr != "Error: flag go-module-prefix must not end with /" {
-		t.Fatalf("unexpected result: exit=%d stderr=%q", result.ExitCode, result.Stderr)
-	}
+	assertCommandErrorMessage(t, result, "flag go-module-prefix must not end with /")
 }
 
 func TestRunSkelcGenGoModuleWithModulePrefix(t *testing.T) {

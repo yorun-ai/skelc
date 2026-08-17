@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	ucli "github.com/urfave/cli/v3"
+	commandresult "go.yorun.ai/skelc/internal/command"
 	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/internal/util/logutil"
 )
@@ -22,31 +23,18 @@ type Result struct {
 const (
 	commandSkelc = "skelc"
 
-	ExitCodeSuccess = 0
-	ExitCodeError   = 1
+	ExitCodeSuccess     = commandresult.ExitCodeSuccess
+	ExitCodeUnsatisfied = commandresult.ExitCodeUnsatisfied
+	ExitCodeError       = commandresult.ExitCodeError
 
 	flagLogFormat = "log-format"
 
 	logFormatText  = "text"
 	logFormatJSONL = "jsonl"
 
-	logLevelInfo  = string(logutil.LevelInfo)
 	logLevelWarn  = string(logutil.LevelWarn)
 	logLevelError = string(logutil.LevelError)
-
-	flagOutputFormat = "output-format"
-
-	outputFormatText = "text"
-	outputFormatJSON = "json"
 )
-
-type _LogEntry struct {
-	Level    string                      `json:"level"`
-	Code     string                      `json:"code,omitempty"`
-	Severity compiler.DiagnosticSeverity `json:"severity,omitempty"`
-	Range    compiler.SourceRange        `json:"range,omitempty"`
-	Message  string                      `json:"message"`
-}
 
 func Main() {
 	result := run(os.Args[1:], os.Stdin, os.Stdout)
@@ -92,7 +80,6 @@ func newCommand() *ucli.Command {
 			newLSPCommand(),
 			newGenCommand(),
 			newSchemaCommand(),
-			newSymbolCommand(),
 			newCheckCommand(),
 			newFormatCommand(),
 		},
@@ -101,30 +88,37 @@ func newCommand() *ucli.Command {
 
 func runCLICommand(command *ucli.Command, args []string, stdin io.Reader, stdout io.Writer) (result Result) {
 	rawLogFormat := rawLogFormatFromArgs(args)
-	isSchemaCommand := schemaCommandRequested(args)
+	isJSONCommand := jsonCommandRequested(args)
 
 	var stderr strings.Builder
-	var schemaStdout strings.Builder
+	var commandStdout strings.Builder
 
 	command.Reader = stdin
 	command.Writer = stdout
-	if isSchemaCommand {
-		command.Writer = &schemaStdout
+	if isJSONCommand {
+		command.Writer = &commandStdout
 	}
 	command.ErrWriter = &stderr
 	command.ExitErrHandler = func(_ context.Context, _ *ucli.Command, _ error) {}
 
 	err := command.Run(context.Background(), args)
 	if err != nil {
-		if failure, ok := err.(*_SchemaCommandFailure); ok {
-			if writeErr := writeIndentedJSONTo(stdout, failure.commandError()); writeErr != nil {
-				return Result{ExitCode: ExitCodeError, Stderr: logutil.Format(logutil.Error("write schema error result: %s", writeErr), rawLogFormat)}
+		if _, ok := err.(*_CommandUnsatisfied); ok {
+			if _, writeErr := io.WriteString(stdout, commandStdout.String()); writeErr != nil {
+				return Result{ExitCode: ExitCodeError, Stderr: logutil.Format(logutil.Error("write command result: %s", writeErr), rawLogFormat)}
 			}
-			return Result{ExitCode: ExitCodeError, Stderr: schemaFailureLogs(failure, rawLogFormat)}
+			return Result{ExitCode: ExitCodeUnsatisfied}
 		}
-		if isSchemaCommand {
-			if writeErr := writeInvalidSchemaCommandErrorTo(stdout, err.Error()); writeErr != nil {
-				return Result{ExitCode: ExitCodeError, Stderr: logutil.Format(logutil.Error("write schema error result: %s", writeErr), rawLogFormat)}
+		if failure, ok := err.(*_CommandFailure); ok {
+			if writeErr := writeJSONTo(stdout, failure.result()); writeErr != nil {
+				return Result{ExitCode: ExitCodeError, Stderr: logutil.Format(logutil.Error("write command error result: %s", writeErr), rawLogFormat)}
+			}
+			return Result{ExitCode: ExitCodeError, Stderr: commandFailureLogs(failure, rawLogFormat)}
+		}
+		if isJSONCommand {
+			failure := &commandresult.Error{Code: commandresult.ErrorCodeInvalidArgument, Message: err.Error()}
+			if writeErr := writeJSONTo(stdout, failure); writeErr != nil {
+				return Result{ExitCode: ExitCodeError, Stderr: logutil.Format(logutil.Error("write command error result: %s", writeErr), rawLogFormat)}
 			}
 			return Result{ExitCode: ExitCodeError}
 		}
@@ -148,12 +142,12 @@ func runCLICommand(command *ucli.Command, args []string, stdin io.Reader, stdout
 		}
 		return Result{ExitCode: ExitCodeError, Stderr: logutil.Format(logutil.Error("%s", err.Error()), rawLogFormat)}
 	}
-	if stderr.Len() > 0 {
+	if stderr.Len() > 0 && !isJSONCommand {
 		return Result{ExitCode: ExitCodeError, Stderr: logutil.Format(logutil.Error("%s", stderr.String()), rawLogFormat)}
 	}
-	if isSchemaCommand {
-		if _, err := io.WriteString(stdout, schemaStdout.String()); err != nil {
-			return Result{ExitCode: ExitCodeError, Stderr: logutil.Format(logutil.Error("write schema result: %s", err), rawLogFormat)}
+	if isJSONCommand {
+		if _, err := io.WriteString(stdout, commandStdout.String()); err != nil {
+			return Result{ExitCode: ExitCodeError, Stderr: logutil.Format(logutil.Error("write command result: %s", err), rawLogFormat)}
 		}
 	}
 	return Result{ExitCode: ExitCodeSuccess, Stderr: stderr.String()}
@@ -207,12 +201,12 @@ func formatErrors(errors []error, format string) string {
 	return output.String()
 }
 
-func printDiagnostics(cmd *ucli.Command, diagnostics []compiler.Diagnostic) {
-	for _, diagnostic := range diagnostics {
-		if diagnostic.Severity != compiler.DiagnosticSeverityWarning {
+func writeWarningLogs(cmd *ucli.Command, diagnostics compiler.Diagnostics) {
+	for _, item := range diagnostics {
+		if item.Severity != compiler.DiagnosticSeverityWarning {
 			continue
 		}
-		_, _ = fmt.Fprint(cmd.Root().Writer, formatDiagnostics(compiler.Diagnostics{diagnostic}, commandLogFormat(cmd)))
+		_, _ = fmt.Fprint(cmd.Root().ErrWriter, formatDiagnostics(compiler.Diagnostics{item}, commandLogFormat(cmd)))
 	}
 }
 
@@ -252,21 +246,6 @@ func rawLogFormatFromArgs(args []string) string {
 		}
 	}
 	return logFormatText
-}
-
-func newOutputFormatFlag(usage string) ucli.Flag {
-	return &ucli.StringFlag{Name: flagOutputFormat, Usage: usage, Value: outputFormatText}
-}
-
-func commandOutputFormat(cmd *ucli.Command) (string, error) {
-	value := cmd.String(flagOutputFormat)
-	if value == "" {
-		return outputFormatText, nil
-	}
-	if value != outputFormatText && value != outputFormatJSON {
-		return "", fmt.Errorf("invalid output-format %q, expected text/json", value)
-	}
-	return value, nil
 }
 
 func parseMappingFlags(values []string, flagName string) (map[string]string, error) {

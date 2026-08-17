@@ -118,16 +118,6 @@ func TestFacadeWireEnums(t *testing.T) {
 			got:  stringsOf(schema.ChangeAdded, schema.ChangeRemoved, schema.ChangeModified),
 			want: []string{"ADDED", "REMOVED", "MODIFIED"},
 		},
-		{
-			name: "command error code",
-			got: stringsOf(
-				schema.ErrorCodeInvalidArgument,
-				schema.ErrorCodeCompilationFailed,
-				schema.ErrorCodeGitHistoryNotFound,
-				schema.ErrorCodeCommandFailed,
-			),
-			want: []string{"INVALID_ARGUMENT", "SCHEMA_COMPILATION_FAILED", "SCHEMA_GIT_HISTORY_NOT_FOUND", "SCHEMA_COMMAND_FAILED"},
-		},
 	}
 
 	for _, test := range tests {

@@ -61,6 +61,17 @@ func TestRunManagedOutputsAbortsOnGenerationFailure(t *testing.T) {
 	assertOutputTestMissing(t, filepath.Join(target, "new.go"))
 }
 
+func TestRunManagedOutputsClassifiesOutputOperations(t *testing.T) {
+	blockedParent := filepath.Join(t.TempDir(), "blocked")
+	writeOutputTestFile(t, blockedParent, "not a directory")
+	err := RunManagedOutputs([]string{filepath.Join(blockedParent, "generated")}, func([]string) error {
+		return nil
+	})
+	if !errors.Is(err, ErrOutputOperation) {
+		t.Fatalf("expected output operation failure, got %v", err)
+	}
+}
+
 func TestManagedOutputPreservesUnmanagedFilesAndRemovesMarkedStaleFiles(t *testing.T) {
 	target := filepath.Join(t.TempDir(), "generated")
 	writeOutputTestFile(t, filepath.Join(target, "user.go"), "user")

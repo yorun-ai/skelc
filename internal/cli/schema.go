@@ -2,13 +2,12 @@ package cli
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 
 	ucli "github.com/urfave/cli/v3"
+	"go.yorun.ai/skelc/internal/command"
 	"go.yorun.ai/skelc/internal/compiler"
 	schemas "go.yorun.ai/skelc/internal/schema"
 )
@@ -48,7 +47,7 @@ func newSchemaListCommand() *ucli.Command {
 		Action: func(_ context.Context, cmd *ucli.Command) error {
 			kind, err := parseSchemaListKind(cmd)
 			if err != nil {
-				return schemaCommandFailure(schemas.ErrorCodeInvalidArgument, err)
+				return commandFailure(command.ErrorCodeInvalidArgument, err)
 			}
 			document, err := loadQuerySchema(cmd)
 			if err != nil {
@@ -69,7 +68,7 @@ func newSchemaGetCommand() *ucli.Command {
 		Action: func(_ context.Context, cmd *ucli.Command) error {
 			kind, skelName, err := parseSchemaGetArguments(cmd)
 			if err != nil {
-				return schemaCommandFailure(schemas.ErrorCodeInvalidArgument, err)
+				return commandFailure(command.ErrorCodeInvalidArgument, err)
 			}
 			document, err := loadQuerySchema(cmd)
 			if err != nil {
@@ -90,15 +89,15 @@ func newSchemaSnapshotCommand() *ucli.Command {
 		},
 		Action: func(_ context.Context, cmd *ucli.Command) error {
 			if cmd.Args().Len() != 0 {
-				return schemaCommandFailure(schemas.ErrorCodeInvalidArgument,
+				return commandFailure(command.ErrorCodeInvalidArgument,
 					fmt.Errorf("unexpected args for %s %s", commandSchema, commandSchemaSnapshot))
 			}
-			document, err := loadSourceSchema(flagSchemaSkelIn, cmd.String(flagSchemaSkelIn))
+			document, err := loadSourceSchema(cmd, flagSchemaSkelIn, cmd.String(flagSchemaSkelIn))
 			if err != nil {
 				return err
 			}
 			if err := schemas.Validate(document); err != nil {
-				return schemaCommandFailure(schemas.ErrorCodeCommandFailed, err)
+				return commandFailure(command.ErrorCodeCommandFailed, err)
 			}
 			return writeSchemaResult(cmd, document, "schema snapshot")
 		},
@@ -115,28 +114,32 @@ func newSchemaDiffCommand() *ucli.Command {
 		},
 		Action: func(ctx context.Context, cmd *ucli.Command) error {
 			if cmd.Args().Len() != 0 {
-				return schemaCommandFailure(schemas.ErrorCodeInvalidArgument,
+				return commandFailure(command.ErrorCodeInvalidArgument,
 					fmt.Errorf("unexpected args for %s %s", commandSchema, commandSchemaDiff))
 			}
 			candidateOption := compiler.Option{SkelIn: cmd.String(flagSchemaSkelIn)}
 			if err := normalizeCompilerOption(&candidateOption); err != nil {
-				return schemaCommandFailure(schemas.ErrorCodeInvalidArgument, err)
+				return commandFailure(command.ErrorCodeInvalidArgument, err)
 			}
 			baselineSkelIn := strings.TrimSpace(cmd.String(flagSchemaBaselineSkelIn))
 			if baselineSkelIn != "" {
 				baselineOption := compiler.Option{SkelIn: baselineSkelIn}
 				if err := normalizeCompilerOption(&baselineOption); err != nil {
-					return schemaCommandFailure(schemas.ErrorCodeInvalidArgument, err)
+					return commandFailure(command.ErrorCodeInvalidArgument, err)
 				}
 				baselineSkelIn = baselineOption.SkelIn
 			}
 			report, err := schemas.DiffSource(ctx, candidateOption.SkelIn, schemas.SourceDiffOption{BaselineSkelIn: baselineSkelIn})
 			if err != nil {
-				if errors.Is(err, schemas.ErrGitHistoryUnavailable) {
-					return schemaCommandFailure(schemas.ErrorCodeGitHistoryNotFound,
+				switch {
+				case errors.Is(err, schemas.ErrGitHistoryUnavailable):
+					return commandFailure(command.ErrorCodeGitHistoryNotFound,
 						fmt.Errorf("%w; pass an explicit --%s", err, flagSchemaBaselineSkelIn))
+				case errors.Is(err, schemas.ErrSourceCompilation):
+					return commandFailure(command.ErrorCodeCompilationFailed, err)
+				default:
+					return commandFailure(command.ErrorCodeCommandFailed, err)
 				}
-				return schemaCommandFailure(schemas.ErrorCodeCommandFailed, err)
 			}
 			return writeSchemaResult(cmd, report, "schema diff")
 		},
@@ -203,111 +206,43 @@ func filterSchemaEntries(entries []*schemas.Entry, kind string) []*schemas.Entry
 func loadQuerySchema(cmd *ucli.Command) (*schemas.Document, error) {
 	option := compiler.Option{SkelIn: cmd.String(flagSchemaSkelIn)}
 	if err := normalizeCompilerOption(&option); err != nil {
-		return nil, schemaCommandFailure(schemas.ErrorCodeInvalidArgument, err)
+		return nil, commandFailure(command.ErrorCodeInvalidArgument, err)
 	}
 	result, err := compiler.CompileImport(option.SkelIn)
 	if err != nil {
-		return nil, schemaCommandFailure(schemas.ErrorCodeCompilationFailed, err)
+		return nil, commandFailure(command.ErrorCodeCompilationFailed, err)
 	}
+	writeWarningLogs(cmd, result.Diagnostics)
 	document, err := schemas.Project(result.Domain, result.ImportAliases)
 	if err != nil {
-		return nil, schemaCommandFailure(schemas.ErrorCodeCommandFailed, err)
+		return nil, commandFailure(command.ErrorCodeCommandFailed, err)
 	}
 	return document, nil
 }
 
-func loadSourceSchema(flagName, skelIn string) (*schemas.Document, error) {
+func loadSourceSchema(cmd *ucli.Command, flagName, skelIn string) (*schemas.Document, error) {
 	if strings.TrimSpace(skelIn) == "" {
-		return nil, schemaCommandFailure(schemas.ErrorCodeInvalidArgument, fmt.Errorf("missing flag %s", flagName))
+		return nil, commandFailure(command.ErrorCodeInvalidArgument, fmt.Errorf("missing flag %s", flagName))
 	}
 	option := compiler.Option{SkelIn: skelIn}
 	if err := normalizeCompilerOption(&option); err != nil {
-		return nil, schemaCommandFailure(schemas.ErrorCodeInvalidArgument, err)
+		return nil, commandFailure(command.ErrorCodeInvalidArgument, err)
 	}
 	shallow, err := compiler.CompileImport(option.SkelIn)
 	if err != nil {
-		return nil, schemaCommandFailure(schemas.ErrorCodeCompilationFailed, err)
+		return nil, commandFailure(command.ErrorCodeCompilationFailed, err)
 	}
+	writeWarningLogs(cmd, shallow.Diagnostics)
 	document, err := schemas.Project(shallow.Domain, shallow.ImportAliases)
 	if err != nil {
-		return nil, schemaCommandFailure(schemas.ErrorCodeCommandFailed, err)
+		return nil, commandFailure(command.ErrorCodeCommandFailed, err)
 	}
 	return document, nil
 }
 
-func writeIndentedJSON(cmd *ucli.Command, value any, context string) error {
-	if err := writeIndentedJSONTo(cmd.Root().Writer, value); err != nil {
-		return fmt.Errorf("encode %s: %w", context, err)
-	}
-	return nil
-}
-
-func writeIndentedJSONTo(writer io.Writer, value any) error {
-	encoder := json.NewEncoder(writer)
-	encoder.SetEscapeHTML(false)
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(value)
-}
-
 func writeSchemaResult(cmd *ucli.Command, value any, context string) error {
-	if err := writeIndentedJSON(cmd, value, context); err != nil {
-		return schemaCommandFailure(schemas.ErrorCodeCommandFailed, err)
+	if err := writeJSONResult(cmd, value, context); err != nil {
+		return commandFailure(command.ErrorCodeCommandFailed, err)
 	}
 	return nil
-}
-
-type _SchemaCommandFailure struct {
-	code  schemas.ErrorCode
-	cause error
-}
-
-func (e *_SchemaCommandFailure) Error() string {
-	return e.cause.Error()
-}
-
-func (e *_SchemaCommandFailure) Unwrap() error {
-	return e.cause
-}
-
-func (e *_SchemaCommandFailure) commandError() *schemas.CommandError {
-	return new(schemas.CommandError{Code: e.code, Message: e.cause.Error()})
-}
-
-func schemaCommandFailure(code schemas.ErrorCode, err error) error {
-	if failure, ok := err.(*_SchemaCommandFailure); ok {
-		return failure
-	}
-	return new(_SchemaCommandFailure{code: code, cause: err})
-}
-
-func schemaFailureLogs(failure *_SchemaCommandFailure, format string) string {
-	if diagnostics, ok := failure.cause.(interface{ DiagnosticEntries() compiler.Diagnostics }); ok {
-		return formatDiagnostics(diagnostics.DiagnosticEntries(), format)
-	}
-	if diagnostics, ok := failure.cause.(interface{ Errors() []error }); ok {
-		return formatErrors(diagnostics.Errors(), format)
-	}
-	return ""
-}
-
-func schemaCommandRequested(args []string) bool {
-	for index := 1; index < len(args); index++ {
-		arg := args[index]
-		if arg == "--"+flagLogFormat {
-			index++
-			continue
-		}
-		if strings.HasPrefix(arg, "--"+flagLogFormat+"=") {
-			continue
-		}
-		return arg == commandSchema
-	}
-	return false
-}
-
-func writeInvalidSchemaCommandErrorTo(writer io.Writer, message string) error {
-	return writeIndentedJSONTo(writer, new(schemas.CommandError{
-		Code:    schemas.ErrorCodeInvalidArgument,
-		Message: message,
-	}))
 }

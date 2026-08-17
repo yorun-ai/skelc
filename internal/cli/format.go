@@ -3,12 +3,13 @@ package cli
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	ucli "github.com/urfave/cli/v3"
+	"go.yorun.ai/skelc/internal/command"
 	"go.yorun.ai/skelc/internal/formatter"
 	"go.yorun.ai/skelc/internal/loader"
 	"go.yorun.ai/skelc/internal/parser"
@@ -23,21 +24,22 @@ const (
 )
 
 type _FormatOption struct {
-	skelIn       string
-	check        bool
-	outputFormat string
+	skelIn string
+	check  bool
 }
 
-type _FormatResult struct {
-	Changed bool     `json:"changed"`
-	Files   []string `json:"files"`
-}
+type _FormatResult = command.FormatResult
 
 type _FormattedFile struct {
 	path     string
 	original []byte
 	content  []byte
 }
+
+type _FormatCompilationError struct{ cause error }
+
+func (e *_FormatCompilationError) Error() string { return e.cause.Error() }
+func (e *_FormatCompilationError) Unwrap() error { return e.cause }
 
 func newFormatCommand() *ucli.Command {
 	return &ucli.Command{
@@ -46,22 +48,26 @@ func newFormatCommand() *ucli.Command {
 		Flags: []ucli.Flag{
 			&ucli.StringFlag{Name: flagFormatSkelIn, Usage: "skeleton input file or directory"},
 			&ucli.BoolFlag{Name: flagFormatCheck, Usage: "check formatting without modifying files"},
-			newOutputFormatFlag("format result output format: text/json"),
 		},
 		Action: func(_ context.Context, cmd *ucli.Command) error {
 			option, err := parseFormatCommand(cmd)
 			if err != nil {
-				return err
+				return commandFailure(command.ErrorCodeInvalidArgument, err)
 			}
 			result, err := formatFiles(option)
 			if err != nil {
-				return err
+				code := command.ErrorCodeCommandFailed
+				var compilationError *_FormatCompilationError
+				if errors.As(err, &compilationError) {
+					code = command.ErrorCodeCompilationFailed
+				}
+				return commandFailure(code, err)
 			}
-			if err := writeFormatResult(cmd, option, result); err != nil {
-				return err
+			if err := writeFormatResult(cmd, result); err != nil {
+				return commandFailure(command.ErrorCodeCommandFailed, err)
 			}
 			if option.check && result.Changed {
-				return fmt.Errorf("%d Skel file(s) require formatting", len(result.Files))
+				return commandUnsatisfied()
 			}
 			return nil
 		},
@@ -80,23 +86,19 @@ func parseFormatCommand(cmd *ucli.Command) (_FormatOption, error) {
 	if err != nil {
 		return _FormatOption{}, fmt.Errorf("resolve path %s: %w", skelIn, err)
 	}
-	outputFormat, err := commandOutputFormat(cmd)
-	if err != nil {
-		return _FormatOption{}, err
-	}
-	return _FormatOption{skelIn: path, check: cmd.Bool(flagFormatCheck), outputFormat: outputFormat}, nil
+	return _FormatOption{skelIn: path, check: cmd.Bool(flagFormatCheck)}, nil
 }
 
 func formatFiles(option _FormatOption) (_FormatResult, error) {
 	loadResult, err := loader.Load(option.skelIn)
 	if err != nil {
-		return _FormatResult{}, err
+		return _FormatResult{}, &_FormatCompilationError{cause: err}
 	}
 	sourceFiles := loadResult.Files
 	formattedFiles := make([]_FormattedFile, 0, len(sourceFiles))
 	for _, sourceFile := range sourceFiles {
 		if err := parser.ValidateSource(sourceFile.FilePath, sourceFile.Content); err != nil {
-			return _FormatResult{}, err
+			return _FormatResult{}, &_FormatCompilationError{cause: err}
 		}
 		formatted, err := formatter.Source(sourceFile.Content)
 		if err != nil {
@@ -146,20 +148,6 @@ func formatFiles(option _FormatOption) (_FormatResult, error) {
 	return result, nil
 }
 
-func writeFormatResult(cmd *ucli.Command, option _FormatOption, result _FormatResult) error {
-	if option.outputFormat == outputFormatJSON {
-		content, err := json.MarshalIndent(result, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal format result: %w", err)
-		}
-		_, _ = fmt.Fprintf(cmd.Root().Writer, "%s\n", content)
-		return nil
-	}
-	if !option.check {
-		return nil
-	}
-	for _, path := range result.Files {
-		_, _ = fmt.Fprintln(cmd.Root().Writer, path)
-	}
-	return nil
+func writeFormatResult(cmd *ucli.Command, result _FormatResult) error {
+	return writeJSONResult(cmd, result, "format result")
 }

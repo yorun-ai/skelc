@@ -1,45 +1,15 @@
 package cli
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	ucli "github.com/urfave/cli/v3"
+	"go.yorun.ai/skelc/internal/command"
 	schemas "go.yorun.ai/skelc/internal/schema"
 )
-
-type _ErrorWriter struct {
-	err error
-}
-
-func (w _ErrorWriter) Write([]byte) (int, error) {
-	return 0, w.err
-}
-
-func TestWriteIndentedJSONUsesStableEncoding(t *testing.T) {
-	var output bytes.Buffer
-	cmd := &ucli.Command{Writer: &output}
-	if err := writeIndentedJSON(cmd, map[string]string{"value": "<>&"}, "test value"); err != nil {
-		t.Fatal(err)
-	}
-	if output.String() != "{\n  \"value\": \"<>&\"\n}\n" {
-		t.Fatalf("unexpected JSON output:\n%s", output.String())
-	}
-}
-
-func TestWriteIndentedJSONReturnsWriterErrors(t *testing.T) {
-	want := errors.New("write failed")
-	cmd := &ucli.Command{Writer: _ErrorWriter{err: want}}
-	err := writeIndentedJSON(cmd, map[string]string{"value": "test"}, "test value")
-	if !errors.Is(err, want) {
-		t.Fatalf("expected writer error, got %v", err)
-	}
-}
 
 func TestRunSkelcSchemaListAndGet(t *testing.T) {
 	dir := t.TempDir()
@@ -76,9 +46,9 @@ pub resource User {
 	}
 
 	missingTypeResult := Run([]string{"schema", "get", "demo.user.User", "--skel-in", dir})
-	missingTypeError := decodeSchemaCommandError(t, missingTypeResult)
+	missingTypeError := decodeCommandError(t, missingTypeResult)
 	if missingTypeResult.ExitCode != ExitCodeError || missingTypeResult.Stderr != "" ||
-		missingTypeError.Code != schemas.ErrorCodeInvalidArgument || !strings.Contains(missingTypeError.Message, "expected TYPE SKEL_NAME") {
+		missingTypeError.Code != command.ErrorCodeInvalidArgument || !strings.Contains(missingTypeError.Message, "expected TYPE SKEL_NAME") {
 		t.Fatalf("expected missing type error: %+v", missingTypeResult)
 	}
 
@@ -109,11 +79,32 @@ func TestRunSkelcSchemaQueryRejectsInvalidType(t *testing.T) {
 		{"schema", "get", "unknown", "demo.user.User", "--skel-in", dir},
 	} {
 		result := Run(args)
-		commandError := decodeSchemaCommandError(t, result)
+		commandError := decodeCommandError(t, result)
 		if result.ExitCode != ExitCodeError || result.Stderr != "" ||
-			commandError.Code != schemas.ErrorCodeInvalidArgument || !strings.Contains(commandError.Message, "invalid schema declaration type") {
+			commandError.Code != command.ErrorCodeInvalidArgument || !strings.Contains(commandError.Message, "invalid schema declaration type") {
 			t.Fatalf("expected invalid type error for %v: %+v", args, result)
 		}
+	}
+}
+
+func TestRunSkelcSchemaKeepsWarningsOnStderr(t *testing.T) {
+	dir := t.TempDir()
+	writeCLIFile(t, filepath.Join(dir, "domain.skel"), `domain demo.user`)
+	writeCLIFile(t, filepath.Join(dir, ".hidden.skel"), `domain demo.user`)
+
+	result := Run([]string{"--log-format", "jsonl", "schema", "list", "--skel-in", dir})
+	var entries []*schemas.Entry
+	if err := json.Unmarshal([]byte(result.Stdout), &entries); err != nil {
+		t.Fatalf("decode schema result: %v\n%s", err, result.Stdout)
+	}
+	logEntry := new(struct {
+		Level string `json:"level"`
+	})
+	if err := json.Unmarshal([]byte(strings.TrimSpace(result.Stderr)), logEntry); err != nil {
+		t.Fatalf("decode schema log: %v\n%s", err, result.Stderr)
+	}
+	if result.ExitCode != ExitCodeSuccess || len(entries) != 0 || logEntry.Level != logLevelWarn {
+		t.Fatalf("unexpected schema result: %+v", result)
 	}
 }
 
@@ -121,22 +112,26 @@ func TestRunSkelcSchemaErrorsUseStdoutResult(t *testing.T) {
 	invalidSource := t.TempDir()
 	writeCLIFile(t, filepath.Join(invalidSource, "domain.skel"), "domain demo.user")
 	writeCLIFile(t, filepath.Join(invalidSource, "data.skel"), "domain demo.user\n\ndata User { id string }")
+	validSource := t.TempDir()
+	writeCLIFile(t, filepath.Join(validSource, "domain.skel"), "domain demo.user")
 
 	for _, test := range []struct {
 		name string
 		args []string
-		code schemas.ErrorCode
+		code command.ErrorCode
 	}{
-		{name: "snapshot argument", args: []string{"schema", "snapshot"}, code: schemas.ErrorCodeInvalidArgument},
-		{name: "diff argument", args: []string{"schema", "diff"}, code: schemas.ErrorCodeInvalidArgument},
-		{name: "compilation", args: []string{"schema", "list", "--skel-in", invalidSource}, code: schemas.ErrorCodeCompilationFailed},
+		{name: "snapshot argument", args: []string{"schema", "snapshot"}, code: command.ErrorCodeInvalidArgument},
+		{name: "diff argument", args: []string{"schema", "diff"}, code: command.ErrorCodeInvalidArgument},
+		{name: "compilation", args: []string{"schema", "list", "--skel-in", invalidSource}, code: command.ErrorCodeCompilationFailed},
+		{name: "diff candidate compilation", args: []string{"schema", "diff", "--baseline-skel-in", validSource, "--skel-in", invalidSource}, code: command.ErrorCodeCompilationFailed},
+		{name: "diff baseline compilation", args: []string{"schema", "diff", "--baseline-skel-in", invalidSource, "--skel-in", validSource}, code: command.ErrorCodeCompilationFailed},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			result := Run(test.args)
 			if result.ExitCode != ExitCodeError {
 				t.Fatalf("expected error result: %+v", result)
 			}
-			commandError := decodeSchemaCommandError(t, result)
+			commandError := decodeCommandError(t, result)
 			if commandError.Code != test.code || commandError.Message == "" {
 				t.Fatalf("unexpected command error: %+v", commandError)
 			}
@@ -151,9 +146,9 @@ func TestRunSkelcSchemaParserErrorsUseStdoutResult(t *testing.T) {
 		{"--log-format", "unknown", "schema", "list"},
 	} {
 		result := Run(args)
-		commandError := decodeSchemaCommandError(t, result)
+		commandError := decodeCommandError(t, result)
 		if result.ExitCode != ExitCodeError || result.Stderr != "" ||
-			commandError.Code != schemas.ErrorCodeInvalidArgument || commandError.Message == "" {
+			commandError.Code != command.ErrorCodeInvalidArgument || commandError.Message == "" {
 			t.Fatalf("expected structured parser error for %v: %+v", args, result)
 		}
 	}
@@ -405,9 +400,9 @@ func TestRunSkelcSchemaDiffRequiresBaselineWithoutGitHistory(t *testing.T) {
 	writeCLIFile(t, filepath.Join(dir, "domain.skel"), "domain demo.user")
 
 	result := Run([]string{"schema", "diff", "--skel-in", dir})
-	commandError := decodeSchemaCommandError(t, result)
+	commandError := decodeCommandError(t, result)
 	if result.ExitCode != ExitCodeError || result.Stderr != "" ||
-		commandError.Code != schemas.ErrorCodeGitHistoryNotFound ||
+		commandError.Code != command.ErrorCodeGitHistoryNotFound ||
 		!strings.Contains(commandError.Message, "git history not found") ||
 		!strings.Contains(commandError.Message, "--baseline-skel-in") {
 		t.Fatalf("expected missing Git history guidance: %+v", result)
@@ -442,21 +437,12 @@ pub data User {
 `)
 
 	result := Run([]string{"schema", "diff", "--skel-in", skelDir})
-	commandError := decodeSchemaCommandError(t, result)
-	if result.ExitCode != ExitCodeError || commandError.Code != schemas.ErrorCodeCommandFailed ||
+	commandError := decodeCommandError(t, result)
+	if result.ExitCode != ExitCodeError || commandError.Code != command.ErrorCodeCompilationFailed ||
 		!strings.Contains(commandError.Message, "HEAD:skel/data.skel") ||
 		strings.Contains(commandError.Message, "skelc-schema-baseline-") {
 		t.Fatalf("expected stable Git baseline error path: %+v", result)
 	}
-}
-
-func decodeSchemaCommandError(t *testing.T, result Result) *schemas.CommandError {
-	t.Helper()
-	commandError := new(schemas.CommandError)
-	if err := json.Unmarshal([]byte(result.Stdout), commandError); err != nil {
-		t.Fatalf("decode schema command error: %v\n%s", err, result.Stdout)
-	}
-	return commandError
 }
 
 func runSchemaGitCommand(t *testing.T, directory string, args ...string) {

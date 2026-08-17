@@ -11,22 +11,6 @@ const (
 	FormatVersion = 1
 )
 
-// ErrorCode identifies a schema command failure for programmatic consumers.
-type ErrorCode string
-
-const (
-	ErrorCodeInvalidArgument    ErrorCode = "INVALID_ARGUMENT"
-	ErrorCodeCompilationFailed  ErrorCode = "SCHEMA_COMPILATION_FAILED"
-	ErrorCodeGitHistoryNotFound ErrorCode = "SCHEMA_GIT_HISTORY_NOT_FOUND"
-	ErrorCodeCommandFailed      ErrorCode = "SCHEMA_COMMAND_FAILED"
-)
-
-// CommandError is emitted on stdout when a schema command fails.
-type CommandError struct {
-	Code    ErrorCode `json:"code"`
-	Message string    `json:"message"`
-}
-
 // DeclarationType identifies a top-level Skel declaration in schema JSON.
 type DeclarationType string
 

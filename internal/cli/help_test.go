@@ -14,9 +14,6 @@ func TestRunSkelcHelpShowsSubcommandOptions(t *testing.T) {
 	if !strings.Contains(result.Stdout, "gen") {
 		t.Fatalf("unexpected stdout: %q", result.Stdout)
 	}
-	if !strings.Contains(result.Stdout, "symbol") {
-		t.Fatalf("unexpected stdout: %q", result.Stdout)
-	}
 	if !strings.Contains(result.Stdout, "schema") {
 		t.Fatalf("unexpected stdout: %q", result.Stdout)
 	}
@@ -50,22 +47,6 @@ func TestRunSkelcSchemaHelpShowsSubcommandsAndOptions(t *testing.T) {
 		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
 	}
 	for _, expected := range []string{"list [TYPE]", "get TYPE SKEL_NAME", "list OPTIONS:", "get OPTIONS:", "snapshot OPTIONS:", "diff OPTIONS:", "--baseline-skel-in"} {
-		if !strings.Contains(result.Stdout, expected) {
-			t.Fatalf("expected %q in stdout: %q", expected, result.Stdout)
-		}
-	}
-}
-
-func TestRunSkelcSymbolHelpMarksSubcommandsDeprecated(t *testing.T) {
-	result := Run([]string{"symbol", "--help"})
-
-	if result.ExitCode != ExitCodeSuccess {
-		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
-	}
-	for _, expected := range []string{
-		"deprecated: list skel symbols; use schema list",
-		"deprecated: get a skel symbol; use schema get",
-	} {
 		if !strings.Contains(result.Stdout, expected) {
 			t.Fatalf("expected %q in stdout: %q", expected, result.Stdout)
 		}

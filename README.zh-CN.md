@@ -169,10 +169,11 @@ skelc schema snapshot --skel-in ./skel > ./user.schema.json
 skelc schema diff --skel-in ./skel
 skelc schema diff --baseline-skel-in ./previous/skel --skel-in ./skel
 skelc format --skel-in ./skel
-skelc format --check --output-format json --skel-in ./skel
+skelc format --check --skel-in ./skel
 ```
 
-所有 `schema` 子命令都输出格式化 JSON。`schema list` 返回声明摘要 JSON 数组，
+除 LSP 外，所有命令都在 stdout 输出一个格式化 JSON 结果；help 保持文本，LSP
+使用 JSON-RPC。`schema list` 返回声明摘要 JSON 数组，
 `schema get TYPE SKEL_NAME` 返回单个完整的规范化声明对象；声明不存在时
 返回 JSON `null`，两者都属于成功查询。所有 schema 命令都
 处理完整 domain，每个声明继续保留自己的 `pub` 标记。
@@ -188,15 +189,24 @@ skelc format --check --output-format json --skel-in ./skel
 Skel 源文件或目录，不接受快照作为输入。`--skel-in` 指定 candidate；省略 `--baseline-skel-in` 时，skelc
 会查找 candidate 所在的 Git 仓库并读取 `HEAD` 中同一路径的内容，因此默认比较
 最近一次已提交版本和当前工作区。如果仓库、提交历史或 `HEAD` 中的目标路径不
-存在，需要显式传入 `--baseline-skel-in`。schema 命令正常完成时返回退出码 `0`。
-真正的命令失败会返回非零退出码，并在 stdout 输出只包含稳定 `code` 和
-供人阅读的 `message` 的 JSON 对象；stderr 只保留零到多条日志和诊断。
-无论兼容性结论如何，diff 完成后都返回退出码 `0`。现有脚本仍可继续使用
-`symbol list/get`，但它们已经是兼容保留的废弃入口。
+存在，需要显式传入 `--baseline-skel-in`。满足预期的结果返回退出码 `0`；
+`check` 和 `format --check` 完成但检查未通过时返回 `1`；真正的命令失败返回 `2`，
+并在 stdout 输出只包含稳定 `code` 和供人阅读的 `message` 的 JSON 对象；stderr
+只保留零到多条日志和诊断。公开结果和错误类型由
+`go.yorun.ai/skelc/command` 提供。无论兼容性结论如何，diff 完成后都返回退出码
+`0`。
 
-`format` 会在验证全部输入后原地修改文件。使用 `--check` 可以只报告格式不规范的文件并以非零状态退出，不修改文件；`--output-format json` 会返回机器可读的变更结果。格式化会先暂存所有待修改文件，再统一提交，保留文件所有者、mode 和平台支持的扩展元数据；如果后续写入或持久化同步失败，已经替换的文件会被恢复。它采用唯一的规范样式：四空格缩进、紧凑的类型与权限标点、字段和参数冒号后保留一个空格、空块保持紧凑，以及顶层声明之间保留一个空行；声明顺序、注释内容和字符串值不会改变。工具集成可以使用全局参数 `--log-format jsonl` 获取机器可读诊断。
+`format` 会在验证全部输入后原地修改文件并返回 `{changed,files}`。使用 `--check`
+可以只报告格式不规范的文件并以退出码 `1` 结束，不修改文件。格式化会先暂存所有
+待修改文件，再统一提交，保留文件所有者、mode 和平台支持的扩展元数据；如果后续
+写入或持久化同步失败，已经替换的文件会被恢复。它采用唯一的规范样式：四空格缩进、
+紧凑的类型与权限标点、字段和参数冒号后保留一个空格、空块保持紧凑，以及顶层声明
+之间保留一个空行；声明顺序、注释内容和字符串值不会改变。
 
-`check` 会在声明、block 成员、右花括号和 decorator 边界恢复解析，单次运行可为每个 domain 报告最多 50 条相互独立的语法与语义诊断。无效声明会被隔离，避免产生依赖级联错误。JSONL 诊断包含稳定 code、severity、精确 range、关联位置和可选修复建议。
+`check` 返回 `{valid,diagnostics}`。它会在声明、block 成员、右花括号和 decorator
+边界恢复解析，单次运行可为每个 domain 报告最多 50 条相互独立的语法与语义诊断。
+无效声明会被隔离，避免产生依赖级联错误。诊断包含稳定 code、severity、精确 range、
+关联位置和可选修复建议。
 
 `skelc lsp` 提供可恢复的语法与工作区级语义诊断、诊断快速修复、编辑器格式化、关键字与类型补全、声明悬停信息、层级文档与工作区符号、定义与引用跳转，以及安全的顶层声明重命名。它还提供 schema 兼容性诊断、CodeLens 入口和 `skel.schema.diff` 执行命令。兼容性检查会把当前内存中的 domain 与同一源目录在 Git `HEAD` 中的内容比较，也可以使用显式配置的 baseline。`BREAKING`、`DANGEROUS` 和可选的 `COMPATIBLE` 变化分别映射为 warning、information 和 hint 诊断；命令始终返回完整的结构化报告。重复声明会把首次声明作为关联位置返回。语义分析直接使用全部文档当前的内存内容，并且只合并同一源目录内属于同一 domain 的文件。与 `skelc check` 一样，LSP 不解析 import；完整 import 图校验由带有显式 import 路径映射的生成流程完成。解析后的语法树会被缓存，已经过期的分析任务会立即取消。
 
@@ -254,7 +264,6 @@ check          校验 Skel 定义
 format         原地格式化 Skel 定义
 lsp            通过标准输入输出运行 Skel 语言服务器
 schema         列出、查询、生成快照或查看语义 schema 差异
-symbol         废弃的 schema 查询兼容命令
 gen skel       生成公开 Skel 契约
 gen go         在现有 Go module 中生成代码
 gen go-module  生成独立 Go module

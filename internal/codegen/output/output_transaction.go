@@ -26,6 +26,17 @@ type _OutputCommit struct {
 	targetExisted        bool
 }
 
+// ErrOutputOperation identifies staging or commit failures outside generator
+// compilation.
+var ErrOutputOperation = errors.New("generated output operation failed")
+
+func outputOperationError(err error) error {
+	if err == nil || errors.Is(err, ErrOutputOperation) {
+		return err
+	}
+	return fmt.Errorf("%w: %w", ErrOutputOperation, err)
+}
+
 // RunManagedOutputs stages every non-empty target, runs generate with matching
 // staging paths, and commits all outputs as one transaction. A generation or
 // commit failure leaves target outputs unchanged.
@@ -43,7 +54,7 @@ func RunManagedOutputs(targets []string, generate func([]string) error) error {
 		}
 		output, err := NewManagedOutput(target)
 		if err != nil {
-			return err
+			return outputOperationError(err)
 		}
 		outputs = append(outputs, output)
 		stagePaths[index] = output.StageDir()
@@ -51,7 +62,7 @@ func RunManagedOutputs(targets []string, generate func([]string) error) error {
 	if err := generate(stagePaths); err != nil {
 		return err
 	}
-	return CommitManagedOutputs(outputs)
+	return outputOperationError(CommitManagedOutputs(outputs))
 }
 
 func (o *ManagedOutput) Commit() error {

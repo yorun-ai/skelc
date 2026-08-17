@@ -10,9 +10,11 @@ import (
 
 var serveLSP = lsp.Serve
 
+const commandLSP = "lsp"
+
 func newLSPCommand() *ucli.Command {
 	return &ucli.Command{
-		Name:  "lsp",
+		Name:  commandLSP,
 		Usage: "run the Skel language server over standard input and output",
 		Action: func(ctx context.Context, cmd *ucli.Command) error {
 			return serveLSP(ctx, commandReader(cmd), cmd.Writer)

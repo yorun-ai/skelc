@@ -20,13 +20,13 @@ func TestRunSkelcGenGo(t *testing.T) {
 	assertGenerationResult(t, result)
 }
 
-func TestRunSkelcGenGoWritesWarningsToJSONLLogs(t *testing.T) {
+func TestRunSkelcGenGoWritesWarningsToDefaultJSONLLogs(t *testing.T) {
 	dir := t.TempDir()
 	goOut := filepath.Join(t.TempDir(), "skeled")
 	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
 	writeCLIFile(t, dir+"/.hidden.skel", `domain demo.user`)
 
-	result := Run([]string{"--log-format", "jsonl", "gen", "go", "--skel-in", dir, "--go-out", goOut})
+	result := Run([]string{"gen", "go", "--skel-in", dir, "--go-out", goOut})
 	generated := new(command.GenerationResult)
 	if err := json.Unmarshal([]byte(result.Stdout), generated); err != nil {
 		t.Fatal(err)
@@ -42,6 +42,19 @@ func TestRunSkelcGenGoWritesWarningsToJSONLLogs(t *testing.T) {
 	if result.ExitCode != ExitCodeSuccess || !generated.Generated ||
 		warning.Level != "warn" || warning.Code != "loader.ignored-hidden-file" || warning.Severity != "warning" {
 		t.Fatalf("unexpected generation result: %+v", result)
+	}
+}
+
+func TestRunSkelcGenGoSupportsTextLogs(t *testing.T) {
+	dir := t.TempDir()
+	goOut := filepath.Join(t.TempDir(), "skeled")
+	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
+	writeCLIFile(t, dir+"/.hidden.skel", `domain demo.user`)
+
+	result := Run([]string{"--log-format", "text", "gen", "go", "--skel-in", dir, "--go-out", goOut})
+	if result.ExitCode != ExitCodeSuccess || !strings.HasPrefix(result.Stderr, "[W] ") ||
+		!strings.Contains(result.Stderr, ".hidden.skel ignored (HIDDEN_FILE)") {
+		t.Fatalf("unexpected text generation log: %+v", result)
 	}
 }
 

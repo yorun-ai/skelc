@@ -92,7 +92,7 @@ func TestRunSkelcSchemaKeepsWarningsOnStderr(t *testing.T) {
 	writeCLIFile(t, filepath.Join(dir, "domain.skel"), `domain demo.user`)
 	writeCLIFile(t, filepath.Join(dir, ".hidden.skel"), `domain demo.user`)
 
-	result := Run([]string{"--log-format", "jsonl", "schema", "list", "--skel-in", dir})
+	result := Run([]string{"schema", "list", "--skel-in", dir})
 	var entries []*schemas.Entry
 	if err := json.Unmarshal([]byte(result.Stdout), &entries); err != nil {
 		t.Fatalf("decode schema result: %v\n%s", err, result.Stdout)

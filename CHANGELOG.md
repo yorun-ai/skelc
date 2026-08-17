@@ -14,7 +14,8 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
   non-fatal diagnostics to stderr, and `schema get` returns JSON `null` when absent.
   Exit codes distinguish success (`0`), a completed unsatisfied check (`1`),
   and command failure (`2`); failures emit a stable `{code,message}` JSON object
-  while stderr remains reserved for logs and diagnostics
+  while stderr remains reserved for logs and diagnostics. stderr logs now
+  default to JSONL; `--log-format text` selects human-readable text
 - Added the public `go.yorun.ai/skelc/command` facade for command results, error
   codes, and exit-code constants
 

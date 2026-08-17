@@ -70,7 +70,7 @@ func newCommand() *ucli.Command {
 		CustomHelpTemplate:            groupCommandHelpTemplate,
 		CustomRootCommandHelpTemplate: groupCommandHelpTemplate,
 		Flags: []ucli.Flag{
-			&ucli.StringFlag{Name: flagLogFormat, Usage: "log output format: text/jsonl", Value: logFormatText},
+			&ucli.StringFlag{Name: flagLogFormat, Usage: "log output format: jsonl/text", Value: logFormatJSONL},
 		},
 		Before: func(ctx context.Context, cmd *ucli.Command) (context.Context, error) {
 			return ctx, validateLogFormat(cmd)
@@ -216,17 +216,17 @@ func commandLogFormat(cmd *ucli.Command) string {
 		value = cmd.Root().String(flagLogFormat)
 	}
 	if value == "" {
-		return logFormatText
+		return logFormatJSONL
 	}
 	return value
 }
 
 func normalizeLogFormat(value string) (string, error) {
 	if value == "" {
-		return logFormatText, nil
+		return logFormatJSONL, nil
 	}
 	if value != logFormatText && value != logFormatJSONL {
-		return "", fmt.Errorf("invalid log-format %q, expected text/jsonl", value)
+		return "", fmt.Errorf("invalid log-format %q, expected jsonl/text", value)
 	}
 	return value, nil
 }
@@ -245,7 +245,7 @@ func rawLogFormatFromArgs(args []string) string {
 			return value
 		}
 	}
-	return logFormatText
+	return logFormatJSONL
 }
 
 func parseMappingFlags(values []string, flagName string) (map[string]string, error) {

@@ -202,7 +202,8 @@ A satisfied result returns exit code `0`; `check` and `format --check` return
 `1` after completing with an unsatisfied result, and a command failure returns
 `2`. Failures write a JSON object containing stable `code` and human-readable
 `message` fields to stdout; stderr is reserved for zero or more logs and
-diagnostics. A completed diff returns exit code `0` regardless of its
+diagnostics, encoded as JSONL by default. Use `--log-format text` for
+human-readable stderr. A completed diff returns exit code `0` regardless of its
 compatibility result. Public result and error types are available from
 `go.yorun.ai/skelc/command`.
 

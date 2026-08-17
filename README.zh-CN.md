@@ -192,7 +192,8 @@ Skel 源文件或目录，不接受快照作为输入。`--skel-in` 指定 candi
 存在，需要显式传入 `--baseline-skel-in`。满足预期的结果返回退出码 `0`；
 `check` 和 `format --check` 完成但检查未通过时返回 `1`；真正的命令失败返回 `2`，
 并在 stdout 输出只包含稳定 `code` 和供人阅读的 `message` 的 JSON 对象；stderr
-只保留零到多条日志和诊断。公开结果和错误类型由
+只保留零到多条日志和诊断，默认使用 JSONL；需要人类可读的 stderr 时使用
+`--log-format text`。公开结果和错误类型由
 `go.yorun.ai/skelc/command` 提供。无论兼容性结论如何，diff 完成后都返回退出码
 `0`。
 

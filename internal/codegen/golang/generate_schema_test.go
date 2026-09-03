@@ -76,3 +76,97 @@ func TestGeneratorGoRendersSchemaFile(t *testing.T) {
 		t.Fatalf("expected pub schema actor via, got:\n%s", string(goSchemaContent))
 	}
 }
+
+// TestGeneratorGoSchemaHasNoBlankLineBeforeFields guards against stray blank
+// lines being emitted before schema fields such as Hash and Type. Each
+// conditional field block renders onto its own line, and a blank line at the
+// composite-literal level would be preserved by gofmt, so the templates must
+// trim leading whitespace around the optional deprecated-fields block.
+func TestGeneratorGoSchemaHasNoBlankLineBeforeFields(t *testing.T) {
+	goOutDir := filepath.Join(t.TempDir(), "skeled")
+
+	userData := &model.Data{
+		Pub:         true,
+		Name:        "User",
+		Description: "User record",
+		Members: []*model.DataMember{
+			{Name: "id", Type: stringTypeForTest()},
+			{Name: "status", Sensitive: true, Type: scalarTypeForTest(model.ScalarInt)},
+		},
+	}
+
+	pkg := newModelDomainForTest(t, model.DomainSpec{
+		Name: "demo.user",
+		Data: []*model.Data{
+			userData,
+		},
+		Configs: []*model.Data{
+			{
+				Pub:       true,
+				Name:      "AppConfig",
+				Lifecycle: model.ConfigLifecycleEternal,
+				Members: []*model.DataMember{
+					{Name: "title", Type: stringTypeForTest()},
+				},
+			},
+		},
+		Enums: []*model.Enum{
+			{Name: "Status", Items: []*model.EnumItem{{Name: "ACTIVE"}}},
+		},
+		Actors: []*model.Actor{
+			{Pub: true, Name: "ClientActor", Vias: []*model.ActorVia{actorViaForTest(model.ActorViaClient)}},
+		},
+		Services: []*model.Service{
+			{
+				Pub:       true,
+				Name:      "UserService",
+				Audiences: []*model.ActorAudience{{Actor: "ClientActor", Via: string(model.ActorViaClient)}},
+				Methods: []*model.Method{
+					methodForTest("UserService", &model.Method{Name: "getUser", ResultType: dataTypeForTest(userData)}),
+				},
+			},
+		},
+		Tasks: []*model.Task{
+			{
+				Name: "RebuildTask",
+				Triggers: []*model.TaskTrigger{
+					triggerForTest("RebuildTask", &model.TaskTrigger{
+						Name:      "atTime",
+						Arguments: []*model.Argument{{Name: "startAt", Type: localDateTimeTypeForTest()}},
+					}),
+				},
+			},
+		},
+		Events: []*model.Data{
+			{
+				Name: "UserCreated",
+				Members: []*model.DataMember{
+					{Name: "userId", Type: stringTypeForTest()},
+				},
+			},
+		},
+	})
+
+	golang.Generate(pkg, golang.Option{Out: goOutDir})
+
+	goSchemaContent := readFileForTest(t, filepath.Join(goOutDir, "schema.go"))
+	assertNoBlankLineBeforeSchemaField(t, goSchemaContent, "Hash:")
+	assertNoBlankLineBeforeSchemaField(t, goSchemaContent, "Type:")
+	assertNoBlankLineBeforeSchemaField(t, goSchemaContent, "SkelName:")
+}
+
+// assertNoBlankLineBeforeSchemaField reports a failure when any schema field
+// line (identified by fieldPrefix) is immediately preceded by a blank line.
+func assertNoBlankLineBeforeSchemaField(t *testing.T, content string, fieldPrefix string) {
+	t.Helper()
+	lines := strings.Split(content, "\n")
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, fieldPrefix) {
+			continue
+		}
+		if i > 0 && strings.TrimSpace(lines[i-1]) == "" {
+			t.Fatalf("unexpected blank line before schema field %q at line %d:\n%s", fieldPrefix, i+1, content)
+		}
+	}
+}

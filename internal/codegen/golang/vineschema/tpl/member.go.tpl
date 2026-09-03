@@ -4,7 +4,7 @@
 	{{- if .Description }}
 	Description: {{ quote .Description }},
 	{{- end }}
-	{{ template "deprecatedFields" . }}
+	{{- template "deprecatedFields" . }}
 	{{- if .Example }}
 	Example: {{ quote .Example }},
 	{{- end }}

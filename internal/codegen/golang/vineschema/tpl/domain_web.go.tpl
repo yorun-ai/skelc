@@ -8,7 +8,7 @@
 			{{- if $web.Description }}
 			Description: {{ quote $web.Description }},
 			{{- end }}
-			{{ template "deprecatedFields" $web }}
+			{{- template "deprecatedFields" $web }}
 			Hash: {{ quote $web.Hash }},
 			{{- if $web.Audiences }}
 			Audiences: []*skel.ActorAudienceSchema{

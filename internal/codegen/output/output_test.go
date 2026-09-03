@@ -1,7 +1,6 @@
 package output
 
 import (
-	"encoding/json"
 	"errors"
 	"io"
 	"io/fs"
@@ -43,7 +42,6 @@ func TestRunManagedOutputsStagesAlignedOutputsAndCommits(t *testing.T) {
 	}
 	assertOutputTestContent(t, filepath.Join(firstTarget, "generated.go"), "regular")
 	assertOutputTestContent(t, filepath.Join(secondTarget, "generated.go"), "public")
-	assertOutputTestMissing(t, filepath.Join(firstTarget, legacyOutputManifestName))
 }
 
 func TestRunManagedOutputsAbortsOnGenerationFailure(t *testing.T) {
@@ -92,7 +90,6 @@ func TestManagedOutputPreservesUnmanagedFilesAndRemovesMarkedStaleFiles(t *testi
 	assertOutputTestContent(t, filepath.Join(target, "user.go"), "user")
 	assertOutputTestContent(t, filepath.Join(target, "nested", "keep.go"), "second")
 	assertOutputTestMissing(t, filepath.Join(target, "old.go"))
-	assertOutputTestMissing(t, filepath.Join(target, legacyOutputManifestName))
 }
 
 func TestManagedOutputPreservesStaleFileWhenMarkerIsRemoved(t *testing.T) {
@@ -144,39 +141,6 @@ func TestGeneratedFileMarkerScanReadsOnlyPrefix(t *testing.T) {
 	}
 }
 
-func TestManagedOutputMigratesLegacyManifest(t *testing.T) {
-	target := filepath.Join(t.TempDir(), "generated")
-	oldPath := filepath.Join(target, "old.go")
-	writeOutputTestFile(t, oldPath, "legacy generated")
-	writeLegacyOutputManifestTest(t, target, []string{"old.go"})
-
-	output := newOutputTestTransaction(t, target)
-	writeGeneratedOutputTestFile(t, filepath.Join(output.StageDir(), "new.go"), "new")
-	if err := output.Commit(); err != nil {
-		t.Fatal(err)
-	}
-
-	assertOutputTestMissing(t, oldPath)
-	assertOutputTestMissing(t, filepath.Join(target, legacyOutputManifestName))
-	assertOutputTestContent(t, filepath.Join(target, "new.go"), common.GeneratedFileMarker)
-}
-
-func TestManagedOutputPreservesModifiedLegacyFileDuringMigration(t *testing.T) {
-	target := filepath.Join(t.TempDir(), "generated")
-	oldPath := filepath.Join(target, "old.go")
-	writeOutputTestFile(t, oldPath, "legacy generated")
-	writeLegacyOutputManifestTest(t, target, []string{"old.go"})
-	writeOutputTestFile(t, oldPath, "user modified")
-
-	output := newOutputTestTransaction(t, target)
-	if err := output.Commit(); err != nil {
-		t.Fatal(err)
-	}
-
-	assertOutputTestContent(t, oldPath, "user modified")
-	assertOutputTestMissing(t, filepath.Join(target, legacyOutputManifestName))
-}
-
 func TestManagedOutputRejectsStagedFileWithoutMarker(t *testing.T) {
 	target := filepath.Join(t.TempDir(), "generated")
 	output := newOutputTestTransaction(t, target)
@@ -195,17 +159,6 @@ func TestManagedOutputAbortLeavesTargetUnchanged(t *testing.T) {
 	output.Abort()
 
 	assertOutputTestContent(t, filepath.Join(target, "existing.go"), "existing")
-	assertOutputTestMissing(t, filepath.Join(target, "new.go"))
-}
-
-func TestManagedOutputRejectsUnsafeLegacyManifest(t *testing.T) {
-	target := filepath.Join(t.TempDir(), "generated")
-	writeOutputTestFile(t, filepath.Join(target, legacyOutputManifestName), `{"version":1,"files":[{"path":"../outside","sha256":"x"}]}`)
-	output := newOutputTestTransaction(t, target)
-	writeGeneratedOutputTestFile(t, filepath.Join(output.StageDir(), "new.go"), "new")
-	if err := output.Commit(); err == nil {
-		t.Fatal("expected unsafe legacy manifest error")
-	}
 	assertOutputTestMissing(t, filepath.Join(target, "new.go"))
 }
 
@@ -255,29 +208,6 @@ func TestManagedOutputRollsBackPartialCommit(t *testing.T) {
 
 	assertOutputTestContent(t, filepath.Join(target, "a.go"), "old a")
 	assertOutputTestContent(t, filepath.Join(target, "b.go"), "old b")
-}
-
-func TestManagedOutputRollsBackLegacyManifestRemoval(t *testing.T) {
-	target := filepath.Join(t.TempDir(), "generated")
-	oldPath := filepath.Join(target, "old.go")
-	writeOutputTestFile(t, oldPath, "legacy generated")
-	writeLegacyOutputManifestTest(t, target, []string{"old.go"})
-	manifestBefore, err := os.ReadFile(filepath.Join(target, legacyOutputManifestName))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	output := newOutputTestTransaction(t, target)
-	writeGeneratedOutputTestFile(t, filepath.Join(output.StageDir(), "new.go"), "new")
-	output.writeFile = func(string, []byte, fs.FileMode) error {
-		return errors.New("injected write failure")
-	}
-	if err := output.Commit(); err == nil {
-		t.Fatal("expected commit failure")
-	}
-
-	assertOutputTestContent(t, oldPath, "legacy generated")
-	assertOutputTestExact(t, filepath.Join(target, legacyOutputManifestName), manifestBefore)
 }
 
 func TestManagedOutputRollsBackNewTarget(t *testing.T) {
@@ -345,23 +275,6 @@ func writeGeneratedOutputTestFile(t *testing.T, path, content string) {
 	writeOutputTestFile(t, path, marked)
 }
 
-func writeLegacyOutputManifestTest(t *testing.T, target string, paths []string) {
-	t.Helper()
-	manifest := _LegacyOutputManifest{Version: 1, Files: make([]_LegacyOutputManifestFile, 0, len(paths))}
-	for _, relative := range paths {
-		hash, err := fileSHA256(filepath.Join(target, relative))
-		if err != nil {
-			t.Fatal(err)
-		}
-		manifest.Files = append(manifest.Files, _LegacyOutputManifestFile{Path: relative, SHA256: hash})
-	}
-	content, err := json.Marshal(manifest)
-	if err != nil {
-		t.Fatal(err)
-	}
-	writeOutputTestFile(t, filepath.Join(target, legacyOutputManifestName), string(content))
-}
-
 func writeOutputTestFile(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -387,16 +300,5 @@ func assertOutputTestMissing(t *testing.T, path string) {
 	t.Helper()
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("expected %s to be missing, err=%v", path, err)
-	}
-}
-
-func assertOutputTestExact(t *testing.T, path string, expected []byte) {
-	t.Helper()
-	content, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(content) != string(expected) {
-		t.Fatalf("expected %s to contain %q, got %q", path, expected, content)
 	}
 }

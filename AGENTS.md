@@ -8,7 +8,7 @@
 
 ## Go Version and Syntax
 
-- Target Go 1.26 syntax. Prefer `new` with a composite literal when creating a pointer, for example: `option := new(SomeOption{Field: value})`.
+- Target Go 1.27 syntax. Prefer `new` with a composite literal when creating a pointer, for example: `option := new(SomeOption{Field: value})`.
 - Use `kind` when `type` would otherwise be the natural local variable name.
 - Prefix unexported package-local production type declarations with `_`, such as `_Parser` and `_Option`. This applies only to types; do not prefix unexported constants, variables, functions, or methods with `_`. Test fixture types may use descriptive lowercase names.
 - Use `Rpc`, not `RPC`, in identifiers and generated Go APIs.

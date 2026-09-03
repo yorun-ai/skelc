@@ -6,6 +6,12 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+### Changed
+
+- Raised the minimum Go version for skelc and generated Go modules to 1.27.0,
+  configured CI checks to follow the latest Go 1.27 patch, and pinned release
+  binaries to Go 1.27.1
+
 ## [0.14.1] - 2026-09-03
 
 ### Fixed

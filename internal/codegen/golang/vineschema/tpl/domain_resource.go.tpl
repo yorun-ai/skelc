@@ -8,14 +8,14 @@
 			{{- if $resource.Description }}
 			Description: {{ quote $resource.Description }},
 			{{- end }}
-			{{ template "deprecatedFields" $resource }}
+			{{- template "deprecatedFields" $resource }}
 			Hash: {{ quote $resource.Hash }},
 			{{- if $resource.Checks }}
 			Checks: []*skel.ResourceCheckSchema{
 				{{- range $check := $resource.Checks }}
 				{
 					Name: {{ quote $check.Name }},
-					{{ template "deprecatedFields" $check }}
+					{{- template "deprecatedFields" $check }}
 					Method: {{ template "methodSchema" $check.Method }},
 					{{- if $check.Arguments }}
 					Arguments: []*skel.MemberSchema{
@@ -36,13 +36,13 @@
 					{{- if $action.Description }}
 					Description: {{ quote $action.Description }},
 					{{- end }}
-					{{ template "deprecatedFields" $action }}
+					{{- template "deprecatedFields" $action }}
 					{{- if $action.Checks }}
 					Checks: []*skel.ResourceCheckSchema{
 						{{- range $check := $action.Checks }}
 						{
 							Name: {{ quote $check.Name }},
-							{{ template "deprecatedFields" $check }}
+							{{- template "deprecatedFields" $check }}
 							Method: {{ template "methodSchema" $check.Method }},
 							{{- if $check.Arguments }}
 							Arguments: []*skel.MemberSchema{

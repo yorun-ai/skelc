@@ -6,6 +6,15 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-09-03
+
+### Fixed
+
+- Removed an unintended blank line before the `Hash` field in generated Vine
+  runtime schema literals
+- Release builds now validate the JSON-formatted `skelc version` result before
+  uploading archives
+
 ## [0.14.0] - 2026-08-17
 
 ### Changed

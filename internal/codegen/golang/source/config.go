@@ -27,8 +27,6 @@ func (g *_Gen) buildConfigGoPayload() *DataGoPayload {
 	}
 	for _, dataType := range g.view.Configs {
 		castedData := castData(dataType)
-		castedData.Validate = false
-		castedData.CheckBlock = nil
 		castedData.SpecName = "_" + castedData.Name + "Spec"
 		castedData.SkelName = dataType.SkelName
 		castedData.Hash = dataType.Hash

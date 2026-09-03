@@ -412,7 +412,7 @@ func cloneTypeUsesNullablePointer(type_ *model.Type) bool {
 		return false
 	}
 	switch type_.Kind {
-	case model.TypeKindScalar, model.TypeKindEnum, model.TypeKindData:
+	case model.TypeKindScalar, model.TypeKindList, model.TypeKindMap, model.TypeKindEnum, model.TypeKindData:
 		return true
 	default:
 		return false

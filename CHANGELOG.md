@@ -11,6 +11,9 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 - Raised the minimum Go version for skelc and generated Go modules to 1.27.0,
   configured CI checks to follow the latest Go 1.27 patch, and pinned release
   binaries to Go 1.27.1
+- Generated nullable Go lists and maps as pointers so null remains distinct
+  from an empty collection, and raised the minimum and default Vine version for
+  generated Go modules to v0.14.0
 
 ### Removed
 
@@ -18,6 +21,8 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
   imported generated data must now provide `Clone()` or `CloneBy(...)`
 - Removed migration support for the legacy `.skelc-manifest.json` sidecar;
   generated output ownership is now determined only by in-file markers
+- Removed generated data `Validate` methods and Rpc argument and result
+  validation functions; collection nullability is now expressed by Go types
 
 ## [0.14.1] - 2026-09-03
 

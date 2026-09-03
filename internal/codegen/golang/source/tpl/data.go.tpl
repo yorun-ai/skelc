@@ -22,15 +22,5 @@ type {{ $s.FullName }} struct {
 
 func ({{ $s.ReceiverType }}) {{ $s.MarkerMethodName }}() {}
 {{- end }}
-{{- if $s.Validate }}
-
-func (v *{{ $s.ReceiverType }}) Validate(path string) error {
-	if err := rpc.CheckValueNotNil(v, path); err != nil {
-		return err
-	}
-{{ template "goBlock" $s.CheckBlock -}}
-	return nil
-}
-{{- end }}
 {{ template "dataClone" $s -}}
 {{ end }}

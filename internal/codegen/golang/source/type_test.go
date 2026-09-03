@@ -81,3 +81,26 @@ func TestCastMapTypeMapsUUIDKeyToSkelUUID(t *testing.T) {
 		t.Fatalf("unexpected map imports: %+v", got.Imports)
 	}
 }
+
+func TestCastCollectionTypesUsePointersOnlyWhenNullable(t *testing.T) {
+	tests := []struct {
+		name        string
+		type_       *model.Type
+		wantPlain   string
+		wantDefault string
+	}{
+		{name: "list", type_: listTypeForTest(stringTypeForTest()), wantPlain: "[]string", wantDefault: "[]string{}"},
+		{name: "nullable list", type_: nullableTypeForTest(listTypeForTest(stringTypeForTest())), wantPlain: "*[]string", wantDefault: "nil"},
+		{name: "map", type_: mapTypeForTest(stringTypeForTest(), stringTypeForTest()), wantPlain: "map[string]string", wantDefault: "map[string]string{}"},
+		{name: "nullable map", type_: nullableTypeForTest(mapTypeForTest(stringTypeForTest(), stringTypeForTest())), wantPlain: "*map[string]string", wantDefault: "nil"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := castType(test.type_)
+			if got.Plain != test.wantPlain || got.DefaultValue != test.wantDefault {
+				t.Fatalf("unexpected collection type: plain=%q default=%q", got.Plain, got.DefaultValue)
+			}
+		})
+	}
+}

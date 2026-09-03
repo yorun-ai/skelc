@@ -16,10 +16,8 @@ type ServiceMethod struct {
 	CommentLines                []string
 	Arguments                   []*MethodArgument
 	ArgumentsData               *Data
-	ValidateArguments           *_GoFunction
 	CloneArguments              *_GoFunction
 	ResultType                  *Type
-	ValidateResult              *_GoFunction
 	CloneResult                 *_GoFunction
 	CloneImports                []*Import
 	ArgumentsSensitive          bool
@@ -40,7 +38,6 @@ func castServiceMethod(ps *model.Service, pm *model.Method) *ServiceMethod {
 		SkelName:                    pm.Name,
 		Arguments:                   methodArgs,
 		ResultType:                  resultType,
-		ValidateResult:              buildMethodValidateResult(pm, resultType),
 		ArgumentsSensitive:          pm.ArgumentsSensitive,
 		ResultSensitive:             pm.ResultSensitive,
 		ArgumentsContainsBinaryType: methodArgumentsContainBinaryType(pm),
@@ -59,7 +56,6 @@ func castServiceMethod(ps *model.Service, pm *model.Method) *ServiceMethod {
 			}
 		}
 	}
-	method.ValidateArguments = buildMethodValidateArguments(method)
 	buildMethodClones(pm, method)
 	method.CommentLines = goMethodDocLines(
 		method.Name,
@@ -87,67 +83,12 @@ func methodResultContainsBinaryType(method *model.Method) bool {
 	return method.ResultType.ContainsBinaryType()
 }
 
-func buildMethodValidateResult(method *model.Method, resultType *Type) *_GoFunction {
-	if method.ResultType == nil || resultType == nil || !typeNeedsCheck(method.ResultType, map[*model.Data]bool{}) {
-		return nil
-	}
-
-	body := goBlock()
-	if method.ResultType.Nullable {
-		body.append(goIfStatement(
-			nil,
-			goRaw("value == nil"),
-			goBlock(goReturnStatement(goRaw("nil"))),
-			nil,
-		))
-	}
-	body.append(goAssignmentStatement("ret", ":=", goRaw(fmt.Sprintf("value.(%s)", resultType.Plain))))
-	body.append(buildTypeCheckStatements(method.ResultType, "ret", `"result"`, 0)...)
-	body.append(goReturnStatement(goRaw("nil")))
-	return goFunction([]*_GoParameter{goParameter("value", "any")}, "error", body)
-}
-
-func buildMethodValidateArguments(method *ServiceMethod) *_GoFunction {
-	if method.ArgumentsData == nil {
-		return nil
-	}
-
-	needsCheck := false
-	for _, argument := range method.Arguments {
-		if typeNeedsCheck(argument.ParsedType, map[*model.Data]bool{}) {
-			needsCheck = true
-			break
-		}
-	}
-	if !needsCheck {
-		return nil
-	}
-
-	body := goBlock(
-		goAssignmentStatement("args", ":=", goRaw(fmt.Sprintf("value.(*%s)", method.ArgumentsData.Name))),
-	)
-	for _, argument := range method.Arguments {
-		if !typeNeedsCheck(argument.ParsedType, map[*model.Data]bool{}) {
-			continue
-		}
-		body.append(buildTypeCheckStatements(
-			argument.ParsedType,
-			"args."+argument.MemberName,
-			fmt.Sprintf("rpc.JoinPath(%q, %q)", "arguments", argument.MemberName),
-			0,
-		)...)
-	}
-	body.append(goReturnStatement(goRaw("nil")))
-	return goFunction([]*_GoParameter{goParameter("value", "any")}, "error", body)
-}
-
 type MethodArgument struct {
 	Name        string
 	SkelName    string
 	MemberName  string
 	Description string
 	Type        *Type
-	ParsedType  *model.Type
 }
 
 func castMethodArgument(p *model.Argument) *MethodArgument {
@@ -164,6 +105,5 @@ func castMethodArgument(p *model.Argument) *MethodArgument {
 		SkelName:    p.Name,
 		Description: description,
 		Type:        argType,
-		ParsedType:  p.Type,
 	}
 }

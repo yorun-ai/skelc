@@ -48,20 +48,22 @@ func castType(p *model.Type) *Type {
 
 func castListType(p *model.Type) *Type {
 	valueType := castType(p.List.Value)
+	plain := fmt.Sprintf("[]%s", valueType.Plain)
 	return &Type{
-		Plain:        fmt.Sprintf("[]%s", valueType.Plain),
+		Plain:        common.ChooseString(p.Nullable, "*"+plain, plain),
 		Imports:      cloneImports(valueType.Imports),
-		DefaultValue: common.ChooseString(p.Nullable, "nil", fmt.Sprintf("[]%s{}", valueType.Plain)),
+		DefaultValue: common.ChooseString(p.Nullable, "nil", plain+"{}"),
 	}
 }
 
 func castMapType(p *model.Type) *Type {
 	keyType := castType(p.Map.Key)
 	valueType := castType(p.Map.Value)
+	plain := fmt.Sprintf("map[%s]%s", keyType.Plain, valueType.Plain)
 	return &Type{
-		Plain:        fmt.Sprintf("map[%s]%s", keyType.Plain, valueType.Plain),
+		Plain:        common.ChooseString(p.Nullable, "*"+plain, plain),
 		Imports:      collectTypeImports(keyType, valueType),
-		DefaultValue: common.ChooseString(p.Nullable, "nil", fmt.Sprintf("map[%s]%s{}", keyType.Plain, valueType.Plain)),
+		DefaultValue: common.ChooseString(p.Nullable, "nil", plain+"{}"),
 	}
 }
 

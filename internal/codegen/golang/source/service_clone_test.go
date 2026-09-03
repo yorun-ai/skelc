@@ -187,3 +187,44 @@ func TestCastServiceMethodBuildsGenericDataClone(t *testing.T) {
 		}
 	}
 }
+
+func TestCastServiceMethodClonesNullableCollections(t *testing.T) {
+	parsed := &model.Method{
+		Name: "clone",
+		Arguments: []*model.Argument{
+			{Name: "items", Type: nullableTypeForTest(listTypeForTest(stringTypeForTest()))},
+		},
+		ArgumentsData: &model.Data{
+			Name: "CloneServiceCloneArguments",
+			Members: []*model.DataMember{
+				{Name: "items", Type: nullableTypeForTest(listTypeForTest(stringTypeForTest()))},
+			},
+		},
+		ResultType: nullableTypeForTest(mapTypeForTest(stringTypeForTest(), stringTypeForTest())),
+	}
+
+	method := castServiceMethod(&model.Service{Name: "CloneService"}, parsed)
+	arguments := renderGoIRForTest(t, "goFunction", method.CloneArguments)
+	result := renderGoIRForTest(t, "goFunction", method.CloneResult)
+
+	for _, fragment := range []string{
+		"if source.Items != nil {",
+		"clonedValue0 := *source.Items",
+		"clonedValue0 = make([]string, len((*source.Items)))",
+		"cloned.Items = &clonedValue0",
+	} {
+		if !strings.Contains(arguments, fragment) {
+			t.Fatalf("nullable list clone missing %q:\n%s", fragment, arguments)
+		}
+	}
+	for _, fragment := range []string{
+		"source := value.(*map[string]string)",
+		"if source != nil {",
+		"clonedValue2 = maps.Clone((*source))",
+		"cloned = &clonedValue2",
+	} {
+		if !strings.Contains(result, fragment) {
+			t.Fatalf("nullable map clone missing %q:\n%s", fragment, result)
+		}
+	}
+}

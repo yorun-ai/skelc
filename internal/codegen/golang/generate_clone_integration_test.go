@@ -42,6 +42,8 @@ func TestGeneratedCloneModuleCompilesAndIsolatesValues(t *testing.T) {
 			{Name: "content", Type: scalarTypeForTest(model.ScalarBinary)},
 			{Name: "children", Type: listTypeForTest(dataTypeForTest(child))},
 			{Name: "childrenByName", Type: mapTypeForTest(stringTypeForTest(), dataTypeForTest(child))},
+			{Name: "optionalChildren", Type: nullableTypeForTest(listTypeForTest(dataTypeForTest(child)))},
+			{Name: "optionalChildrenByName", Type: nullableTypeForTest(mapTypeForTest(stringTypeForTest(), dataTypeForTest(child)))},
 			{Name: "optional", Type: nullableTypeForTest(dataTypeForTest(child))},
 			{Name: "empty", Type: scalarTypeForTest(model.ScalarBinary)},
 		},
@@ -78,7 +80,7 @@ func TestGeneratedCloneModuleCompilesAndIsolatesValues(t *testing.T) {
 		Out:             generatedDir,
 		AsModule:        true,
 		Module:          "example.com/generated/clonefixture",
-		CompilerVersion: "v0.11.1",
+		CompilerVersion: "v0.15.0",
 		VineVersion:     golang.DefaultVineVersion,
 	}); err != nil {
 		t.Fatalf("generate clone fixture module: %v", err)
@@ -113,6 +115,10 @@ import (
 )
 
 func TestCloneValueIsolation(t *testing.T) {
+	optionalChildren := []fixture.Child{{Name: "optional-list", Content: []byte{31, 32}}}
+	optionalChildrenByName := map[string]fixture.Child{
+		"optional-map": {Name: "optional-map", Content: []byte{33, 34}},
+	}
 	source := fixture.Payload{
 		Content: []byte{1, 2},
 		Children: []fixture.Child{
@@ -121,6 +127,8 @@ func TestCloneValueIsolation(t *testing.T) {
 		ChildrenByName: map[string]fixture.Child{
 			"map": {Name: "map", Content: []byte{5, 6}},
 		},
+		OptionalChildren:       &optionalChildren,
+		OptionalChildrenByName: &optionalChildrenByName,
 		Optional: &fixture.Child{Name: "optional", Content: []byte{7, 8}},
 		Empty:    make([]byte, 0, 1<<20),
 	}
@@ -131,6 +139,10 @@ func TestCloneValueIsolation(t *testing.T) {
 	mapped := cloned.ChildrenByName["map"]
 	mapped.Content[0] = 15
 	cloned.ChildrenByName["map"] = mapped
+	(*cloned.OptionalChildren)[0].Content[0] = 35
+	optionalMapped := (*cloned.OptionalChildrenByName)["optional-map"]
+	optionalMapped.Content[0] = 37
+	(*cloned.OptionalChildrenByName)["optional-map"] = optionalMapped
 	cloned.Optional.Content[0] = 17
 
 	if source.Content[0] != 1 {
@@ -142,6 +154,12 @@ func TestCloneValueIsolation(t *testing.T) {
 	if source.ChildrenByName["map"].Content[0] != 5 {
 		t.Fatalf("map clone changed source: %v", source.ChildrenByName)
 	}
+	if (*source.OptionalChildren)[0].Content[0] != 31 {
+		t.Fatalf("nullable list clone changed source: %v", *source.OptionalChildren)
+	}
+	if (*source.OptionalChildrenByName)["optional-map"].Content[0] != 33 {
+		t.Fatalf("nullable map clone changed source: %v", *source.OptionalChildrenByName)
+	}
 	if source.Optional.Content[0] != 7 {
 		t.Fatalf("nullable clone changed source: %v", source.Optional)
 	}
@@ -151,8 +169,19 @@ func TestCloneValueIsolation(t *testing.T) {
 
 	nilSource := fixture.Payload{}
 	nilClone := nilSource.Clone()
-	if nilClone.Content != nil || nilClone.Children != nil || nilClone.ChildrenByName != nil || nilClone.Optional != nil || nilClone.Empty != nil {
+	if nilClone.Content != nil || nilClone.Children != nil || nilClone.ChildrenByName != nil || nilClone.OptionalChildren != nil || nilClone.OptionalChildrenByName != nil || nilClone.Optional != nil || nilClone.Empty != nil {
 		t.Fatalf("clone did not preserve nil values: %+v", nilClone)
+	}
+
+	var nilChildren []fixture.Child
+	var nilChildrenByName map[string]fixture.Child
+	nonNilPointers := fixture.Payload{
+		OptionalChildren:       &nilChildren,
+		OptionalChildrenByName: &nilChildrenByName,
+	}.Clone()
+	if nonNilPointers.OptionalChildren == nil || *nonNilPointers.OptionalChildren != nil ||
+		nonNilPointers.OptionalChildrenByName == nil || *nonNilPointers.OptionalChildrenByName != nil {
+		t.Fatalf("clone did not preserve pointers to nil collections: %+v", nonNilPointers)
 	}
 
 	pageSource := fixture.Page[fixture.Child]{
@@ -235,7 +264,7 @@ func TestGeneratedCloneModuleUsesCurrentImportedCloneMethods(t *testing.T) {
 		AsModule:        true,
 		Module:          "example.com/generated/current",
 		PubModule:       "example.com/generated/currentpub",
-		CompilerVersion: "v0.12.0",
+		CompilerVersion: "v0.15.0",
 		VineVersion:     golang.DefaultVineVersion,
 	}); err != nil {
 		t.Fatalf("generate current clone provider modules: %v", err)
@@ -272,7 +301,7 @@ func TestGeneratedCloneModuleUsesCurrentImportedCloneMethods(t *testing.T) {
 		Out:             consumerDir,
 		AsModule:        true,
 		Module:          "example.com/generated/currentconsumer",
-		CompilerVersion: "v0.12.0",
+		CompilerVersion: "v0.15.0",
 		VineVersion:     golang.DefaultVineVersion,
 		Imports: map[string]string{
 			"demo.current": "example.com/generated/currentpub",

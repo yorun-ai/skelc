@@ -2,9 +2,6 @@
 package output
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -20,19 +17,8 @@ import (
 )
 
 const (
-	legacyOutputManifestName     = ".skelc-manifest.json"
 	generatedFileMarkerScanLimit = 4 * 1024
 )
-
-type _LegacyOutputManifest struct {
-	Version int                         `json:"version"`
-	Files   []_LegacyOutputManifestFile `json:"files"`
-}
-
-type _LegacyOutputManifestFile struct {
-	Path   string `json:"path"`
-	SHA256 string `json:"sha256"`
-}
 
 // ManagedOutput stages a complete generator run and commits files atomically.
 // Generated-file markers distinguish skelc-owned output from handwritten files.
@@ -180,32 +166,6 @@ func generatedFileMarkerInReader(reader io.Reader) (bool, error) {
 	return common.HasGeneratedFileMarker(prefix), nil
 }
 
-func readLegacyOutputManifest(targetDir string) (_LegacyOutputManifest, bool, error) {
-	path := filepath.Join(targetDir, legacyOutputManifestName)
-	content, err := os.ReadFile(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return _LegacyOutputManifest{Version: 1}, false, nil
-	}
-	if err != nil {
-		return _LegacyOutputManifest{}, false, fmt.Errorf("read legacy output manifest %s: %w", path, err)
-	}
-	var manifest _LegacyOutputManifest
-	if err := json.Unmarshal(content, &manifest); err != nil {
-		return _LegacyOutputManifest{}, false, fmt.Errorf("decode legacy output manifest %s: %w", path, err)
-	}
-	if manifest.Version != 1 {
-		return _LegacyOutputManifest{}, false, fmt.Errorf("unsupported legacy output manifest version %d in %s", manifest.Version, path)
-	}
-	for index := range manifest.Files {
-		cleaned, err := cleanGeneratedOutputPath(filepath.FromSlash(manifest.Files[index].Path))
-		if err != nil {
-			return _LegacyOutputManifest{}, false, fmt.Errorf("invalid legacy output manifest %s: %w", path, err)
-		}
-		manifest.Files[index].Path = filepath.ToSlash(cleaned)
-	}
-	return manifest, true, nil
-}
-
 func (o *ManagedOutput) commitOutputFile(relative string) error {
 	relative, err := cleanGeneratedOutputPath(filepath.FromSlash(relative))
 	if err != nil {
@@ -230,11 +190,9 @@ func (o *ManagedOutput) commitOutputFile(relative string) error {
 }
 
 func collectStaleGeneratedOutputFiles(
-	targetDir string,
 	current []string,
 	marked []string,
-	legacy _LegacyOutputManifest,
-) ([]string, error) {
+) []string {
 	currentPaths := make(map[string]bool, len(current))
 	for _, path := range current {
 		currentPaths[path] = true
@@ -245,30 +203,7 @@ func collectStaleGeneratedOutputFiles(
 			stalePaths[path] = true
 		}
 	}
-	for _, file := range legacy.Files {
-		if currentPaths[file.Path] || stalePaths[file.Path] {
-			continue
-		}
-		relative, err := cleanGeneratedOutputPath(filepath.FromSlash(file.Path))
-		if err != nil {
-			return nil, err
-		}
-		if err := rejectOutputSymlink(targetDir, relative); err != nil {
-			return nil, err
-		}
-		path := filepath.Join(targetDir, relative)
-		hash, err := fileSHA256(path)
-		if errors.Is(err, os.ErrNotExist) {
-			continue
-		}
-		if err != nil {
-			return nil, fmt.Errorf("inspect stale generated output %s: %w", path, err)
-		}
-		if hash == file.SHA256 {
-			stalePaths[file.Path] = true
-		}
-	}
-	return slices.Sorted(maps.Keys(stalePaths)), nil
+	return slices.Sorted(maps.Keys(stalePaths))
 }
 
 func removeGeneratedOutputFiles(targetDir string, paths []string) error {
@@ -330,23 +265,7 @@ func cleanGeneratedOutputPath(path string) (string, error) {
 	if cleaned == "." || filepath.IsAbs(cleaned) || cleaned == ".." || strings.HasPrefix(cleaned, ".."+string(filepath.Separator)) {
 		return "", fmt.Errorf("unsafe generated output path %q", path)
 	}
-	if filepath.Base(cleaned) == legacyOutputManifestName {
-		return "", fmt.Errorf("generated output cannot use reserved path %q", path)
-	}
 	return cleaned, nil
-}
-
-func fileSHA256(path string) (string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-	hash := sha256.New()
-	if _, err := io.Copy(hash, file); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
 func atomicWriteFile(path string, content []byte, mode fs.FileMode) error {

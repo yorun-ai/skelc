@@ -143,17 +143,7 @@ func TestCastDataCallsNestedGenericCloneBy(t *testing.T) {
 	}
 }
 
-func TestCastDataDoesNotGenerateConflictingCloneMethod(t *testing.T) {
-	data := castCloneableData(&model.Data{
-		Name:    "Value",
-		Members: []*model.DataMember{{Name: "clone", Type: stringTypeForTest()}},
-	})
-	if data.Clone {
-		t.Fatalf("data field Clone must prevent Clone method generation: %+v", data)
-	}
-}
-
-func TestCastDataBuildsCompatibleCloneForImportedMember(t *testing.T) {
+func TestCastDataCallsCloneForImportedMember(t *testing.T) {
 	external := &model.Data{Name: "User", Domain: "identity.user"}
 	externalType := dataTypeForTest(external)
 	externalType.ExternalDomain = "identity.user"
@@ -167,16 +157,10 @@ func TestCastDataBuildsCompatibleCloneForImportedMember(t *testing.T) {
 		t.Fatalf("data with imported member must expose Clone: %+v", data)
 	}
 	lines := renderGoIRForTest(t, "goBlock", data.CloneBlock)
-	for _, fragment := range []string{
-		"any(value).(interface { Clone() userpub.User })",
-		"return cloner0.Clone()",
-		"return vcode.MustUnmarshalJson[userpub.User](vcode.MustMarshalJson(value))",
-	} {
-		if !strings.Contains(lines, fragment) {
-			t.Fatalf("compatible imported clone missing %q:\n%s", fragment, lines)
-		}
+	if !strings.Contains(lines, "cloned.User = v.User.Clone()") {
+		t.Fatalf("imported clone missing direct Clone call:\n%s", lines)
 	}
-	if got, want := importPaths(data.CloneImports), []string{"example.com/identity", "go.yorun.ai/vine/util/vcode"}; !reflect.DeepEqual(got, want) {
+	if got, want := importPaths(data.CloneImports), []string{"example.com/identity"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected imported clone imports: got=%v want=%v", got, want)
 	}
 }

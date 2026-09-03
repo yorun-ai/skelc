@@ -54,7 +54,7 @@ func TestCastServiceMethodBuildsTypedDeepCloneHooks(t *testing.T) {
 	}
 }
 
-func TestCastServiceMethodBuildsCompatibleCloneForImportedData(t *testing.T) {
+func TestCastServiceMethodCallsCloneForImportedData(t *testing.T) {
 	external := &model.Data{Name: "User", Domain: "identity.user"}
 	externalType := dataTypeForTest(external)
 	externalType.ExternalDomain = "identity.user"
@@ -75,20 +75,15 @@ func TestCastServiceMethodBuildsCompatibleCloneForImportedData(t *testing.T) {
 	method := castServiceMethod(&model.Service{Name: "UserService"}, parsed)
 
 	if method.CloneArguments == nil || method.CloneResult == nil {
-		t.Fatalf("imported data must use typed compatibility clone hooks: %+v", method)
+		t.Fatalf("imported data must use typed clone hooks: %+v", method)
 	}
-	for name, rendered := range map[string]string{
-		"arguments": renderGoIRForTest(t, "goFunction", method.CloneArguments),
-		"result":    renderGoIRForTest(t, "goFunction", method.CloneResult),
-	} {
-		for _, fragment := range []string{
-			"any(value).(interface { Clone() userpub.User })",
-			"vcode.MustUnmarshalJson[userpub.User](vcode.MustMarshalJson(value))",
-		} {
-			if !strings.Contains(rendered, fragment) {
-				t.Fatalf("%s clone missing %q:\n%s", name, fragment, rendered)
-			}
-		}
+	arguments := renderGoIRForTest(t, "goFunction", method.CloneArguments)
+	if !strings.Contains(arguments, "cloned.User = source.User.Clone()") {
+		t.Fatalf("argument clone missing direct Clone call:\n%s", arguments)
+	}
+	result := renderGoIRForTest(t, "goFunction", method.CloneResult)
+	if !strings.Contains(result, "cloned = source.Clone()") {
+		t.Fatalf("result clone missing direct Clone call:\n%s", result)
 	}
 }
 
@@ -110,7 +105,7 @@ func TestCastServiceMethodBuildsCloneForRecursiveData(t *testing.T) {
 	}
 }
 
-func TestCastServiceMethodBuildsCompatibleCloneForImportedGenericData(t *testing.T) {
+func TestCastServiceMethodCallsCloneByForImportedGenericData(t *testing.T) {
 	tItem := &model.TypeParameter{Name: "TItem"}
 	externalPage := &model.Data{
 		Name:           "Page",
@@ -131,24 +126,15 @@ func TestCastServiceMethodBuildsCompatibleCloneForImportedGenericData(t *testing
 	})
 
 	if method.CloneResult == nil {
-		t.Fatalf("imported generic data must use a typed compatibility clone hook: %+v", method)
+		t.Fatalf("imported generic data must use a typed clone hook: %+v", method)
 	}
 	rendered := renderGoIRForTest(t, "goFunction", method.CloneResult)
-	for _, fragment := range []string{
-		"interface { CloneBy(func(string) string) userpub.Page[string] }",
-		"return cloner2.CloneBy(cloneImportedArgument1)",
-		"cloned.Items[index4] = cloneImportedArgument1(value.Items[index4])",
-	} {
-		if !strings.Contains(rendered, fragment) {
-			t.Fatalf("imported generic clone missing %q:\n%s", fragment, rendered)
-		}
-	}
-	if strings.Contains(rendered, "vcode.") {
-		t.Fatalf("generic compatibility clone must preserve typed callbacks instead of marshaling:\n%s", rendered)
+	if !strings.Contains(rendered, "cloned = source.CloneBy(func(value string) string { return value })") {
+		t.Fatalf("imported generic clone missing direct CloneBy call:\n%s", rendered)
 	}
 }
 
-func TestCastServiceMethodMarshalsLegacyImportedGenericDataWithUnresolvedTransitiveType(t *testing.T) {
+func TestCastServiceMethodCallsCloneByForImportedGenericDataWithUnresolvedTransitiveType(t *testing.T) {
 	tItem := &model.TypeParameter{Name: "TItem"}
 	transitive := &model.Data{Name: "Meta", Domain: "shared.meta"}
 	transitiveType := dataTypeForTest(transitive)
@@ -172,17 +158,8 @@ func TestCastServiceMethodMarshalsLegacyImportedGenericDataWithUnresolvedTransit
 		ResultType: externalType,
 	})
 	rendered := renderGoIRForTest(t, "goFunction", method.CloneResult)
-	for _, fragment := range []string{
-		"CloneBy(func(string) string) userpub.Page[string]",
-		"cloned := vcode.MustUnmarshalJson[userpub.Page[string]](vcode.MustMarshalJson(value))",
-		"cloned.Items[index4] = cloneImportedArgument1(value.Items[index4])",
-	} {
-		if !strings.Contains(rendered, fragment) {
-			t.Fatalf("transitive compatibility clone missing %q:\n%s", fragment, rendered)
-		}
-	}
-	if strings.Contains(rendered, "[]Meta") {
-		t.Fatalf("unresolved transitive type leaked into generated clone code:\n%s", rendered)
+	if !strings.Contains(rendered, "cloned = source.CloneBy(func(value string) string { return value })") {
+		t.Fatalf("imported generic clone missing direct CloneBy call:\n%s", rendered)
 	}
 }
 

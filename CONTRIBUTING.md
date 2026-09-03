@@ -11,7 +11,7 @@ Thank you for contributing to skelc. This guide describes the development workfl
 
 ## Prerequisites
 
-The Go module targets Go 1.26.
+The Go module targets Go 1.27.
 
 Download Go dependencies and run the baseline test suite with:
 

@@ -6,6 +6,8 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-09-04
+
 ### Changed
 
 - Raised the minimum Go version for skelc and generated Go modules to 1.27.0,
@@ -23,6 +25,24 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
   generated output ownership is now determined only by in-file markers
 - Removed generated data `Validate` methods and Rpc argument and result
   validation functions; collection nullability is now expressed by Go types
+
+### Upgrade Notes
+
+- Upgrade Go to 1.27.0 or later and Vine to v0.14.0 or later before consuming
+  newly generated Go code. Existing modules must update their own dependencies;
+  generated standalone modules default to Vine v0.14.0.
+- Regenerate Go packages and coordinate updates to imported generated packages.
+  Nullable `list<T>?` and `map<K, V>?` now map to `*[]T` and `*map[K]V`.
+  Update assignments, collection access, and service implementations, and remove
+  calls to generated `Validate` methods while retaining business validation.
+- With the v0.15 encoding contract, nil collection pointers encode as `null`,
+  while nil slices and maps encode as empty collections in JSON and CBOR.
+  Non-nullable collection input `null` is no longer rejected by generated
+  validation and encodes back as an empty collection. Skel declarations and
+  TypeScript collection types do not need to change.
+- For output still tracked only by `.skelc-manifest.json`, regenerate with
+  skelc v0.14.x first so generated files carry in-file ownership markers.
+  Review generated diffs and run consumer tests before deploying the upgrade.
 
 ## [0.14.1] - 2026-09-03
 

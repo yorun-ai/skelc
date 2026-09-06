@@ -25,12 +25,6 @@ func castType(p *model.Type) *Type {
 	switch p.Kind {
 	case model.TypeKindScalar:
 		return castScalarType(p)
-	case model.TypeKindSkelPermissionCode:
-		return &Type{
-			Plain:        "skel.PermissionCode",
-			Imports:      []*Import{{Path: skelImport}},
-			DefaultValue: `""`,
-		}
 	case model.TypeKindList:
 		return castListType(p)
 	case model.TypeKindMap:

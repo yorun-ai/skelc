@@ -178,14 +178,10 @@ func (p *Analysis) normalizeRequireItem(item *model.PermissionCheckInvocation, a
 }
 
 func resourceCheckArguments(check *model.ResourceCheck) []*model.Argument {
-	if len(check.Method.Arguments) > 0 && isPermissionCodeType(check.Method.Arguments[0].Type) {
+	if len(check.Method.Arguments) > 0 && check.Method.Arguments[0].Source == model.ArgumentSourcePermissionCode {
 		return check.Method.Arguments[1:]
 	}
 	return check.Method.Arguments
-}
-
-func isPermissionCodeType(type_ *model.Type) bool {
-	return type_ != nil && type_.Kind == model.TypeKindSkelPermissionCode
 }
 
 func (p *Analysis) isImportedResourceRef(resourceRef string) bool {

@@ -19,7 +19,7 @@ var completionDecorators = []string{"deprecated", "desc", "example", "sensitive"
 
 var completionTypes = []string{
 	"binary", "bool", "decimal", "duration", "float", "int", "json", "list", "localdate",
-	"localdatetime", "localtime", "map", "PermissionCode", "string", "timestamp", "uuid",
+	"localdatetime", "localtime", "map", "string", "timestamp", "uuid",
 }
 
 var actorViaCompletionValues = []string{"agent", "client", "openapi"}

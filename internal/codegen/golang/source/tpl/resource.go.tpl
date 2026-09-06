@@ -15,22 +15,9 @@ const (
 	// {{ $line }}
 	{{- end }}
 	{{- end }}
-	{{ $action.PermissionName }} skel.PermissionCode = "{{ $action.PermissionCode }}"
+	{{ $action.PermissionName }} string = "{{ $action.PermissionCode }}"
 {{- end }}
 )
-
-{{- if $resource.CommentLines }}
-{{- range $line := $resource.CommentLines }}
-// {{ $line }}
-{{- end }}
-{{- end }}
-func {{ $resource.PermissionCodesName }}() []skel.PermissionCode {
-	return []skel.PermissionCode{
-		{{- range $action := $resource.Actions }}
-		{{ $action.PermissionName }},
-		{{- end }}
-	}
-}
 
 {{ end -}}
 {{ end -}}

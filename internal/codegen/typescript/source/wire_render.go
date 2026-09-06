@@ -87,7 +87,7 @@ func (b *_WireSchemaBuilder) renderType(type_ *model.Type, depth int) string {
 			kind = "binary"
 		}
 		rendered = renderSimpleWireSchema(kind, type_.Nullable)
-	case model.TypeKindEnum, model.TypeKindSkelPermissionCode:
+	case model.TypeKindEnum:
 		rendered = renderSimpleWireSchema("value", type_.Nullable)
 	case model.TypeKindTypeParameter:
 		rendered = wireTypeParameterName(type_.TypeParameter)

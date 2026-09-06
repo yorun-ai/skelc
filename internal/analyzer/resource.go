@@ -143,7 +143,6 @@ func parseResourceCheck(reporter *_DiagnosticReporter, actionName string, gc *gr
 	args := []*model.Argument{newPermissionCodeArgument()}
 	inputDescription := ""
 	inputSensitive := false
-	hasPermissionCodeArgument := false
 	if gc.Input != nil {
 		inputMeta, inputValid := parseDecoratorMeta(reporter, gc.Input.Decorators, _DecoratorContext{
 			allowDesc:      true,
@@ -154,16 +153,12 @@ func parseResourceCheck(reporter *_DiagnosticReporter, actionName string, gc *gr
 		inputSensitive = inputMeta.Sensitive
 
 		argPos := map[string]lexer.Position{}
-		for index, grammarArgument := range gc.Input.Arguments {
+		for _, grammarArgument := range gc.Input.Arguments {
 			arg, argumentValid := parseArgument(reporter, grammarArgument)
 			valid = argumentValid && valid
-			if isPermissionCodeType(arg.Type) {
-				valid = reporter.check(index == 0 && arg.Name == "code",
-					`%s resource check PermissionCode argument must be the first argument named "code"`, grammarArgument.Name.Pos) && valid
-				hasPermissionCodeArgument = true
-			} else {
-				valid = reporter.check(arg.Name != "code", `%s resource check argument name "code" is reserved`, grammarArgument.Name.Pos) && valid
-			}
+			// TODO: In the next release, emit Vine's CodeArgumentName and choose a
+			// non-conflicting injected parameter name instead of reserving "code".
+			valid = reporter.check(arg.Name != "code", `%s resource check argument name "code" is reserved`, grammarArgument.Name.Pos) && valid
 			if duplicatedPosition, duplicated := argPos[arg.Name]; duplicated {
 				reporter.reportDuplicatef("%s duplicated Argument %s found, also present at %s", arg.Pos, arg.Name, duplicatedPosition)
 				valid = false
@@ -172,9 +167,6 @@ func parseResourceCheck(reporter *_DiagnosticReporter, actionName string, gc *gr
 			argPos[arg.Name] = grammarArgument.Name.Pos
 			args = append(args, arg)
 		}
-	}
-	if hasPermissionCodeArgument {
-		args = args[1:]
 	}
 	methodName := "check" + nameutil.ToCamel(actionName) + nameutil.ToCamel(gc.Name.Value)
 	if actionName == "" {
@@ -208,7 +200,8 @@ func parseResourceCheck(reporter *_DiagnosticReporter, actionName string, gc *gr
 
 func newPermissionCodeArgument() *model.Argument {
 	return &model.Argument{
-		Name: "code",
-		Type: &model.Type{Kind: model.TypeKindSkelPermissionCode},
+		Name:   "code",
+		Source: model.ArgumentSourcePermissionCode,
+		Type:   &model.Type{Kind: model.TypeKindScalar, Scalar: model.ScalarString},
 	}
 }

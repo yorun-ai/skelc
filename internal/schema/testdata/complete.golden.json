@@ -285,7 +285,8 @@
                     "example": "\"example\"",
                     "sensitive": true,
                     "type": {
-                      "kind": "permissionCode"
+                      "kind": "scalar",
+                      "name": "string"
                     }
                   }
                 ]

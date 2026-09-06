@@ -76,8 +76,6 @@ func (t *Type) Name() string {
 			names = append(names, typeArg.Name())
 		}
 		return fmt.Sprintf("%sOf%s", t.Data.Name, strings.Join(names, "And"))
-	case TypeKindSkelPermissionCode:
-		return "PermissionCode"
 	default:
 		return fmt.Sprintf("UnknownTypeKind%d", t.Kind)
 	}
@@ -133,8 +131,6 @@ const (
 	TypeKindData TypeKind = 6
 	// TypeKindTypeParameter identifies a generic type parameter reference.
 	TypeKindTypeParameter TypeKind = 7
-	// TypeKindSkelPermissionCode identifies Skel's permission-code type.
-	TypeKindSkelPermissionCode TypeKind = 8
 )
 
 // Scalar identifies a built-in Skel scalar type.

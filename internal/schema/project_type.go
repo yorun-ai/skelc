@@ -80,8 +80,6 @@ func projectType(value *model.Type) *Type {
 		if value.TypeParameter != nil {
 			result.Name = value.TypeParameter.Name
 		}
-	case model.TypeKindSkelPermissionCode:
-		result.Kind = TypeKindPermissionCode
 	default:
 		result.Kind = TypeKind(fmt.Sprintf("unknown:%d", value.Kind))
 	}

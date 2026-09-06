@@ -103,10 +103,6 @@ func validateType(value *Type) error {
 		if err := validateType(value.Value); err != nil {
 			return fmt.Errorf("map value: %w", err)
 		}
-	case TypeKindPermissionCode:
-		if value.Name != "" || len(value.Arguments) != 0 || value.Element != nil || value.Key != nil || value.Value != nil {
-			return fmt.Errorf("permissionCode type contains unrelated fields")
-		}
 	default:
 		return fmt.Errorf("unsupported type kind %q", value.Kind)
 	}

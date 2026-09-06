@@ -53,8 +53,6 @@ const (
 	TypeKindData = internalmodel.TypeKindData
 	// TypeKindTypeParameter identifies a generic type parameter reference.
 	TypeKindTypeParameter = internalmodel.TypeKindTypeParameter
-	// TypeKindSkelPermissionCode identifies Skel's permission-code type.
-	TypeKindSkelPermissionCode = internalmodel.TypeKindSkelPermissionCode
 
 	// ScalarInt identifies an integer.
 	ScalarInt = internalmodel.ScalarInt
@@ -161,6 +159,16 @@ type Method = internalmodel.Method
 
 // Argument describes one service-method or task-trigger argument.
 type Argument = internalmodel.Argument
+
+// ArgumentSource identifies who supplies an argument's value.
+type ArgumentSource = internalmodel.ArgumentSource
+
+const (
+	// ArgumentSourceDeclared identifies an argument supplied by the caller.
+	ArgumentSourceDeclared = internalmodel.ArgumentSourceDeclared
+	// ArgumentSourcePermissionCode identifies a runtime-injected permission code.
+	ArgumentSourcePermissionCode = internalmodel.ArgumentSourcePermissionCode
+)
 
 // Task describes a background task declaration.
 type Task = internalmodel.Task

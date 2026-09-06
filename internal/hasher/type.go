@@ -119,8 +119,6 @@ func typeKindName(typeMeta *model.Type) string {
 		return string(typeMeta.Data.Kind)
 	case model.TypeKindTypeParameter:
 		return "typeParameter"
-	case model.TypeKindSkelPermissionCode:
-		return "permissionCode"
 	default:
 		return fmt.Sprintf("unknown:%d", typeMeta.Kind)
 	}
@@ -138,8 +136,6 @@ func typeName(typeMeta *model.Type) string {
 	case model.TypeKindScalar:
 		return ""
 	case model.TypeKindList, model.TypeKindMap:
-		return ""
-	case model.TypeKindSkelPermissionCode:
 		return ""
 	default:
 		return typeMeta.Name()

@@ -13,15 +13,14 @@ type _MemberSchema struct {
 type _TypeKind string
 
 const (
-	typeKindScalar             _TypeKind = "scalar"
-	typeKindList               _TypeKind = "list"
-	typeKindMap                _TypeKind = "map"
-	typeKindEnum               _TypeKind = "enum"
-	typeKindData               _TypeKind = "data"
-	typeKindConfig             _TypeKind = "config"
-	typeKindEvent              _TypeKind = "event"
-	typeKindTypeParameter      _TypeKind = "typeParameter"
-	typeKindSkelPermissionCode _TypeKind = "permissionCode"
+	typeKindScalar        _TypeKind = "scalar"
+	typeKindList          _TypeKind = "list"
+	typeKindMap           _TypeKind = "map"
+	typeKindEnum          _TypeKind = "enum"
+	typeKindData          _TypeKind = "data"
+	typeKindConfig        _TypeKind = "config"
+	typeKindEvent         _TypeKind = "event"
+	typeKindTypeParameter _TypeKind = "typeParameter"
 )
 
 type _Scalar string

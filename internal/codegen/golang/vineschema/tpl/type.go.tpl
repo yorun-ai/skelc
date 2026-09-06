@@ -18,8 +18,6 @@ nil
 	{{ if eq .Kind "scalar" }}
 	Kind: skel.TypeKindScalar,
 	Scalar: {{ scalarLiteral .Scalar }},
-	{{- else if eq .Kind "permissionCode" }}
-	Kind: skel.TypeKindSkelPermissionCode,
 	{{- else if eq .Kind "list" }}
 	Kind: skel.TypeKindList,
 	Element: {{ template "typeSchema" .Element }},

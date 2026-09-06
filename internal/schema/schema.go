@@ -47,7 +47,6 @@ const (
 	TypeKindImportedReference TypeKind = "importedReference"
 	TypeKindList              TypeKind = "list"
 	TypeKindMap               TypeKind = "map"
-	TypeKindPermissionCode    TypeKind = "permissionCode"
 )
 
 // AuthMode identifies the authentication behavior of a service or method.

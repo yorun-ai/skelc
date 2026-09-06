@@ -39,8 +39,6 @@ func (g *_Gen) buildTypeSchema(value *contractschema.Type) *_TypeSchema {
 	case contractschema.TypeKindScalar:
 		result.Kind = typeKindScalar
 		result.Scalar = _Scalar(value.Name)
-	case contractschema.TypeKindPermissionCode:
-		result.Kind = typeKindSkelPermissionCode
 	case contractschema.TypeKindList:
 		result.Kind = typeKindList
 		result.Element = g.buildTypeSchema(value.Element)

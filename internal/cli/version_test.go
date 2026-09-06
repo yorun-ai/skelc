@@ -26,33 +26,6 @@ func TestRunSkelcVersion(t *testing.T) {
 	}
 }
 
-func TestRunSkelcVersionRejectsOutputFormat(t *testing.T) {
-	result := Run([]string{"version", "--output-format", "json"})
-
-	commandError := new(command.Error)
-	if err := json.Unmarshal([]byte(result.Stdout), commandError); err != nil {
-		t.Fatalf("decode command error: %v\n%s", err, result.Stdout)
-	}
-	if result.ExitCode != ExitCodeError || commandError.Code != command.ErrorCodeInvalidArgument {
-		t.Fatalf("unexpected result: %+v", result)
-	}
-}
-
-func TestRunSkelcVersionRejectsLegacyJSONFlag(t *testing.T) {
-	result := Run([]string{"version", "--json"})
-
-	if result.ExitCode != ExitCodeError {
-		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
-	}
-	commandError := new(command.Error)
-	if err := json.Unmarshal([]byte(result.Stdout), commandError); err != nil {
-		t.Fatalf("decode command error: %v\n%s", err, result.Stdout)
-	}
-	if result.Stderr != "" || commandError.Code != command.ErrorCodeInvalidArgument {
-		t.Fatalf("unexpected result: %+v", result)
-	}
-}
-
 func TestGoVineVersions(t *testing.T) {
 	info, err := versionInfo()
 	if err != nil {

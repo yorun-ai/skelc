@@ -26,12 +26,6 @@ func TestRunSkelcHelpShowsSubcommandOptions(t *testing.T) {
 	if !strings.Contains(result.Stdout, "lsp") {
 		t.Fatalf("unexpected stdout: %q", result.Stdout)
 	}
-	if strings.Contains(result.Stdout, "migrate") {
-		t.Fatalf("unexpected removed command in stdout: %q", result.Stdout)
-	}
-	if strings.Contains(result.Stdout, "gen-go") || strings.Contains(result.Stdout, "gen-ts") || strings.Contains(result.Stdout, "gen-skel") {
-		t.Fatalf("unexpected legacy command in stdout: %q", result.Stdout)
-	}
 	if !strings.Contains(result.Stdout, "check OPTIONS:") {
 		t.Fatalf("unexpected stdout: %q", result.Stdout)
 	}

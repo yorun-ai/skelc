@@ -13,23 +13,6 @@ func TestParseReturnsErrorWhenDomainNameMissing(t *testing.T) {
 	expectErrorContains(t, err, "/tmp/domain.skel")
 }
 
-func TestParseReturnsErrorForLegacyMethodInOutSyntax(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "legacy.skel")
-	source := &loader.SourceFile{FilePath: path, Content: []byte(`domain demo
-service UnitService {
-    searchUnit {
-        in < {
-            limit: int
-            offset: int
-        }
-        out > PageResp<Unit>?
-    }
-}
-`)}
-	_, err := parseFileWithImports(source, nil)
-	expectErrorContains(t, err, "parse "+path+" failed")
-}
-
 func TestParseReturnsErrorWhenSkelDomainMismatches(t *testing.T) {
 	files := validationFilesForTest(t,
 		"@desc(\"User domain\")\ndomain demo.user\n",

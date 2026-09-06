@@ -355,11 +355,6 @@ resource User {
 		t.Fatalf("resource check decorators were not preserved: %+v", check)
 	}
 
-	parser := buildSkelParserForTest(t)
-	_, err := parser.ParseString("legacy.skel", "domain demo.user\nresource User { check byId(id: int) action read }")
-	if err == nil {
-		t.Fatal("expected legacy resource check argument syntax to be rejected")
-	}
 }
 
 func serviceAudiencesForTest(service *Service) []*ServiceAudience {

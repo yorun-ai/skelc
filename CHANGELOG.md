@@ -6,6 +6,8 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-09-07
+
 ### Changed
 
 - Generated permission constants and resource-check code parameters now use Go

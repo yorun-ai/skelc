@@ -141,6 +141,12 @@ func TestServiceFiltersDecoratorCompletionByTarget(t *testing.T) {
 			want: []string{"@deprecated", "@desc"},
 		},
 		{
+			name:   "config field",
+			source: "domain demo\nconfig AppConfig eternal {\n    @\n    value: string\n}\n",
+			line:   2,
+			want:   []string{"@deprecated", "@desc", "@example", "@noTrim", "@sensitive"},
+		},
+		{
 			name: "field",
 			source: "domain demo\ndata User {\n    @\n" +
 				"    password: string\n}\n",

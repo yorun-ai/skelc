@@ -28,6 +28,7 @@
 		CheckName: {{ quote .Check.CheckName }},
 		ServiceSkelName: {{ quote .Check.ServiceSkelName }},
 		MethodSkelName: {{ quote .Check.MethodSkelName }},
+		CodeArgumentName: {{ quote .Check.CodeArgumentName }},
 		{{- if .Check.Arguments }}
 		Arguments: []*skel.PermCheckArgument{
 			{{- range $argument := .Check.Arguments }}

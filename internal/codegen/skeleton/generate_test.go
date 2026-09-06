@@ -414,3 +414,25 @@ pub service UserService {
 		}
 	}
 }
+
+func TestPublicConfigPreservesNoTrim(t *testing.T) {
+	domain, _ := parseDomainForTest(t, "domain.skel", "domain demo\n", "config.skel", `domain demo
+pub config TextConfig instant {
+    @sensitive
+    @noTrim
+    value: string?
+}
+`, nil)
+	out := t.TempDir()
+	if err := Generate(domain, Option{PubOnly: true, Out: out}); err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := compiler.Compile(compiler.Option{SkelIn: out})
+	if err != nil {
+		t.Fatal(err)
+	}
+	member := parsed.Domain.Configs()[0].Members[0]
+	if !member.NoTrim || !member.Sensitive {
+		t.Fatalf("lost config decorators: %+v", member)
+	}
+}

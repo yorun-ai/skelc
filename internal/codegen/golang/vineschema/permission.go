@@ -24,6 +24,7 @@ func (g *_Gen) buildPermExprSchema(semantic *model.PermissionExpr, projected *co
 			CheckName:        projected.Check.Check,
 			ServiceSkelName:  semantic.Check.ServiceSkelName,
 			MethodSkelName:   semantic.Check.MethodSkelName,
+			CodeArgumentName: semantic.Check.CodeArgumentName,
 			Arguments:        g.buildPermCheckArgumentSchemas(projected.Check.Arguments),
 		}
 	}

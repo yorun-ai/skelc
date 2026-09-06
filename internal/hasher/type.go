@@ -46,6 +46,7 @@ func (s *_hashState) buildMemberHashValues(items []*model.DataMember) []*_Member
 			DeprecatedReason: item.DeprecatedReason,
 			Example:          item.Example,
 			Sensitive:        item.Sensitive,
+			NoTrim:           item.NoTrim,
 			Type:             s.buildTypeHashValue(item.Type),
 		})
 	}

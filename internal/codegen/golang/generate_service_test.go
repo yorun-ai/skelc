@@ -65,6 +65,11 @@ func TestGeneratorRendersNullableMapAndServiceHooks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read go service file: %v", err)
 	}
+	for _, tag := range []string{`json:"friends" skel:"index(0)"`, `json:"profilesByName" skel:"index(1)"`} {
+		if !strings.Contains(string(goServiceContent), tag) {
+			t.Fatalf("expected service argument tag %s, got:\n%s", tag, goServiceContent)
+		}
+	}
 	if !strings.Contains(string(goServiceContent), "ValidateArguments: nil,") ||
 		!strings.Contains(string(goServiceContent), "ValidateResult: nil,") {
 		t.Fatalf("expected nil service validation hooks, got:\n%s", string(goServiceContent))

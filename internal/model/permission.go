@@ -45,7 +45,9 @@ type PermissionCheckInvocation struct {
 	ServiceSkelName string
 	// MethodSkelName is the generated check method's Skel name.
 	MethodSkelName string
-	// Arguments lists resolved invocation arguments in method order.
+	// CodeArgumentName names the parameter receiving the injected permission code.
+	CodeArgumentName string
+	// Arguments lists resolved business arguments in method order.
 	Arguments []*PermissionCheckArgument
 }
 

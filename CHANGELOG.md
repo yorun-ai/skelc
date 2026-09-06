@@ -6,6 +6,29 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+### Added
+
+- Generated permission-check invocations now explicitly set `CodeArgumentName`.
+  Business arguments may be named `code`; the injected string argument uses
+  the first available name among `code`, `code1`, `code2`, and so on. Public
+  contracts continue to omit the injected argument. Requires Vine v0.15.0.
+
+- Config fields accept the argument-free `@noTrim` decorator to preserve string
+  whitespace, including nullable strings, list elements, and map values.
+  Generated Go uses `skel:"noTrim"` or `skel:"sensitive,noTrim"`. Public Skel,
+  schema snapshots, hashes, and config-field completion preserve the marker;
+  changing it is reported as `DANGEROUS` by schema diff. Runtime support requires
+  Vine v0.15.0 or later.
+
+### Changed
+
+- Raised the minimum and default Vine dependency for generated Go modules to
+  v0.15.0 for `index(n)` and `noTrim` tag support.
+
+- Generated Go service and resource-check argument fields use `skel:"index(n)"`
+  instead of `arg:"n"`. Sensitive arguments combine attributes as
+  `skel:"index(n),sensitive"`. This requires Vine v0.15.0 or later.
+
 ## [0.16.0] - 2026-09-07
 
 ### Changed

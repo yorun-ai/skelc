@@ -111,7 +111,7 @@ func parseDataLike(reporter *_DiagnosticReporter, gs *grammar.Data, kind model.D
 	}
 
 	for _, grammarMember := range gs.Members {
-		member, memberValid := parseDataMember(reporter, grammarMember)
+		member, memberValid := parseDataMember(reporter, grammarMember, kind)
 		valid = memberValid && valid
 		valid = reporter.check(member.Name != skelmeta.SensitiveMarkerFieldName(),
 			"%s DataMember %s is reserved for the generated sensitive marker method",
@@ -145,12 +145,13 @@ func parseTypeParameter(reporter *_DiagnosticReporter, gtp *grammar.TypeParamete
 	}, valid
 }
 
-func parseDataMember(reporter *_DiagnosticReporter, gsm *grammar.DataMember) (*model.DataMember, bool) {
+func parseDataMember(reporter *_DiagnosticReporter, gsm *grammar.DataMember, kind model.DataKind) (*model.DataMember, bool) {
 	valid := checkCase(reporter, "DataMember", caseTypeLowerCamel, gsm.Name)
 	meta, metaValid := parseDecoratorMeta(reporter, gsm.Decorators, _DecoratorContext{
 		allowDesc:       true,
 		allowExample:    true,
 		allowSensitive:  true,
+		allowNoTrim:     kind == model.DataKindConfig,
 		allowDeprecated: true,
 		requireDesc:     true,
 	})
@@ -165,6 +166,7 @@ func parseDataMember(reporter *_DiagnosticReporter, gsm *grammar.DataMember) (*m
 		DeprecatedReason: meta.DeprecatedReason,
 		Example:          meta.Example,
 		Sensitive:        meta.Sensitive,
+		NoTrim:           meta.NoTrim,
 		Type:             memberType,
 	}, valid
 }

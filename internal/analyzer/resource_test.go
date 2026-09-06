@@ -88,14 +88,23 @@ func TestPermissionCodeIsNotABuiltinType(t *testing.T) {
 	}
 }
 
-func TestResourceCheckRejectsExplicitStringCode(t *testing.T) {
-	content := parseResourceTestContent(t, `domain demo
-resource User {
-    check byId { input { code: string } }
-    action read
-}`)
-	_, diagnostics := Analyze(content, nil)
-	assertDiagnosticsContain(t, diagnostics, `argument name "code" is reserved`)
+func TestResourceCheckAvoidsBusinessCodeNames(t *testing.T) {
+	for _, test := range []struct{ input, want string }{
+		{"", "code"},
+		{"code: string", "code1"},
+		{"code: string\ncode1: string\ncode2: string", "code3"},
+		{"code1: string", "code"},
+	} {
+		content := parseResourceTestContent(t, "domain demo\nresource User {\ncheck byId { input {\n"+test.input+"\n} }\naction read\n}")
+		domain := mustAnalyze(t, content).Model()
+		method := domain.Resources()[0].Checks[0].Method
+		if method.Arguments[0].Name != test.want || method.Arguments[0].Source != model.ArgumentSourcePermissionCode {
+			t.Fatalf("unexpected injected argument: %+v", method.Arguments[0])
+		}
+		if method.ArgumentsData.Members[0].Name != test.want {
+			t.Fatalf("argument data name does not match injection: %+v", method.ArgumentsData.Members[0])
+		}
+	}
 }
 
 // TODO: Remove this regression test after the PermissionCode migration period ends.

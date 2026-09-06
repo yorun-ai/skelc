@@ -157,7 +157,7 @@ func TestGeneratorRendersDescriptionComments(t *testing.T) {
 	if !strings.Contains(string(goServiceContent), "//   @param userId - User ID (e.g. \"10001\")") {
 		t.Fatalf("expected go method argument comment, got:\n%s", string(goServiceContent))
 	}
-	if !strings.Contains(string(goServiceContent), `json:"userId" arg:"0" skel:"sensitive"`) {
+	if !strings.Contains(string(goServiceContent), `json:"userId" skel:"index(0),sensitive"`) {
 		t.Fatalf("expected sensitive service argument tag, got:\n%s", string(goServiceContent))
 	}
 	if !strings.Contains(string(goServiceContent), "//   @returns UserProfile - User information (e.g. { id:10001, avatarUrl:\"https://xxx.com/a.png\" })") {

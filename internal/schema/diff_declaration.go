@@ -95,6 +95,9 @@ func (c *_Diff) compareMembers(owner, prefix string, baseline, candidate []*Memb
 		if member.Sensitive != other.Sensitive {
 			c.add(ImpactDangerous, prefix+".sensitive.changed", symbol, "member sensitivity changed", member.Pos, other.Pos)
 		}
+		if member.NoTrim != other.NoTrim {
+			c.add(ImpactDangerous, prefix+".no-trim.changed", symbol, "config whitespace preservation changed", member.Pos, other.Pos)
+		}
 		if member.Example != other.Example {
 			c.add(ImpactCompatible, prefix+".example.changed", symbol, "member example changed", member.Pos, other.Pos)
 		}

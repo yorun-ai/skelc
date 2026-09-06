@@ -97,7 +97,7 @@ func TestResourceGoRegistersCheckServices(t *testing.T) {
 	if !strings.Contains(string(content), "rpc.Register(_UserCheckServiceSpec)") {
 		t.Fatalf("expected resource.go to register check service, got:\n%s", string(content))
 	}
-	if !strings.Contains(string(content), `json:"id" arg:"0" skel:"sensitive"`) {
+	if !strings.Contains(string(content), `json:"id" skel:"index(0),sensitive"`) {
 		t.Fatalf("expected resource check argument to preserve sensitive tag, got:\n%s", string(content))
 	}
 }

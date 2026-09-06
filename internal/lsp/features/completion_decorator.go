@@ -16,6 +16,7 @@ const (
 	allowExample
 	allowSensitive
 	allowDeprecated
+	allowNoTrim
 )
 
 type _DecoratorTarget struct {
@@ -115,7 +116,9 @@ func collectDecoratorTargets(content *grammar.SkelContent, source string) []_Dec
 			addMembers(entry.Data.Members)
 		case entry.Config != nil:
 			addKeyword(identifierOffset(entry.Config.Name), "config", allowDesc|allowSensitive|allowDeprecated, entry.Config.Decorators)
-			addMembers(entry.Config.Members)
+			for _, member := range entry.Config.Members {
+				add(identifierOffset(member.Name), allowDesc|allowExample|allowSensitive|allowDeprecated|allowNoTrim, member.Decorators)
+			}
 		case entry.Event != nil:
 			addKeyword(identifierOffset(entry.Event.Name), "event", allowDesc|allowDeprecated, entry.Event.Decorators)
 			if entry.Event.Payload != nil {
@@ -223,6 +226,8 @@ func decoratorBit(decorator string) _DecoratorAllowance {
 		return allowDesc
 	case "example":
 		return allowExample
+	case "noTrim":
+		return allowNoTrim
 	case "sensitive":
 		return allowSensitive
 	case "deprecated":

@@ -170,6 +170,7 @@ func (p *Analysis) normalizeRequireItem(item *model.PermissionCheckInvocation, a
 					CheckName:        item.CheckName,
 					ServiceSkelName:  resource.CheckService.SkelName,
 					MethodSkelName:   check.Method.SkelName,
+					CodeArgumentName: check.Method.Arguments[0].Name,
 					Arguments:        item.Arguments,
 				},
 			},

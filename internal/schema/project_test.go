@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
 
@@ -195,5 +196,46 @@ func TestProjectMapsRequirementModes(t *testing.T) {
 				t.Fatalf("requirement mode = %q, want %q", got.Mode, test.wire)
 			}
 		})
+	}
+}
+
+func TestConfigNoTrimProjectionAndDiff(t *testing.T) {
+	domain := model.NewDomainFromSpec(model.DomainSpec{
+		Name: "demo",
+		Configs: []*model.Data{{Name: "TextConfig", SkelName: "demo.TextConfig", Kind: model.DataKindConfig, Lifecycle: model.ConfigLifecycleEternal,
+			Members: []*model.DataMember{{Name: "text", Type: &model.Type{Kind: model.TypeKindScalar, Scalar: model.ScalarString}}},
+		}},
+	})
+	baseline, err := Project(domain, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	domain.Configs()[0].Members[0].NoTrim = true
+	candidate, err := Project(domain, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	if err := Encode(&buf, candidate); err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := Decode(&buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !decoded.Declarations[0].Data.Members[0].NoTrim {
+		t.Fatal("noTrim lost in schema round trip")
+	}
+	report, err := Diff(baseline, decoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Changes) != 1 || report.Changes[0].Code != "data.member.no-trim.changed" || report.Changes[0].Impact != ImpactDangerous {
+		t.Fatalf("unexpected noTrim diff: %+v", report.Changes)
+	}
+	decoded.Declarations[0].Kind = DeclarationTypeData
+	decoded.Declarations[0].Data.Lifecycle = ""
+	if err := Validate(decoded); err == nil {
+		t.Fatal("expected noTrim on data to be rejected")
 	}
 }

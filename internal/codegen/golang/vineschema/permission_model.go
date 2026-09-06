@@ -26,6 +26,7 @@ type _PermCheckInvocation struct {
 	CheckName        string
 	ServiceSkelName  string
 	MethodSkelName   string
+	CodeArgumentName string
 	Arguments        []*_PermCheckArgument
 }
 

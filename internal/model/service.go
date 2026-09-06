@@ -91,8 +91,20 @@ type Method struct {
 	ResultType *Type
 }
 
+// ArgumentSource identifies who supplies an argument's value.
+type ArgumentSource int
+
+const (
+	// ArgumentSourceDeclared identifies an argument supplied by the caller.
+	ArgumentSourceDeclared ArgumentSource = iota
+	// ArgumentSourcePermissionCode identifies the permission code injected by the runtime.
+	ArgumentSourcePermissionCode
+)
+
 // Argument describes one service-method or task-trigger argument.
 type Argument struct {
+	// Source identifies whether the caller or runtime supplies this argument.
+	Source ArgumentSource
 	// Pos is the argument's source position.
 	Pos Position
 	// Name is the argument's local name.

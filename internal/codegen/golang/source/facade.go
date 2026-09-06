@@ -32,7 +32,6 @@ type FacadeGoPayload struct {
 	Resources          []*Resource
 	Services           []*Service
 	Events             []*Event
-	UsesPermissionCode bool
 }
 
 func (g *_Gen) genFacadeGo() {
@@ -87,9 +86,6 @@ func (g *_Gen) genFacadeGo() {
 		if resource.Pub {
 			casted := castResource(resource)
 			payload.Resources = append(payload.Resources, casted)
-			if len(casted.Actions) > 0 {
-				payload.UsesPermissionCode = true
-			}
 			if resource.CheckService != nil {
 				payload.AuthServices = append(payload.AuthServices, g.castService(resource.CheckService, false, true))
 			}

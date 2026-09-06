@@ -38,8 +38,6 @@ func typeView(type_ *model.Type) *_TypeView {
 	switch type_.Kind {
 	case model.TypeKindScalar:
 		view.Name = scalarName(type_.Scalar)
-	case model.TypeKindSkelPermissionCode:
-		view.Name = "PermissionCode"
 	case model.TypeKindEnum:
 		view.Name = type_.Enum.Name
 		view.Qualifier = type_.ExternalAlias
@@ -68,7 +66,7 @@ func typeView(type_ *model.Type) *_TypeView {
 func renderResourceCheckArguments(check *model.ResourceCheck) []*model.Argument {
 	arguments := make([]*model.Argument, 0, len(check.Method.Arguments))
 	for _, argument := range check.Method.Arguments {
-		if argument.Type != nil && argument.Type.Kind == model.TypeKindSkelPermissionCode {
+		if argument.Source == model.ArgumentSourcePermissionCode {
 			continue
 		}
 		arguments = append(arguments, argument)

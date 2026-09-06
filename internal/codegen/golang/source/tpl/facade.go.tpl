@@ -1,13 +1,6 @@
 package {{ $.PackageName }}
 
-{{ if $.UsesPermissionCode -}}
-import (
-	"go.yorun.ai/vine/core/skel"
-	"{{ $.PubImport.Path }}"
-)
-{{ else -}}
 import "{{ $.PubImport.Path }}"
-{{ end }}
 
 {{ if $.Enums -}}
 {{ range $e := $.Enums -}}
@@ -53,10 +46,6 @@ const (
 	{{ $action.PermissionName }} = {{ $.PubPackageName }}.{{ $action.PermissionName }}
 {{- end }}
 )
-
-func {{ $resource.PermissionCodesName }}() []skel.PermissionCode {
-	return {{ $.PubPackageName }}.{{ $resource.PermissionCodesName }}()
-}
 
 {{ end -}}
 {{ end -}}

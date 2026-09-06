@@ -30,10 +30,8 @@ type ResourceGoPayload struct {
 }
 
 type Resource struct {
-	Name                string
-	PermissionCodesName string
-	CommentLines        []string
-	Actions             []*ResourceAction
+	Name    string
+	Actions []*ResourceAction
 }
 
 type ResourceAction struct {
@@ -65,31 +63,13 @@ func (g *_Gen) buildResourceGoPayload() *ResourceGoPayload {
 	if len(payload.Services) > 0 {
 		imports = buildServiceImports(payload.Services)
 	}
-	if resourcesHaveActions(payload.Resources) {
-		imports = append(imports, &Import{Path: skelImport})
-	}
 	payload.StdImports, payload.ModuleImports = splitImports(imports)
 	return payload
 }
 
-func resourcesHaveActions(resources []*Resource) bool {
-	for _, resource := range resources {
-		if len(resource.Actions) > 0 {
-			return true
-		}
-	}
-	return false
-}
-
 func castResource(resource *model.Resource) *Resource {
 	casted := &Resource{
-		Name:                nameutil.ToCamel(resource.Name),
-		PermissionCodesName: fmt.Sprintf("%sPermissionCodes", nameutil.ToCamel(resource.Name)),
-		CommentLines: deprecatedGoDocLines(
-			goDocLines(fmt.Sprintf("%sPermissionCodes", nameutil.ToCamel(resource.Name)), resource.Description),
-			fmt.Sprintf("%sPermissionCodes", nameutil.ToCamel(resource.Name)),
-			resource.DeprecatedReason,
-		),
+		Name:    nameutil.ToCamel(resource.Name),
 		Actions: make([]*ResourceAction, 0, len(resource.Actions)),
 	}
 	for _, action := range resource.Actions {

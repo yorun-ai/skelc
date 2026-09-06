@@ -52,7 +52,7 @@ func TestFacadeEnumValues(t *testing.T) {
 		{name: "config lifecycle", got: model.ConfigLifecycleInstant, want: model.ConfigLifecycle("instant")},
 		{name: "auth mode", got: model.AuthModeNoAuth, want: model.AuthMode("noauth")},
 		{name: "permission mode", got: model.PermissionRequireModeAny, want: model.PermissionRequireMode("any")},
-		{name: "type kind", got: model.TypeKindSkelPermissionCode, want: model.TypeKind(8)},
+		{name: "type kind", got: model.TypeKindScalar, want: model.TypeKind(2)},
 		{name: "scalar", got: model.ScalarJSON, want: model.Scalar(13)},
 	}
 

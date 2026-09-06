@@ -128,7 +128,7 @@ func completeTestDocument() *Document {
 					Checks: []*ResourceCheck{{Metadata: metadata, Name: "owns", Arguments: []*Argument{argument("userId", stringType())}}},
 					Actions: []*ResourceAction{{
 						Metadata: metadata, Name: "read", PermissionCode: "demo.contract.User:read",
-						Checks: []*ResourceCheck{{Metadata: metadata, Name: "allowed", Arguments: []*Argument{argument("permission", &Type{Kind: TypeKindPermissionCode})}}},
+						Checks: []*ResourceCheck{{Metadata: metadata, Name: "allowed", Arguments: []*Argument{argument("permission", scalarType("string"))}}},
 					}},
 				},
 			},

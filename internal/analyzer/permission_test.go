@@ -84,7 +84,7 @@ service UserService {
 	if len(checkMethod.Arguments) != 2 {
 		t.Fatalf("unexpected resource check argument count: %d", len(checkMethod.Arguments))
 	}
-	if checkMethod.Arguments[0].Name != "code" || checkMethod.Arguments[0].Type.Kind != model.TypeKindSkelPermissionCode {
+	if checkMethod.Arguments[0].Name != "code" || checkMethod.Arguments[0].Source != model.ArgumentSourcePermissionCode || checkMethod.Arguments[0].Type.Kind != model.TypeKindScalar || checkMethod.Arguments[0].Type.Scalar != model.ScalarString {
 		t.Fatalf("unexpected resource check code argument: %+v", checkMethod.Arguments[0])
 	}
 	if !checkMethod.Arguments[1].Sensitive || !checkMethod.ArgumentsData.Members[1].Sensitive {

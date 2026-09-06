@@ -54,8 +54,6 @@ const (
 	TypeKindList = internalschema.TypeKindList
 	// TypeKindMap identifies a map type.
 	TypeKindMap = internalschema.TypeKindMap
-	// TypeKindPermissionCode identifies the built-in permission-code type.
-	TypeKindPermissionCode = internalschema.TypeKindPermissionCode
 
 	// AuthModeUnset inherits authentication behavior from the enclosing context.
 	AuthModeUnset = internalschema.AuthModeUnset

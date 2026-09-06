@@ -88,9 +88,8 @@ func TestFacadeWireEnums(t *testing.T) {
 				schema.TypeKindImportedReference,
 				schema.TypeKindList,
 				schema.TypeKindMap,
-				schema.TypeKindPermissionCode,
 			),
-			want: []string{"scalar", "enum", "data", "config", "event", "typeParameter", "importedReference", "list", "map", "permissionCode"},
+			want: []string{"scalar", "enum", "data", "config", "event", "typeParameter", "importedReference", "list", "map"},
 		},
 		{
 			name: "authentication mode",

@@ -31,7 +31,6 @@ func validateModelType(type_ *model.Type) error {
 			if current.Scalar < model.ScalarInt || current.Scalar > model.ScalarJSON {
 				return fmt.Errorf("unsupported scalar %s", current.Scalar.Name())
 			}
-		case model.TypeKindSkelPermissionCode:
 		case model.TypeKindList:
 			if current.List == nil || current.List.Value == nil {
 				return fmt.Errorf("list metadata is nil")

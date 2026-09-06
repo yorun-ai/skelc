@@ -144,8 +144,6 @@ func parseType(reporter *_DiagnosticReporter, s *grammar.Type) (*model.Type, boo
 			t.Scalar = model.ScalarUUID
 		case grammar.JSON:
 			t.Scalar = model.ScalarJSON
-		case grammar.SkelPermissionCode:
-			t.Kind = model.TypeKindSkelPermissionCode
 		default:
 			reporter.reportReferencef("%s unknown PlainType %s", s.Pos, *s.Plain)
 			valid = false

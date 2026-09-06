@@ -117,7 +117,7 @@ func cloneTypeSupported(
 		return false
 	}
 	switch type_.Kind {
-	case model.TypeKindScalar, model.TypeKindSkelPermissionCode, model.TypeKindEnum:
+	case model.TypeKindScalar, model.TypeKindEnum:
 		return true
 	case model.TypeKindList:
 		return type_.List != nil && cloneTypeSupported(type_.List.Value, completed, active, typeParameterCloners)

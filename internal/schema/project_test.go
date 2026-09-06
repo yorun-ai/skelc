@@ -164,7 +164,6 @@ func TestProjectMapsTypeKinds(t *testing.T) {
 		{name: "config", semantic: new(model.Type{Kind: model.TypeKindData, Data: new(model.Data{Kind: model.DataKindConfig}), SkelName: "demo.contract.RuntimeConfig"}), wire: new(Type{Kind: TypeKindConfig, Name: "demo.contract.RuntimeConfig"})},
 		{name: "event", semantic: new(model.Type{Kind: model.TypeKindData, Data: new(model.Data{Kind: model.DataKindEvent}), SkelName: "demo.contract.ChangedEvent"}), wire: new(Type{Kind: TypeKindEvent, Name: "demo.contract.ChangedEvent"})},
 		{name: "type parameter", semantic: new(model.Type{Kind: model.TypeKindTypeParameter, TypeParameter: new(model.TypeParameter{Name: "T"})}), wire: new(Type{Kind: TypeKindTypeParameter, Name: "T"})},
-		{name: "permission code", semantic: new(model.Type{Kind: model.TypeKindSkelPermissionCode}), wire: new(Type{Kind: TypeKindPermissionCode})},
 	}
 
 	for _, test := range tests {

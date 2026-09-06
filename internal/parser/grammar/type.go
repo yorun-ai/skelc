@@ -94,9 +94,8 @@ var plainTypeByName = map[string]PlainType{
 	string(LocalTime):     LocalTime,
 	string(LocalDateTime): LocalDateTime,
 
-	string(UUID):               UUID,
-	string(JSON):               JSON,
-	string(SkelPermissionCode): SkelPermissionCode,
+	string(UUID): UUID,
+	string(JSON): JSON,
 }
 
 const (
@@ -116,8 +115,6 @@ const (
 
 	UUID PlainType = "uuid"
 	JSON PlainType = "json"
-
-	SkelPermissionCode PlainType = "PermissionCode"
 )
 
 func (s *PlainType) Parse(lex *lexer.PeekingLexer) error {

@@ -6,6 +6,29 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+### Changed
+
+- Generated permission constants and resource-check code parameters now use Go
+  `string`; generated runtime schemas describe permission-code values as strings.
+  Permission codes use ordinary string types throughout generation.
+- Added `model.Argument.Source` to distinguish runtime-injected permission codes
+  from caller-supplied check arguments without relying on their type.
+
+### Removed
+
+- Removed the built-in `PermissionCode` contract type, its model/schema type kinds,
+  and editor completion. Use `string` in contract fields; resource-check `code`
+  parameters remain implicit.
+- Removed generated resource `XxxPermissionCodes()` helpers, including public
+  facade forwarding functions. Individual permission constants remain available.
+
+### Upgrade Notes
+
+- Regenerate affected packages together and update resource-check implementations
+  to accept `string` instead of `skel.PermissionCode`. Remove calls to generated
+  permission-list helpers; use schema metadata for permission discovery. Vine's
+  existing `PermissionCode` type remains available for older generated packages.
+
 ## [0.15.0] - 2026-09-04
 
 ### Changed

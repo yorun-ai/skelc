@@ -121,9 +121,6 @@ func TestResourceGoPayloadIncludesPermissionCodes(t *testing.T) {
 		t.Fatalf("unexpected resource count: %d", len(payload.Resources))
 	}
 	resource := payload.Resources[0]
-	if resource.PermissionCodesName != "UserPermissionCodes" {
-		t.Fatalf("unexpected permission codes func: %s", resource.PermissionCodesName)
-	}
 	if len(resource.Actions) != 2 {
 		t.Fatalf("unexpected action count: %d", len(resource.Actions))
 	}

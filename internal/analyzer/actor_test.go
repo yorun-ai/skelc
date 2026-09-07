@@ -68,7 +68,7 @@ func TestParseActor(t *testing.T) {
 }
 
 func TestParseActorRejectsNonStringCredentialMember(t *testing.T) {
-	expectActorDiagnostic(t, "actor credential member userId must be string", &grammar.Actor{
+	expectActorDiagnostic(t, "actor credential member userId must be string or string?", &grammar.Actor{
 		Name: ident("PortalAdminActor"),
 		Vias: []*grammar.ActorVia{{Name: ident("client")}},
 		Sections: []*grammar.ActorSection{
@@ -90,10 +90,10 @@ func TestParseActorRejectsEmptyCredential(t *testing.T) {
 	})
 }
 
-func TestParseActorRejectsNullableCredentialMember(t *testing.T) {
+func TestParseActorAcceptsNullableCredentialMember(t *testing.T) {
 	credentialType := plainType(grammar.String)
 	credentialType.Nullable = true
-	expectActorDiagnostic(t, "actor credential member subject must be string", &grammar.Actor{
+	actor := parseActorTest(t, &grammar.Actor{
 		Name: ident("PortalAdminActor"),
 		Vias: []*grammar.ActorVia{{Name: ident("client")}},
 		Sections: []*grammar.ActorSection{
@@ -103,6 +103,10 @@ func TestParseActorRejectsNullableCredentialMember(t *testing.T) {
 			),
 		},
 	})
+
+	if !actor.AuthCredential.Members[0].Type.Nullable {
+		t.Fatal("credential field lost its nullable type")
+	}
 }
 
 func TestParseActorRejectsCredentialWithoutInfo(t *testing.T) {

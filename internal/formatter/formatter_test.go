@@ -241,3 +241,16 @@ func TestFormatNoTrim(t *testing.T) {
 		t.Fatal("format is not idempotent")
 	}
 }
+
+func TestActorIdentifierRoundTrip(t *testing.T) {
+	source := []byte("domain demo\npub actor UserActor{via client{} auth{credential{token:string}info{\n// stable identity\n@identifier\nid:int\n}}}\n")
+	before := compileTestDomain(t, "actor.skel", source)
+	formatted := formatTestSource(t, source)
+	after := compileTestDomain(t, "actor.skel", formatted)
+	if before.Actors()[0].IdentifierField != "id" || after.Actors()[0].IdentifierField != "id" || before.Hash() != after.Hash() {
+		t.Fatal("format lost actor identity metadata")
+	}
+	if second := formatTestSource(t, formatted); string(second) != string(formatted) {
+		t.Fatal("format is not idempotent")
+	}
+}

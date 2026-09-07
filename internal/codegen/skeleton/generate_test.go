@@ -436,3 +436,23 @@ pub config TextConfig instant {
 		t.Fatalf("lost config decorators: %+v", member)
 	}
 }
+
+func TestActorIdentifierPublicRoundTrip(t *testing.T) {
+	domain, _ := parseDomainForTest(t, "demo/domain.skel", "domain demo\n", "demo/actor.skel", `domain demo
+pub actor UserActor {
+ via client {}
+ auth {
+  credential { token: string }
+  info { @identifier id: int }
+ }
+}`, nil)
+	output := t.TempDir()
+	Generate(domain, Option{Out: output, PubOnly: true})
+	result, err := compiler.Compile(compiler.Option{SkelIn: output})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Domain == nil || result.Domain.Actors()[0].IdentifierField != "id" {
+		t.Fatalf("lost identifier: %+v", result)
+	}
+}

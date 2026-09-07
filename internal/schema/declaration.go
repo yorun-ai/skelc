@@ -41,11 +41,12 @@ type Type struct {
 }
 
 type ActorSchema struct {
-	Vias           []*ActorVia `json:"vias"`
-	AuthEnabled    bool        `json:"authEnabled,omitempty"`
-	AuthCredential *DataSchema `json:"authCredential,omitempty"`
-	AuthInfo       *DataSchema `json:"authInfo,omitempty"`
-	PermEnabled    bool        `json:"permEnabled,omitempty"`
+	IdentifierField string      `json:"identifierField,omitempty"`
+	Vias            []*ActorVia `json:"vias"`
+	AuthEnabled     bool        `json:"authEnabled,omitempty"`
+	AuthCredential  *DataSchema `json:"authCredential,omitempty"`
+	AuthInfo        *DataSchema `json:"authInfo,omitempty"`
+	PermEnabled     bool        `json:"permEnabled,omitempty"`
 }
 
 type ActorVia struct {

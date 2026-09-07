@@ -14,9 +14,10 @@ func TestGenSchemaGoRendersActorAuthEnabled(t *testing.T) {
 		Name: "demo.user",
 		Actors: []*model.Actor{
 			{
-				Name:        "ClientActor",
-				Vias:        []*model.ActorVia{actorViaForTest(model.ActorViaClient)},
-				AuthEnabled: true,
+				Name:            "ClientActor",
+				Vias:            []*model.ActorVia{actorViaForTest(model.ActorViaClient)},
+				AuthEnabled:     true,
+				IdentifierField: "userId",
 				AuthCredential: &model.Data{
 					Name: "ClientActorCredential",
 					Members: []*model.DataMember{
@@ -51,7 +52,10 @@ func TestGenSchemaGoRendersActorAuthEnabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)
 	}
-	if !strings.Contains(string(content), "AuthEnabled: true,") {
+	if !strings.Contains(string(content), `IdentifierField: "userId",`) {
+		t.Fatalf("identifier metadata missing: %s", content)
+	}
+	if !strings.Contains(strings.Join(strings.Fields(string(content)), " "), "AuthEnabled: true,") {
 		t.Fatalf("expected generated schema to render AuthEnabled, got:\n%s", string(content))
 	}
 	if !strings.Contains(string(content), "AuthEnabled: false,") {

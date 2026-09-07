@@ -231,6 +231,12 @@ func TestServiceFiltersDecoratorCompletionByTarget(t *testing.T) {
 			want: []string{"@deprecated", "@desc"},
 		},
 		{
+			name:   "actor identifier field",
+			source: "domain demo\nactor UserActor {\n    via client {}\n    auth {\n        credential { token: string }\n        info {\n            @\n            id: int\n        }\n    }\n}\n",
+			line:   6,
+			want:   []string{"@deprecated", "@desc", "@example", "@identifier", "@sensitive"},
+		},
+		{
 			name: "input block",
 			source: "domain demo\nservice UserService {\n    method get {\n        @\n" +
 				"        input {}\n    }\n}\n",

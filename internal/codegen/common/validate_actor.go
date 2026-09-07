@@ -35,6 +35,20 @@ func validateActor(actor *model.Actor) error {
 			return err
 		}
 	}
+	if actor.IdentifierField != "" {
+		valid := false
+		if actor.AuthEnabled && actor.AuthInfo != nil {
+			for _, member := range actor.AuthInfo.Members {
+				if member.Name == actor.IdentifierField {
+					kind := member.Type
+					valid = kind.Kind == model.TypeKindScalar && !kind.Nullable && (kind.Scalar == model.ScalarString || kind.Scalar == model.ScalarUUID || kind.Scalar == model.ScalarInt)
+				}
+			}
+		}
+		if !valid {
+			return fmt.Errorf("actor %s identifier must name a non-nullable string, uuid, or int info field", actor.Name)
+		}
+	}
 	if actor.PermEnabled {
 		if actor.PermService == nil || actor.PermMethod == nil {
 			return fmt.Errorf("actor %s has incomplete permission support", actor.Name)

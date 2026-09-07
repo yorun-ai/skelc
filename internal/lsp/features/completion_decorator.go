@@ -17,6 +17,7 @@ const (
 	allowSensitive
 	allowDeprecated
 	allowNoTrim
+	allowIdentifier
 )
 
 type _DecoratorTarget struct {
@@ -137,7 +138,9 @@ func collectDecoratorTargets(content *grammar.SkelContent, source string) []_Dec
 				}
 				if section.Auth.Info != nil {
 					addBlockKeyword(section.Auth.Info.Pos.Offset, "info", allowSensitive, section.Auth.Info.Decorators)
-					addMembers(section.Auth.Info.Members)
+					for _, member := range section.Auth.Info.Members {
+						add(identifierOffset(member.Name), allowDesc|allowExample|allowSensitive|allowDeprecated|allowIdentifier, member.Decorators)
+					}
 				}
 			}
 		case entry.Resource != nil:
@@ -226,6 +229,8 @@ func decoratorBit(decorator string) _DecoratorAllowance {
 		return allowDesc
 	case "example":
 		return allowExample
+	case "identifier":
+		return allowIdentifier
 	case "noTrim":
 		return allowNoTrim
 	case "sensitive":

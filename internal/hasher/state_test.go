@@ -15,3 +15,13 @@ func TestFillHashesIncludesActorCredential(t *testing.T) {
 		t.Fatal("expected domain hash to change when actor credential changes")
 	}
 }
+
+func TestActorIdentifierChangesHash(t *testing.T) {
+	baseline := newHashActorCredentialTestDomain(t, "token")
+	candidate := newHashActorCredentialTestDomain(t, "token")
+	candidate.Actors()[0].IdentifierField = "userId"
+	fillHashes(t, baseline, candidate)
+	if baseline.Hash() == candidate.Hash() || baseline.Actors()[0].Hash == candidate.Actors()[0].Hash {
+		t.Fatal("identifier change did not affect hashes")
+	}
+}

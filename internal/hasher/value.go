@@ -73,6 +73,7 @@ type _WebHashValue struct {
 }
 
 type _ActorHashValue struct {
+	IdentifierField    string   `json:"identifierField,omitempty"`
 	Name               string   `json:"name"`
 	SkelName           string   `json:"skelName"`
 	Description        string   `json:"description,omitempty"`

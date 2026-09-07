@@ -239,3 +239,47 @@ func TestConfigNoTrimProjectionAndDiff(t *testing.T) {
 		t.Fatal("expected noTrim on data to be rejected")
 	}
 }
+
+func TestActorIdentifierProjectionAndDiff(t *testing.T) {
+	actor := &model.Actor{Name: "UserActor", SkelName: "demo.UserActor", AuthEnabled: true, Vias: []*model.ActorVia{{Name: "client"}},
+		AuthCredential: &model.Data{Members: []*model.DataMember{}},
+		AuthInfo:       &model.Data{Members: []*model.DataMember{{Name: "id", Type: &model.Type{Kind: model.TypeKindScalar, Scalar: model.ScalarInt}}}},
+	}
+	domain := model.NewDomainFromSpec(model.DomainSpec{Name: "demo", Actors: []*model.Actor{actor}})
+	baseline, err := Project(domain, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	actor.IdentifierField = "id"
+	candidate, err := Project(domain, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	if err := Encode(&buf, candidate); err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := Decode(&buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if decoded.Declarations[0].Actor.IdentifierField != "id" {
+		t.Fatal("lost identifier field")
+	}
+	for _, pair := range [][2]*Document{{baseline, decoded}, {decoded, baseline}} {
+		report, err := Diff(pair[0], pair[1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(report.Changes) != 1 || report.Changes[0].Code != "actor.identifier.changed" || report.Changes[0].Impact != ImpactDangerous {
+			t.Fatalf("unexpected diff: %+v", report.Changes)
+		}
+	}
+	for _, name := range []string{"missing", "id"} {
+		decoded.Declarations[0].Actor.IdentifierField = name
+		decoded.Declarations[0].Actor.AuthInfo.Members[0].Type.Nullable = true
+		if err := Validate(decoded); err == nil {
+			t.Fatal("accepted invalid identifier")
+		}
+	}
+}

@@ -115,6 +115,9 @@ func (c *_Diff) compareMembers(owner, prefix string, baseline, candidate []*Memb
 }
 
 func (c *_Diff) compareActor(owner string, baseline, candidate *ActorSchema) {
+	if baseline.IdentifierField != candidate.IdentifierField {
+		c.add(ImpactDangerous, "actor.identifier.changed", owner, "actor identifier field changed", model.Position{}, model.Position{})
+	}
 	c.compareStringSet(owner, "actor.via", actorViaNames(baseline.Vias), actorViaNames(candidate.Vias), ImpactBreaking, ImpactCompatible)
 	if baseline.AuthEnabled != candidate.AuthEnabled {
 		code := "actor.auth.added"

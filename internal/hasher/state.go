@@ -106,6 +106,7 @@ func (s *_hashState) actorHash(actor *model.Actor) string {
 			permMethodHash = s.methodHash(actor.PermMethod)
 		}
 		return s.hashValue(_ActorHashValue{
+			IdentifierField:    actor.IdentifierField,
 			Name:               actor.Name,
 			SkelName:           actor.SkelName,
 			Description:        actor.Description,

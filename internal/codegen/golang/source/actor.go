@@ -61,10 +61,14 @@ func (g *_Gen) genActorGo() {
 	}
 	for _, tokenActor := range g.authServiceActors() {
 		if tokenActor.AuthEnabled {
+			info := castCloneableData(tokenActor.AuthInfo)
+			for _, member := range info.Members {
+				member.Identifier = member.SkelName == tokenActor.IdentifierField
+			}
 			payload.CredentialData = append(
 				payload.CredentialData,
 				castCloneableData(tokenActor.AuthCredential),
-				castCloneableData(tokenActor.AuthInfo),
+				info,
 			)
 			payload.AuthServices = append(payload.AuthServices, castActorAuthService(tokenActor.AuthService))
 		}

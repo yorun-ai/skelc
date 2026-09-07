@@ -196,7 +196,7 @@ func projectActor(value *model.Actor) *Declaration {
 		Metadata: metadata(value.Description, value.Deprecated, value.DeprecatedReason),
 		Pub:      value.Pub, Name: value.Name, Kind: DeclarationTypeActor, SkelName: value.SkelName, Pos: value.Pos,
 		Actor: &ActorSchema{
-			Vias: vias, AuthEnabled: value.AuthEnabled, AuthCredential: projectDataSchema(value.AuthCredential),
+			IdentifierField: value.IdentifierField, Vias: vias, AuthEnabled: value.AuthEnabled, AuthCredential: projectDataSchema(value.AuthCredential),
 			AuthInfo: projectDataSchema(value.AuthInfo), PermEnabled: value.PermEnabled,
 		},
 	}

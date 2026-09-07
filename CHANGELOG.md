@@ -8,6 +8,8 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ### Added
 
+- Add optional `@identifier` on actor info string/uuid/int fields, schema and hash metadata, public Skel preservation, generated Go Info field tags, and LSP completion. Generated Go now requires Vine v0.15.1.
+
 - Generated permission-check invocations now explicitly set `CodeArgumentName`.
   Business arguments may be named `code`; the injected string argument uses
   the first available name among `code`, `code1`, `code2`, and so on. Public
@@ -22,8 +24,10 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ### Changed
 
+- Omit unused nil validation hooks from generated Go method registrations.
+
 - Raised the minimum and default Vine dependency for generated Go modules to
-  v0.15.0 for `index(n)` and `noTrim` tag support.
+  v0.15.1 for actor identity metadata, `index(n)`, and `noTrim` support.
 
 - Generated Go service and resource-check argument fields use `skel:"index(n)"`
   instead of `arg:"n"`. Sensitive arguments combine attributes as

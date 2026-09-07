@@ -54,7 +54,7 @@ type {{ $s.FullName }} struct { {{ range $sm := $s.Members }}
 	// {{ $line }}
 	{{- end }}
 	{{- end }}
-	{{ $sm.Name }} {{ $sm.Type.Plain }} `json:"{{ $sm.SkelName }}"{{ if $sm.Sensitive }} skel:"sensitive"{{ end }}`{{ end }}
+	{{ $sm.Name }} {{ $sm.Type.Plain }} `json:"{{ $sm.SkelName }}"{{ if or $sm.Sensitive $sm.Identifier }} skel:"{{ if $sm.Sensitive }}sensitive{{ if $sm.Identifier }},{{ end }}{{ end }}{{ if $sm.Identifier }}identifier{{ end }}"{{ end }}`{{ end }}
 }
 {{- end }}
 {{- if $s.Sensitive }}

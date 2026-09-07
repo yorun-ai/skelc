@@ -274,7 +274,7 @@ pub resource User {
 	Generate(domain, Option{Out: outputDir, PubOnly: true})
 
 	typesContent := readGeneratedFileForTest(t, filepath.Join(outputDir, "types.skel"))
-	if strings.Contains(typesContent, "PermissionCode") || strings.Contains(typesContent, "code:") {
+	if strings.Contains(typesContent, "code:") {
 		t.Fatalf("resource check generated skel should hide internal code argument, got:\n%s", typesContent)
 	}
 	if !strings.Contains(typesContent, "    @desc(\"lookup check\")\n    check byExists {\n        @desc(\"lookup input\")\n        @sensitive\n        input {\n            @desc(\"user id\")\n            @example(1)\n            @sensitive\n            userId: int\n        }\n    }\n\n    @desc(\"read user\")") {

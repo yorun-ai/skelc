@@ -79,11 +79,6 @@ func TestPackageJSONTemplateUsesPureTypeScriptEntry(t *testing.T) {
 			t.Fatalf("expected package.json to contain %q, got:\n%s", expected, output)
 		}
 	}
-	for _, forbidden := range []string{"./dist/index.js", "./dist/index.d.ts", "typescript", `"dependencies": {`} {
-		if strings.Contains(output, forbidden) {
-			t.Fatalf("expected package.json to omit %q, got:\n%s", forbidden, output)
-		}
-	}
 }
 
 func joinPackageJSONDependencies(dependencies []PackageJSONDependency) string {

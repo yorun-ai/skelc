@@ -71,23 +71,6 @@ service UserService {
 	assertDiagnosticsContain(t, diagnostics, "references non-pub resource")
 }
 
-// TODO: Remove this regression test after the PermissionCode migration period ends.
-func TestPermissionCodeIsNotABuiltinType(t *testing.T) {
-	for _, declaration := range []string{
-		`data Payload { code: PermissionCode }`,
-		`resource User {
-    check byId { input { permission: PermissionCode
-        id: string
-    } }
-    action read
-}`,
-	} {
-		content := parseResourceTestContent(t, "domain demo\n"+declaration)
-		_, diagnostics := Analyze(content, nil)
-		assertDiagnosticsContain(t, diagnostics, "PermissionCode")
-	}
-}
-
 func TestResourceCheckAvoidsBusinessCodeNames(t *testing.T) {
 	for _, test := range []struct{ input, want string }{
 		{"", "code"},
@@ -107,12 +90,11 @@ func TestResourceCheckAvoidsBusinessCodeNames(t *testing.T) {
 	}
 }
 
-// TODO: Remove this regression test after the PermissionCode migration period ends.
-func TestResourceCheckAllowsUserDefinedPermissionCodeData(t *testing.T) {
+func TestResourceCheckAllowsDataArguments(t *testing.T) {
 	content := parseResourceTestContent(t, `domain demo
-data PermissionCode { value: string }
+data PermissionInput { value: string }
 resource User {
-    check byPermission { input { permission: PermissionCode } }
+    check byPermission { input { permission: PermissionInput } }
     action read
 }
 actor UserActor { via client {} }
@@ -120,7 +102,7 @@ service UserService {
     for UserActor
     method read {
         require User:read:byPermission(permission)
-        input { permission: PermissionCode }
+        input { permission: PermissionInput }
     }
 }`)
 	domain := mustAnalyze(t, content).Model()
@@ -129,7 +111,7 @@ service UserService {
 	if len(arguments) != 1 || arguments[0].Name != "permission" || arguments[0].Source != model.ArgumentSourceDeclared {
 		t.Fatalf("user-defined data argument was treated as injected: %+v", arguments)
 	}
-	if arguments[0].Type.Kind != model.TypeKindData || arguments[0].Type.Data.Name != "PermissionCode" {
+	if arguments[0].Type.Kind != model.TypeKindData || arguments[0].Type.Data.Name != "PermissionInput" {
 		t.Fatalf("expected an ordinary data reference, got %+v", arguments[0].Type)
 	}
 }

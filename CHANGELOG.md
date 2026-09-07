@@ -6,6 +6,17 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-09-07
+
+### Upgrade notes
+
+- Generated Go code now requires Vine v0.15.1 or later; upgrade the runtime
+  before regenerating contracts. Existing Skel declarations remain valid.
+- Regenerate actor Info types and schemas to use `@identifier`. The marker is
+  optional and supports one non-nullable string, uuid, or int field per actor.
+- Schema consumers using strict decoding must be updated before reading the new
+  `identifierField` or `noTrim` metadata emitted when those markers are used.
+
 ### Added
 
 - Add optional `@identifier` on actor info string/uuid/int fields, schema and hash metadata, public Skel preservation, generated Go Info field tags, and LSP completion. Generated Go now requires Vine v0.15.1.

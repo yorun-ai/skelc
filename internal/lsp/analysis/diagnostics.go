@@ -10,18 +10,29 @@ import (
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
 	"go.yorun.ai/skelc/internal/compiler"
+	"go.yorun.ai/skelc/internal/loader"
 	lspdiagnostic "go.yorun.ai/skelc/internal/lsp/diagnostic"
 	"go.yorun.ai/skelc/internal/lsp/index"
 )
 
 // SemanticSources converts indexed LSP documents into compiler sources.
 func SemanticSources(documents map[uri.URI]*index.Document) ([]compiler.Source, map[string]uri.URI) {
+	directoryInputs := map[string]bool{}
+	for _, document := range documents {
+		if filepath.Base(document.Path) == loader.DomainFileName {
+			directoryInputs[filepath.Clean(filepath.Dir(document.Path))] = true
+		}
+	}
 	sources := make([]compiler.Source, 0, len(documents))
 	paths := make(map[string]uri.URI, len(documents))
 	for documentURI, document := range documents {
 		path := filepath.Clean(document.Path)
+		root := path
+		if directoryInputs[filepath.Dir(path)] {
+			root = filepath.Dir(path)
+		}
 		sources = append(sources, compiler.Source{
-			Path: path, Domain: document.Domain, Root: filepath.Dir(path),
+			Path: path, Domain: document.Domain, Root: root,
 			Content: []byte(document.Source), Parsed: document.Parsed,
 			ParseDiagnostics: document.ParseDiagnostics,
 		})

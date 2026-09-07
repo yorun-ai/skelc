@@ -31,7 +31,11 @@ func projectGitBaseline(ctx context.Context, differ *SourceDiffer, candidate com
 	if cached := differ.cachedGitFailure(root); cached != nil {
 		return nil, "", cached
 	}
-	repositoryIdentity, err := gitOutput(ctx, root, "rev-parse", "--show-toplevel", "HEAD")
+	directory := root
+	if workspaceDomainIsFile(candidate) {
+		directory = filepath.Dir(root)
+	}
+	repositoryIdentity, err := gitOutput(ctx, directory, "rev-parse", "--show-toplevel", "HEAD")
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, "", ctx.Err()
@@ -74,7 +78,11 @@ func projectGitBaseline(ctx context.Context, differ *SourceDiffer, candidate com
 		if name == "" || filepath.Ext(name) != ".skel" {
 			continue
 		}
-		if filepath.Clean(filepath.Dir(filepath.FromSlash(name))) != filepath.Clean(relativeRoot) {
+		if workspaceDomainIsFile(candidate) {
+			if filepath.Clean(filepath.FromSlash(name)) != filepath.Clean(relativeRoot) {
+				continue
+			}
+		} else if filepath.Clean(filepath.Dir(filepath.FromSlash(name))) != filepath.Clean(relativeRoot) {
 			continue
 		}
 		content, showErr := gitBytes(ctx, repositoryRoot, "show", "HEAD:"+name)
@@ -82,7 +90,7 @@ func projectGitBaseline(ctx context.Context, differ *SourceDiffer, candidate com
 			return nil, "", gitHistoryError(root, showErr)
 		}
 		sources = append(sources, compiler.Source{
-			Path: filepath.Join(root, filepath.Base(filepath.FromSlash(name))), Root: root, Content: content,
+			Path: filepath.Join(repositoryRoot, filepath.FromSlash(name)), Root: root, Content: content,
 		})
 	}
 	if len(sources) == 0 {

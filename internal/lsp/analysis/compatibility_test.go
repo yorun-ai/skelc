@@ -22,7 +22,8 @@ func TestCompatibilityDiagnosticsUseInMemorySourceAndImpactSeverity(t *testing.T
 	runGit(t, root, "init")
 	runGit(t, root, "config", "user.name", "Skel Test")
 	runGit(t, root, "config", "user.email", "skel@example.com")
-	runGit(t, root, "add", "contract.skel")
+	require.NoError(t, os.WriteFile(filepath.Join(root, "other.skel"), []byte("domain demo\ndata User { id: bool }\n"), 0o600))
+	runGit(t, root, "add", "contract.skel", "other.skel")
 	runGit(t, root, "commit", "-m", "baseline")
 
 	documentURI := uri.File(path)
@@ -79,7 +80,7 @@ func TestCompatibilityDiagnosticsReportExplicitBaselineFailure(t *testing.T) {
 	require.Empty(t, diagnostics)
 
 	appendCompatibilityDiagnostics(t.Context(), schema.NewSourceDiffer(), diagnostics, domains, sources, paths,
-		CompatibilityOptions{Enabled: true, BaselineSkelIn: baselinePath})
+		CompatibilityOptions{Enabled: true, BaselineSkelIn: "baseline.skel"})
 	require.Len(t, diagnostics[documentURI], 1)
 	result := diagnostics[documentURI][0]
 	assert.Equal(t, protocol.String("schema.baseline"), result.Code)

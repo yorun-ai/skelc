@@ -2,6 +2,8 @@ package analysis
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -90,7 +92,7 @@ func TestSemanticDiagnosticsKeepSameNamedDomainDirectoriesIndependent(t *testing
 	assert.Empty(t, diagnostics)
 }
 
-func TestSemanticDiagnosticsMergeSameNamedDomainFilesInOneDirectory(t *testing.T) {
+func TestSemanticDiagnosticsMergeSameNamedDomainFilesWithDomainFile(t *testing.T) {
 	firstURI := uri.File("/workspace/domain/base/skel/first.skel")
 	secondURI := uri.File("/workspace/domain/base/skel/second.skel")
 	documents := map[uri.URI]*index.Document{
@@ -108,9 +110,60 @@ func TestSemanticDiagnosticsMergeSameNamedDomainFilesInOneDirectory(t *testing.T
 		),
 	}
 
+	domainURI := uri.File("/workspace/domain/base/skel/domain.skel")
+	documents[domainURI] = index.Build(domainURI, domainURI.FsPath(), "domain base\n", 1)
+
 	sources, paths := SemanticSources(documents)
 	diagnostics, err := SemanticDiagnostics(context.Background(), compiler.NewWorkspaceAnalyzer(), sources, paths)
 	require.NoError(t, err)
 	require.Len(t, diagnostics[secondURI], 1)
 	assert.Equal(t, protocol.String(compiler.DiagnosticCodeSemanticDuplicate), diagnostics[secondURI][0].Code)
+}
+
+func TestSemanticDiagnosticsKeepStandaloneFormatterFixturesIndependent(t *testing.T) {
+	documents := map[uri.URI]*index.Document{}
+	for _, name := range []string{"complete.input.skel", "complete.golden.skel"} {
+		path, err := filepath.Abs(filepath.Join("../../formatter/testdata", name))
+		require.NoError(t, err)
+		content, err := os.ReadFile(path)
+		require.NoError(t, err)
+		documentURI := uri.File(path)
+		documents[documentURI] = index.Build(documentURI, path, string(content), 1)
+	}
+	sources, paths := SemanticSources(documents)
+	diagnostics, domains, err := SemanticWorkspace(t.Context(), compiler.NewWorkspaceAnalyzer(), sources, paths)
+	require.NoError(t, err)
+	assert.Empty(t, diagnostics)
+	require.Len(t, domains, 2)
+	for _, domain := range domains {
+		require.Len(t, domain.Sources, 1)
+		assert.Equal(t, domain.Sources[0].Path, domain.Root)
+	}
+}
+
+func TestSemanticDiagnosticsChangeGroupingWithDomainFile(t *testing.T) {
+	firstURI := uri.File("/workspace/first.skel")
+	secondURI := uri.File("/workspace/second.skel")
+	domainURI := uri.File("/workspace/domain.skel")
+	documents := map[uri.URI]*index.Document{
+		firstURI:  index.Build(firstURI, firstURI.FsPath(), "domain demo\ndata User {}\n", 1),
+		secondURI: index.Build(secondURI, secondURI.FsPath(), "domain demo\ndata Order { user: User }\n", 1),
+	}
+	analyzer := compiler.NewWorkspaceAnalyzer()
+	for _, hasDomainFile := range []bool{false, true, false} {
+		if hasDomainFile {
+			documents[domainURI] = index.Build(domainURI, domainURI.FsPath(), "domain demo\n", 1)
+		} else {
+			delete(documents, domainURI)
+		}
+		sources, paths := SemanticSources(documents)
+		diagnostics, err := SemanticDiagnostics(t.Context(), analyzer, sources, paths)
+		require.NoError(t, err)
+		if hasDomainFile {
+			assert.Empty(t, diagnostics)
+		} else {
+			require.Len(t, diagnostics[secondURI], 1)
+			assert.Contains(t, diagnostics[secondURI][0].Message, "User")
+		}
+	}
 }

@@ -18,6 +18,7 @@ func TestSourceGolden(t *testing.T) {
 	if _, err := parser.ParseSource("complete.input.skel", input); err != nil {
 		t.Fatalf("input fixture does not parse: %v", err)
 	}
+	checkTestSource(t, "complete.input.skel", input)
 	got := formatTestSource(t, input)
 	if string(got) != string(want) {
 		t.Fatalf("unexpected formatted source:\n%s\nwant:\n%s", got, want)
@@ -25,8 +26,25 @@ func TestSourceGolden(t *testing.T) {
 	if _, err := parser.ParseSource("complete.golden.skel", got); err != nil {
 		t.Fatalf("formatted fixture does not parse: %v", err)
 	}
+	checkTestSource(t, "complete.golden.skel", got)
 	if second := formatTestSource(t, got); string(second) != string(got) {
 		t.Fatalf("format is not idempotent:\n%s", second)
+	}
+}
+
+func checkTestSource(t *testing.T, name string, source []byte) {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), name)
+	if err := os.WriteFile(path, source, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// Like skelc check, validate local semantics while allowing unresolved imports.
+	result, err := compiler.Check(compiler.Option{SkelIn: path})
+	if err != nil {
+		t.Fatalf("check %s: %v", name, err)
+	}
+	if len(result.Diagnostics) != 0 {
+		t.Fatalf("invalid fixture %s: %v", name, result.Diagnostics)
 	}
 }
 

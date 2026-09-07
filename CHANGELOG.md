@@ -15,6 +15,15 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
   credential parsing must be updated separately before optional fields can
   be omitted from gateway requests.
 
+### Fixed
+
+- LSP semantic diagnostics now analyze standalone Skel files independently when
+  their directory has no `domain.skel`, avoiding false duplicate declarations
+  between files with the same domain. Directories containing `domain.skel`
+  continue to combine same-domain files. Schema compatibility checks use the
+  matching standalone file at Git `HEAD` and resolve relative baseline paths
+  from its containing directory.
+
 ## [0.17.0] - 2026-09-07
 
 ### Upgrade notes

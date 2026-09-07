@@ -107,7 +107,11 @@ func (d *SourceDiffer) DiffWorkspaceDomain(ctx context.Context, candidate compil
 		baselineSchema, gitRepositoryRoot, err = projectGitBaseline(ctx, d, candidate)
 	} else {
 		if !filepath.IsAbs(baselineSkelIn) {
-			baselineSkelIn = filepath.Join(candidate.Root, baselineSkelIn)
+			directory := candidate.Root
+			if workspaceDomainIsFile(candidate) {
+				directory = filepath.Dir(directory)
+			}
+			baselineSkelIn = filepath.Join(directory, baselineSkelIn)
 		}
 		baseline, compileErr := compiler.CompileImport(baselineSkelIn)
 		if compileErr != nil {
@@ -218,4 +222,9 @@ func remapReportBaselinePositions(report *Report, repositoryRoot string) {
 			change.Baseline.File = "HEAD:" + filepath.ToSlash(relative)
 		}
 	}
+}
+
+// workspaceDomainIsFile identifies a single-file compiler input without consulting disk.
+func workspaceDomainIsFile(candidate compiler.WorkspaceDomain) bool {
+	return len(candidate.Sources) == 1 && filepath.Clean(candidate.Root) == filepath.Clean(candidate.Sources[0].Path)
 }

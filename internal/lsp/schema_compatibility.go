@@ -90,10 +90,11 @@ func diffDocument(
 	if err != nil {
 		return nil, err
 	}
-	root := filepath.Clean(filepath.Dir(document.Path))
 	for _, domain := range domains {
-		if domain.Name == document.Domain && filepath.Clean(domain.Root) == root {
-			return schema.DiffWorkspaceDomain(ctx, domain, schema.SourceDiffOption{BaselineSkelIn: option.BaselineSkelIn})
+		for _, candidate := range domain.Sources {
+			if filepath.Clean(candidate.Path) == filepath.Clean(document.Path) {
+				return schema.DiffWorkspaceDomain(ctx, domain, schema.SourceDiffOption{BaselineSkelIn: option.BaselineSkelIn})
+			}
 		}
 	}
 	for _, diagnostic := range diagnostics {

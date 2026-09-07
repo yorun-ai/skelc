@@ -71,6 +71,9 @@ GOWORK=off go test ./internal/parser ./internal/formatter -run '^$' -bench . -be
 Also run `GOWORK=off go vet ./...` after changes involving exported APIs, reflection, filesystem safety, or CLI/runtime wiring.
 Parser, analyzer, or formatter changes should also smoke-test the fuzz targets with `go test -fuzz` and a bounded `-fuzztime`.
 
+CI runs static checks, full race tests, and example integration in parallel.
+See [CI maintenance](.github/CI.md) for the required gate and workflow validation.
+
 ## Language and Generator Changes
 
 For Skel syntax changes:

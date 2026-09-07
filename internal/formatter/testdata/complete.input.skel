@@ -11,16 +11,16 @@ ENABLED
 DISABLED
 }
 
-pub data Page <TItem?>{
+pub data Page <TItem>{
 items:list < TItem? >
 metadata:map<string,json>?
 }
 
-pub config Database eternal{
+pub config DatabaseConfig eternal{
 url:string
 }
 
-pub event Created{
+pub event CreatedEvent{
 payload{
 id:uuid
 }
@@ -69,10 +69,11 @@ User:update:owner(actor.info.subject)
 method get{
 noauth
 input{
+@desc("User identifier")
 @example("42")
 id:uuid
 }
-output Page < common.types.User? > ?
+output Page < common.User? > ?
 }
 }
 
@@ -85,6 +86,6 @@ at:localdatetime
 }
 }
 
-web Portal{
+web PortalWeb{
 for ClientActor via openapi
 }

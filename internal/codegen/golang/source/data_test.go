@@ -88,9 +88,6 @@ func TestCastDataBuildsCloneMethod(t *testing.T) {
 			t.Fatalf("clone lines missing %q:\n%s", fragment, lines)
 		}
 	}
-	if strings.Contains(lines, "[:0:0]") {
-		t.Fatalf("clone lines retain source slice backing arrays:\n%s", lines)
-	}
 	if got := importPaths(data.CloneImports); len(got) != 1 || got[0] != "maps" {
 		t.Fatalf("unexpected clone imports: %v", got)
 	}

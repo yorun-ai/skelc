@@ -7,7 +7,7 @@ import (
 
 func (g *_Gen) buildActorSchema(value *model.Actor, projected *contractschema.Declaration) *_ActorSchema {
 	result := &_ActorSchema{
-		Name: projected.Name, SkelName: projected.SkelName, Hash: value.Hash,
+		IdentifierField: projected.Actor.IdentifierField, Name: projected.Name, SkelName: projected.SkelName, Hash: value.Hash,
 		Description: projected.Description, Deprecated: projected.Deprecated,
 		DeprecatedReason: projected.DeprecatedReason, Vias: make([]_ActorVia, 0, len(projected.Actor.Vias)),
 		AuthEnabled: projected.Actor.AuthEnabled, PermEnabled: projected.Actor.PermEnabled,

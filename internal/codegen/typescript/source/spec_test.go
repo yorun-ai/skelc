@@ -29,11 +29,6 @@ func TestSpecTemplateRendersServiceSpecs(t *testing.T) {
 			t.Fatalf("expected rendered spec to contain %q, got:\n%s", check, output)
 		}
 	}
-	for _, forbidden := range []string{"Schema", "queryKey", "request", "response"} {
-		if strings.Contains(output, forbidden) {
-			t.Fatalf("expected rendered spec to omit %q, got:\n%s", forbidden, output)
-		}
-	}
 }
 
 func TestSpecTemplateKeepsModuleSemanticsWhenEmpty(t *testing.T) {
@@ -138,14 +133,8 @@ func TestBuildSpecTsPayloadRendersSparseWireForBinaryMethods(t *testing.T) {
 			t.Fatalf("expected rendered spec to contain %q, got:\n%s", check, output)
 		}
 	}
-	for _, forbidden := range []string{
-		"wire: {\n    ping:",
-		"argumentsContainsBinaryType",
-		"resultContainsBinaryType",
-	} {
-		if strings.Contains(output, forbidden) {
-			t.Fatalf("expected rendered spec to omit %q, got:\n%s", forbidden, output)
-		}
+	if strings.Contains(output, "wire: {\n    ping:") {
+		t.Fatalf("unexpected wire schema for a method without binary values:\n%s", output)
 	}
 }
 

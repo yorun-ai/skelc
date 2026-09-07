@@ -40,6 +40,8 @@ type Actor struct {
 	AuthCredential *Data
 	// AuthInfo is the generated authenticated-actor information data model.
 	AuthInfo *Data
+	// IdentifierField names the optional identity field in AuthInfo.
+	IdentifierField string
 	// AuthService is the generated authentication service.
 	AuthService *Service
 	// AuthMethod is the authentication method in AuthService.

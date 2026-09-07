@@ -1,6 +1,7 @@
 package vineschema
 
 type _ActorSchema struct {
+	IdentifierField  string
 	Name             string
 	SkelName         string
 	Description      string

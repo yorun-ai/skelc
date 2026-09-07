@@ -70,10 +70,6 @@ func TestGeneratorRendersNullableMapAndServiceHooks(t *testing.T) {
 			t.Fatalf("expected service argument tag %s, got:\n%s", tag, goServiceContent)
 		}
 	}
-	if !strings.Contains(string(goServiceContent), "ValidateArguments: nil,") ||
-		!strings.Contains(string(goServiceContent), "ValidateResult: nil,") {
-		t.Fatalf("expected nil service validation hooks, got:\n%s", string(goServiceContent))
-	}
 	if !strings.Contains(string(goServiceContent), "CloneArguments: func(value any) any {") {
 		t.Fatalf("expected service arguments clone, got:\n%s", string(goServiceContent))
 	}

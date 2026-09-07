@@ -165,6 +165,20 @@ func validateMembers(values []*Member) error {
 }
 
 func validateActor(value *ActorSchema) error {
+	if value.IdentifierField != "" {
+		found := false
+		if value.AuthEnabled && value.AuthInfo != nil {
+			for _, member := range value.AuthInfo.Members {
+				if member != nil && member.Name == value.IdentifierField && member.Type != nil {
+					kind := member.Type
+					found = kind.Kind == TypeKindScalar && !kind.Nullable && (kind.Name == "string" || kind.Name == "uuid" || kind.Name == "int")
+				}
+			}
+		}
+		if !found {
+			return fmt.Errorf("actor identifier must name a non-nullable string, uuid, or int info field")
+		}
+	}
 	if value.Vias == nil {
 		return fmt.Errorf("actor vias are required")
 	}

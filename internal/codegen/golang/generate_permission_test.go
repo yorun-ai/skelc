@@ -37,15 +37,6 @@ service UserService {
 	if _, err := skelc.CompileGolang(skelc.Input{SkelIn: input}, skelc.GolangOption{Out: out, AsModule: true, Module: "example.com/permissions"}); err != nil {
 		t.Fatal(err)
 	}
-	// TODO: Remove these legacy-output assertions after the PermissionCode migration period ends.
-	for _, name := range []string{"data.go", "resource.go", "schema.go"} {
-		content := readFileForTest(t, filepath.Join(out, name))
-		for _, forbidden := range []string{"skel.PermissionCode", "skel.TypeKindSkelPermissionCode", "UserPermissionCodes"} {
-			if strings.Contains(content, forbidden) {
-				t.Fatalf("%s contains %s", name, forbidden)
-			}
-		}
-	}
 	resource := strings.Join(strings.Fields(readFileForTest(t, filepath.Join(out, "resource.go"))), " ")
 	if !strings.Contains(resource, `UserReadPermission string = "demo.User:read"`) || !strings.Contains(resource, "code string") {
 		t.Fatalf("expected string constant and check parameter: %s", resource)

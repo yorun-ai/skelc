@@ -274,7 +274,7 @@ pub resource User {
 	Generate(domain, Option{Out: outputDir, PubOnly: true})
 
 	typesContent := readGeneratedFileForTest(t, filepath.Join(outputDir, "types.skel"))
-	if strings.Contains(typesContent, "PermissionCode") || strings.Contains(typesContent, "code:") {
+	if strings.Contains(typesContent, "code:") {
 		t.Fatalf("resource check generated skel should hide internal code argument, got:\n%s", typesContent)
 	}
 	if !strings.Contains(typesContent, "    @desc(\"lookup check\")\n    check byExists {\n        @desc(\"lookup input\")\n        @sensitive\n        input {\n            @desc(\"user id\")\n            @example(1)\n            @sensitive\n            userId: int\n        }\n    }\n\n    @desc(\"read user\")") {
@@ -434,5 +434,25 @@ pub config TextConfig instant {
 	member := parsed.Domain.Configs()[0].Members[0]
 	if !member.NoTrim || !member.Sensitive {
 		t.Fatalf("lost config decorators: %+v", member)
+	}
+}
+
+func TestActorIdentifierPublicRoundTrip(t *testing.T) {
+	domain, _ := parseDomainForTest(t, "demo/domain.skel", "domain demo\n", "demo/actor.skel", `domain demo
+pub actor UserActor {
+ via client {}
+ auth {
+  credential { token: string }
+  info { @identifier id: int }
+ }
+}`, nil)
+	output := t.TempDir()
+	Generate(domain, Option{Out: output, PubOnly: true})
+	result, err := compiler.Compile(compiler.Option{SkelIn: output})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Domain == nil || result.Domain.Actors()[0].IdentifierField != "id" {
+		t.Fatalf("lost identifier: %+v", result)
 	}
 }

@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"go.yorun.ai/skelc/internal/parser"
 	"testing"
 
 	"go.yorun.ai/skelc/internal/parser/grammar"
@@ -173,4 +174,55 @@ func grammarActorAuthSection(credentialMembers []*grammar.DataMember, infoMember
 		auth.Info = &grammar.ActorInfo{Members: infoMembers}
 	}
 	return &grammar.ActorSection{Auth: auth}
+}
+
+func TestActorIdentifier(t *testing.T) {
+	for _, tt := range []struct {
+		name, body string
+		valid      bool
+	}{
+		{"string", "@identifier id: string", true},
+		{"uuid", "@identifier id: uuid", true},
+		{"int", "@identifier id: int", true},
+		{"optional marker", "id: string", true},
+		{"nullable", "@identifier id: int?", false},
+		{"float", "@identifier id: float", false},
+		{"decimal", "@identifier id: decimal", false},
+		{"list", "@identifier id: list<int>", false},
+		{"argument", "@identifier(\"id\") id: int", false},
+		{"duplicate", "@identifier @identifier id: int", false},
+		{"two fields", "@identifier id: int @identifier other: string", false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			source := "domain demo\npub actor UserActor { via client {} auth { credential { token: string } info { " + tt.body + " } } }"
+			content, err := parser.ParseSource("actor.skel", []byte(source))
+			if err != nil {
+				t.Fatal(err)
+			}
+			reporter := newDiagnosticReporter()
+			actor, valid := parseActor(reporter, content.Entries[0].Actor)
+			if valid != tt.valid {
+				t.Fatalf("valid=%v diagnostics=%v", valid, reporter.result())
+			}
+			if valid && tt.name != "optional marker" && actor.IdentifierField != "id" {
+				t.Fatalf("identifier = %q", actor.IdentifierField)
+			}
+			again, validAgain := parseActor(newDiagnosticReporter(), content.Entries[0].Actor)
+			if validAgain != valid || again.IdentifierField != actor.IdentifierField {
+				t.Fatal("analysis mutated source")
+			}
+		})
+	}
+	for _, source := range []string{
+		"domain demo\ndata User { @identifier id: int }",
+		"domain demo\n@identifier actor UserActor { via client {} }",
+		"domain demo\nactor UserActor { via client {} auth { credential { @identifier token: string } info {} } }",
+	} {
+		content, err := parser.ParseSource("invalid.skel", []byte(source))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, diagnostics := Analyze(content, nil)
+		assertDiagnosticsContain(t, diagnostics, "unexpected decorator @identifier")
+	}
 }

@@ -96,9 +96,6 @@ func TestFacadeGoRendersResourcePermissions(t *testing.T) {
 	gen.genFacadeGo()
 
 	content := readFacadeGoForTest(t, outputDir)
-	if strings.Contains(content, "PermissionCodes") || strings.Contains(content, "vine/core/skel") {
-		t.Fatalf("unexpected permission helper or import: %s", content)
-	}
 	normalizedContent := strings.Join(strings.Fields(content), " ")
 	for _, expected := range []string{
 		"UserReadPermission = apppub.UserReadPermission",

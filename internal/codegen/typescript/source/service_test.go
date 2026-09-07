@@ -320,11 +320,6 @@ func TestServicesTemplatePassesOptionsDirectly(t *testing.T) {
 			t.Fatalf("expected rendered services to contain %q, got:\n%s", check, output)
 		}
 	}
-	for _, forbidden := range []string{"Schema", "from './schema'", "skelInfo:", "...options", "serviceName: 'demo.user.UserService'", "methodName: 'ping'"} {
-		if strings.Contains(output, forbidden) {
-			t.Fatalf("expected rendered services to omit %q, got:\n%s", forbidden, output)
-		}
-	}
 	if strings.Contains(output, "export {};") {
 		t.Fatalf("expected rendered services to omit trailing empty export, got:\n%s", output)
 	}

@@ -109,6 +109,7 @@ type DataMember struct {
 	Type         *Type
 	SkelName     string
 	Sensitive    bool
+	Identifier   bool
 	NoTrim       bool
 }
 

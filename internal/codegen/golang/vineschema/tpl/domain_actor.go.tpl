@@ -18,6 +18,9 @@
 			},
 			{{- end }}
 			AuthEnabled: {{ $actor.AuthEnabled }},
+			{{- if $actor.IdentifierField }}
+			IdentifierField: {{ quote $actor.IdentifierField }},
+			{{- end }}
 			{{- if $actor.AuthCredential }}
 			AuthCredential: {{ template "dataSchema" $actor.AuthCredential }},
 			{{- end }}

@@ -16,8 +16,9 @@ var actorViaKinds = []model.ActorViaKind{
 }
 
 type _ActorAuth struct {
-	Credential *model.Data
-	Info       *model.Data
+	Credential      *model.Data
+	Info            *model.Data
+	IdentifierField string
 }
 
 func parseActor(reporter *_DiagnosticReporter, ga *grammar.Actor) (*model.Actor, bool) {
@@ -34,9 +35,11 @@ func parseActor(reporter *_DiagnosticReporter, ga *grammar.Actor) (*model.Actor,
 	valid = authValid && valid
 	var authCredential *model.Data
 	var authInfo *model.Data
+	var identifierField string
 	if auth != nil {
 		authCredential = auth.Credential
 		authInfo = auth.Info
+		identifierField = auth.IdentifierField
 	}
 	permEnabled, permissionValid := actorPermissionDeclared(reporter, ga)
 	valid = permissionValid && valid
@@ -52,6 +55,7 @@ func parseActor(reporter *_DiagnosticReporter, ga *grammar.Actor) (*model.Actor,
 		AuthEnabled:      auth != nil,
 		AuthCredential:   authCredential,
 		AuthInfo:         authInfo,
+		IdentifierField:  identifierField,
 		PermEnabled:      permEnabled,
 	}, valid
 }
@@ -62,8 +66,8 @@ func parseActorAuth(reporter *_DiagnosticReporter, ga *grammar.Actor) (*_ActorAu
 		return nil, valid
 	}
 	credential, credentialValid := parseActorCredential(reporter, ga, authSection)
-	info, infoValid := parseActorInfo(reporter, ga, authSection)
-	return &_ActorAuth{Credential: credential, Info: info}, credentialValid && infoValid && valid
+	info, identifierField, infoValid := parseActorInfo(reporter, ga, authSection)
+	return &_ActorAuth{Credential: credential, Info: info, IdentifierField: identifierField}, credentialValid && infoValid && valid
 }
 
 func parseActorCredential(reporter *_DiagnosticReporter, ga *grammar.Actor, authSection *grammar.ActorAuth) (*model.Data, bool) {
@@ -92,7 +96,7 @@ func parseActorCredential(reporter *_DiagnosticReporter, ga *grammar.Actor, auth
 	return credential, valid
 }
 
-func parseActorInfo(reporter *_DiagnosticReporter, ga *grammar.Actor, authSection *grammar.ActorAuth) (*model.Data, bool) {
+func parseActorInfo(reporter *_DiagnosticReporter, ga *grammar.Actor, authSection *grammar.ActorAuth) (*model.Data, string, bool) {
 	infoSection := authSection.Info
 	meta, metaValid := parseDecoratorMeta(reporter, infoSection.Decorators, _DecoratorContext{
 		allowSensitive: true,
@@ -101,16 +105,40 @@ func parseActorInfo(reporter *_DiagnosticReporter, ga *grammar.Actor, authSectio
 		Pos:   ga.Name.Pos,
 		Value: ga.Name.Value + "Info",
 	}
+	members := make([]*grammar.DataMember, 0, len(infoSection.Members))
+	identifierField := ""
+	for _, source := range infoSection.Members {
+		member := *source
+		member.Decorators = nil
+		for _, decorator := range source.Decorators {
+			if decorator.Name.Value != "identifier" {
+				member.Decorators = append(member.Decorators, decorator)
+				continue
+			}
+			metaValid = reporter.check(identifierField == "", "%s actor info supports only one @identifier", decorator.Name.Pos) && metaValid
+			metaValid = reporter.check(decorator.Value == nil, "%s decorator @identifier does not accept an argument", decorator.Name.Pos) && metaValid
+			identifierField = member.Name.Value
+		}
+		members = append(members, &member)
+	}
 	info, valid := parseDataLike(reporter, &grammar.Data{
 		Pos:     infoSection.Pos,
 		Pub:     ga.Pub,
 		Name:    name,
-		Members: infoSection.Members,
+		Members: members,
 	}, model.DataKindData)
 	valid = metaValid && valid
 	info.Sensitive = meta.Sensitive
 	info.Pub = ga.Pub
-	return info, valid
+	for _, member := range info.Members {
+		if member.Name == identifierField {
+			kind := member.Type
+			valid = reporter.check(kind.Kind == model.TypeKindScalar && !kind.Nullable &&
+				(kind.Scalar == model.ScalarString || kind.Scalar == model.ScalarUUID || kind.Scalar == model.ScalarInt),
+				"%s @identifier requires a non-nullable string, uuid, or int field", member.Pos) && valid
+		}
+	}
+	return info, identifierField, valid
 }
 
 func actorAuthSection(reporter *_DiagnosticReporter, ga *grammar.Actor) (*grammar.ActorAuth, bool) {

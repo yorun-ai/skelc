@@ -10,7 +10,8 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 - Actor credential fields accept `string?` as well as `string`. Generated Go
   and public Skel preserve optionality. Credential blocks still
-  require at least one field; other field types remain unsupported. Portal
+  require at least one non-nullable `string` field; definitions containing only
+  `string?` fields and other field types are rejected. Portal
   credential parsing must be updated separately before optional fields can
   be omitted from gateway requests.
 

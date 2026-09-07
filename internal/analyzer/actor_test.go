@@ -98,7 +98,7 @@ func TestParseActorAcceptsNullableCredentialMember(t *testing.T) {
 		Vias: []*grammar.ActorVia{{Name: ident("client")}},
 		Sections: []*grammar.ActorSection{
 			grammarActorAuthSection(
-				[]*grammar.DataMember{{Name: ident("subject"), Type: credentialType}},
+				[]*grammar.DataMember{{Name: ident("subject"), Type: credentialType}, {Name: ident("token"), Type: plainType(grammar.String)}},
 				[]*grammar.DataMember{{Name: ident("userId"), Type: plainType(grammar.Int)}},
 			),
 		},
@@ -106,6 +106,18 @@ func TestParseActorAcceptsNullableCredentialMember(t *testing.T) {
 
 	if !actor.AuthCredential.Members[0].Type.Nullable {
 		t.Fatal("credential field lost its nullable type")
+	}
+}
+
+func TestParseActorRejectsAllOptionalCredentialMembers(t *testing.T) {
+	for _, fields := range []string{"token: string?", "token: string? session: string?"} {
+		t.Run(fields, func(t *testing.T) {
+			content, err := parser.ParseSource("actor.skel", []byte("domain demo\npub actor UserActor { via client {} auth { credential { "+fields+" } info { userId: string } } }"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			expectActorDiagnostic(t, "actor credential must have at least one required string member", content.Entries[0].Actor)
+		})
 	}
 }
 

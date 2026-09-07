@@ -6,6 +6,8 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-09-07
+
 ### Added
 
 - Actor credential fields accept `string?` as well as `string`. Generated Go

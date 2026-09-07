@@ -10,15 +10,17 @@ permissions:
 
 env:
   GO_VERSION: '1.27.x'
+  GOWORK: 'off'
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  go:
-    name: Go
+  go-static:
+    name: Go static
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -31,13 +33,45 @@ jobs:
           cache: true
 
       - name: Check module metadata
-        run: GOWORK=off go mod tidy -diff
-
-      - name: Test with race detector
-        run: GOWORK=off go test -race ./...
+        run: go mod tidy -diff
 
       - name: Run go vet
-        run: GOWORK=off go vet ./...
+        run: go vet ./...
+
+  go-race:
+    name: Go race
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          cache: true
+
+      - name: Test with race detector
+        env:
+          GORACE: atexit_sleep_ms=0
+        run: go test -race -vet=off ./...
+
+  examples:
+    name: Examples
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          cache: true
 
       - name: Exercise and compile examples
         run: |
@@ -67,8 +101,9 @@ jobs:
   ci-checks:
     name: CI / Required Checks
     if: ${{ always() }}
-    needs: [go]
+    needs: [go-static, go-race, examples]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Verify CI results
         env:

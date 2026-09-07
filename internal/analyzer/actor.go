@@ -89,8 +89,8 @@ func parseActorCredential(reporter *_DiagnosticReporter, ga *grammar.Actor, auth
 	credential.Sensitive = meta.Sensitive
 	valid = reporter.check(len(credential.Members) > 0, "%s actor credential must have at least one member", credentialSection.Pos) && valid
 	for _, member := range credential.Members {
-		valid = reporter.check(member.Type.Kind == model.TypeKindScalar && member.Type.Scalar == model.ScalarString && !member.Type.Nullable,
-			"%s actor credential member %s must be string", member.Pos, member.Name) && valid
+		valid = reporter.check(member.Type.Kind == model.TypeKindScalar && member.Type.Scalar == model.ScalarString,
+			"%s actor credential member %s must be string or string?", member.Pos, member.Name) && valid
 	}
 	credential.Pub = ga.Pub
 	return credential, valid

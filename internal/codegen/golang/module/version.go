@@ -8,10 +8,10 @@ import (
 )
 
 // MinimumVineVersion is the minimum Vine version supported by generated Go code.
-const MinimumVineVersion = "v0.15.1"
+const MinimumVineVersion = "v0.15.3"
 
 // DefaultVineVersion is the Vine version used when generation does not select one.
-const DefaultVineVersion = MinimumVineVersion
+const DefaultVineVersion = "v0.15.3"
 
 func ResolveVineVersion(version string) (string, error) {
 	version = strings.TrimSpace(version)

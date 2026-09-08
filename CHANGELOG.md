@@ -6,6 +6,11 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+### Changed
+
+- Raise both the default and minimum supported Vine versions for generated Go
+  code to v0.15.3. Explicit `--go-vine-version` values below v0.15.3 are rejected.
+
 ## [0.17.1] - 2026-09-07
 
 ### Added

@@ -62,32 +62,95 @@ func (s *Store) Close(documentURI uri.URI) bool {
 	return false
 }
 
-// ApplyFileChanges reloads non-open workspace files and returns the affected
-// document URIs in notification order.
+// ApplyFileChanges reconciles each affected source directory once. Watcher
+// events can be coalesced or delayed while a generator replaces several files;
+// their type is a hint to reload, not the authoritative on-disk state.
 func (s *Store) ApplyFileChanges(changes []protocol.FileEvent) []uri.URI {
-	changed := make([]uri.URI, 0, len(changes))
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	changed := []uri.URI{}
+	directories := map[uri.URI]bool{}
 	for _, change := range changes {
-		documentURI := change.URI
-		s.mu.Lock()
-		if s.open[documentURI] {
-			s.mu.Unlock()
+		directory, ok := sourceDirectory(change.URI)
+		if !ok || directories[directory] {
 			continue
 		}
-		changed = append(changed, documentURI)
-		if change.Type == protocol.FileChangeTypeDeleted {
-			delete(s.documents, documentURI)
-			s.untrackLocked(documentURI)
-			s.revision++
-			s.mu.Unlock()
-			continue
-		}
-		if content, err := os.ReadFile(documentURI.FsPath()); err == nil {
-			s.documents[documentURI] = index.Build(documentURI, documentURI.FsPath(), string(content), 0)
-			s.trackLocked(documentURI)
-			s.revision++
-		}
-		s.mu.Unlock()
+		directories[directory] = true
+		changed = append(changed, s.refreshDirectoryLocked(directory)...)
 	}
+	slices.Sort(changed)
+	return changed
+}
+
+// RefreshDirectory discovers siblings of an opened document, including files
+// whose creation notifications were missed. Open buffers remain authoritative.
+func (s *Store) RefreshDirectory(documentURI uri.URI) []uri.URI {
+	directory, ok := sourceDirectory(documentURI)
+	if !ok {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.refreshDirectoryLocked(directory)
+}
+
+func sourceDirectory(documentURI uri.URI) (uri.URI, bool) {
+	if !documentURI.IsFile() && documentURI.Scheme() != "vscode-remote" {
+		return "", false
+	}
+	directory, err := uri.JoinPath(documentURI, "..")
+	return directory, err == nil
+}
+
+func (s *Store) refreshDirectoryLocked(directory uri.URI) []uri.URI {
+	entries, err := os.ReadDir(directory.FsPath())
+	if err != nil && !os.IsNotExist(err) {
+		return nil
+	}
+	candidates := map[uri.URI]bool{}
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".skel" || strings.HasPrefix(entry.Name(), ".") {
+			continue
+		}
+		documentURI, err := uri.JoinPath(directory, entry.Name())
+		if err == nil {
+			candidates[documentURI] = true
+		}
+	}
+	for documentURI := range s.documents {
+		if parent, ok := sourceDirectory(documentURI); ok && parent == directory {
+			candidates[documentURI] = true
+		}
+	}
+	changed := []uri.URI{}
+	for documentURI := range candidates {
+		if s.open[documentURI] {
+			continue
+		}
+		content, err := os.ReadFile(documentURI.FsPath())
+		previous := s.documents[documentURI]
+		if os.IsNotExist(err) {
+			if previous != nil {
+				delete(s.documents, documentURI)
+				s.untrackLocked(documentURI)
+				changed = append(changed, documentURI)
+			}
+			continue
+		}
+		if err != nil {
+			continue
+		}
+		s.trackLocked(documentURI)
+		if previous != nil && previous.Source == string(content) {
+			continue
+		}
+		s.documents[documentURI] = index.Build(documentURI, documentURI.FsPath(), string(content), 0)
+		changed = append(changed, documentURI)
+	}
+	if len(changed) > 0 {
+		s.revision++
+	}
+	slices.Sort(changed)
 	return changed
 }
 

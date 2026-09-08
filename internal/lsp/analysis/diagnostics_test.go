@@ -12,6 +12,7 @@ import (
 	"go.lsp.dev/uri"
 	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/internal/lsp/index"
+	"go.yorun.ai/skelc/internal/lsp/workspace"
 )
 
 func TestSemanticDiagnosticsDoNotResolveImportsAcrossDomainRoots(t *testing.T) {
@@ -165,5 +166,37 @@ func TestSemanticDiagnosticsChangeGroupingWithDomainFile(t *testing.T) {
 			require.Len(t, diagnostics[secondURI], 1)
 			assert.Contains(t, diagnostics[secondURI][0].Message, "User")
 		}
+	}
+}
+
+func TestSemanticDiagnosticsRecoverAfterPartialGenerationNotifications(t *testing.T) {
+	for _, recovery := range []string{"watched file", "opened file"} {
+		t.Run(recovery, func(t *testing.T) {
+			root := t.TempDir()
+			serviceURI := uri.File(filepath.Join(root, "service.skel"))
+			service := "domain demo\ndata Response { status: Status }\n"
+			require.NoError(t, os.WriteFile(serviceURI.FsPath(), []byte(service), 0o600))
+			store := workspace.New()
+			store.AddRoot(uri.File(root))
+			analyzer := compiler.NewWorkspaceAnalyzer()
+			sources, paths := SemanticSources(store.Snapshot().DocumentsMap())
+			diagnostics, err := SemanticDiagnostics(t.Context(), analyzer, sources, paths)
+			require.NoError(t, err)
+			require.Len(t, diagnostics[serviceURI], 1)
+			require.Contains(t, diagnostics[serviceURI][0].Message, "definition of Status not found")
+			// No notifications arrive for either of these generated siblings.
+			require.NoError(t, os.WriteFile(filepath.Join(root, "domain.skel"), []byte("domain demo\n"), 0o600))
+			require.NoError(t, os.WriteFile(filepath.Join(root, "types.skel"), []byte("domain demo\ndata Status {}\n"), 0o600))
+			if recovery == "watched file" {
+				store.ApplyFileChanges([]protocol.FileEvent{{URI: serviceURI, Type: protocol.FileChangeTypeChanged}})
+			} else {
+				store.Put(serviceURI, service, 1, true)
+				store.RefreshDirectory(serviceURI)
+			}
+			sources, paths = SemanticSources(store.Snapshot().DocumentsMap())
+			diagnostics, err = SemanticDiagnostics(t.Context(), analyzer, sources, paths)
+			require.NoError(t, err)
+			assert.Empty(t, diagnostics)
+		})
 	}
 }

@@ -11,6 +11,13 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 - Raise both the default and minimum supported Vine versions for generated Go
   code to v0.15.3. Explicit `--go-vine-version` values below v0.15.3 are rejected.
 
+### Fixed
+
+- LSP refreshes sibling Skel files when opening a document or receiving file
+  change notifications, recovering missing type definitions after partial
+  generation notifications. Delayed deletion events retain files already
+  recreated on disk, and unsaved editor contents remain authoritative.
+
 ## [0.17.1] - 2026-09-07
 
 ### Added

@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
 )
 
@@ -54,4 +55,54 @@ func TestStoreAddsAndRemovesWorkspaceRoots(t *testing.T) {
 	snapshot := store.Snapshot()
 	assert.Nil(t, snapshot.Document(firstDocumentURI))
 	assert.NotNil(t, snapshot.Document(secondDocumentURI))
+}
+
+func TestStoreReconcilesGeneratedDirectoryFromPartialFileEvents(t *testing.T) {
+	root := t.TempDir()
+	store := New()
+	store.AddRoot(uri.File(root))
+	domainURI := uri.File(filepath.Join(root, "domain.skel"))
+	typesURI := uri.File(filepath.Join(root, "types.skel"))
+	serviceURI := uri.File(filepath.Join(root, "service.skel"))
+	for name, content := range map[string]string{
+		"domain.skel":  "domain demo\n",
+		"types.skel":   "domain demo\ndata Status {}\n",
+		"service.skel": "domain demo\ndata Response { status: Status }\n",
+	} {
+		require.NoError(t, os.WriteFile(filepath.Join(root, name), []byte(content), 0o600))
+	}
+	// A generator can produce the entire directory before the client delivers
+	// its first event; sibling events need not all arrive.
+	store.ApplyFileChanges([]protocol.FileEvent{{URI: serviceURI, Type: protocol.FileChangeTypeCreated}})
+	require.NotNil(t, store.Snapshot().Document(domainURI))
+	require.NotNil(t, store.Snapshot().Document(typesURI))
+	// A delayed deletion event must not remove a file already recreated on disk.
+	store.ApplyFileChanges([]protocol.FileEvent{{URI: typesURI, Type: protocol.FileChangeTypeDeleted}})
+	require.NotNil(t, store.Snapshot().Document(typesURI))
+	// Preserve unsaved buffers while reconciling both changed and deleted siblings.
+	store.Put(serviceURI, "domain demo\ndata Unsaved {}\n", 4, true)
+	require.NoError(t, os.Remove(typesURI.FsPath()))
+	changed := store.ApplyFileChanges([]protocol.FileEvent{{URI: serviceURI, Type: protocol.FileChangeTypeChanged}})
+	assert.Contains(t, changed, typesURI)
+	assert.Nil(t, store.Snapshot().Document(typesURI))
+	assert.Equal(t, "Unsaved", store.Snapshot().Document(serviceURI).Definitions[0].Name)
+	assert.Equal(t, int32(4), store.Snapshot().Document(serviceURI).Version)
+}
+
+func TestStoreRefreshDirectoryPreservesRemoteURIs(t *testing.T) {
+	root := t.TempDir()
+	documentURI, err := uri.From(uri.Components{Scheme: "vscode-remote", Authority: "ssh-remote+test", Path: filepath.ToSlash(filepath.Join(root, "service.skel"))})
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(root, "types.skel"), []byte("domain demo\ndata Status {}\n"), 0o600))
+	store := New()
+	store.Put(documentURI, "domain demo\ndata Response { status: Status }\n", 1, true)
+	changed := store.RefreshDirectory(documentURI)
+	require.Len(t, changed, 1)
+	assert.Equal(t, "vscode-remote", changed[0].Scheme())
+	assert.Equal(t, "ssh-remote+test", changed[0].Authority())
+	require.Len(t, store.Snapshot().Documents(), 2)
+	revision := store.Snapshot().Revision()
+	assert.Empty(t, store.RefreshDirectory(documentURI))
+	assert.Equal(t, revision, store.Snapshot().Revision())
+	assert.Empty(t, store.RefreshDirectory(uri.URI("untitled:Untitled-1")))
 }

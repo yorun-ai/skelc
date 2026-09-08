@@ -12,7 +12,13 @@ import (
 func (s *_Server) DidOpen(ctx context.Context, params *protocol.DidOpenTextDocumentParams) error {
 	document := params.TextDocument
 	s.putDocument(document.URI, document.Text, document.Version, true)
+	changed := s.workspace.RefreshDirectory(document.URI)
 	s.invalidateSemanticDiagnostics(ctx)
+	for _, documentURI := range changed {
+		if err := s.publishDiagnostics(ctx, documentURI); err != nil {
+			return err
+		}
+	}
 	return s.publishDiagnostics(ctx, document.URI)
 }
 

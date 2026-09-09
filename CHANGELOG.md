@@ -6,6 +6,8 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-09-09
+
 ### Added
 
 - Add global `--strict`, `Input.Strict`, and LSP strict settings to reject migration warnings while preserving ordinary warnings.
@@ -23,7 +25,7 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 ### Fixed
 
 - Detect nested generic binary payloads consistently in Go and TypeScript clients.
-
+- Avoid local-name collisions with declared arguments in generated Go API and Vine clients.
 - LSP refreshes sibling Skel files when opening a document or receiving file
   change notifications, recovering missing type definitions after partial
   generation notifications. Delayed deletion events retain files already

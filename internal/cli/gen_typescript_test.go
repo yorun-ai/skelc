@@ -93,7 +93,7 @@ data InternalUser {
 `)
 	writeCLIFile(t, dir+"/service.skel", `domain demo.user
 
-api service UserService {
+api service UserApiService {
     for ClientActor
 
     method getUser {
@@ -128,7 +128,7 @@ pub service InternalService {
 	if err != nil {
 		t.Fatalf("read generated service.ts: %v", err)
 	}
-	if !strings.Contains(string(serviceContent), "createUserService") {
+	if !strings.Contains(string(serviceContent), "createUserApiService") {
 		t.Fatalf("expected API service client in generated service.ts: %s", string(serviceContent))
 	}
 	if strings.Contains(string(serviceContent), "createInternalService") {
@@ -138,7 +138,7 @@ pub service InternalService {
 	if err != nil {
 		t.Fatalf("read generated spec.ts: %v", err)
 	}
-	if !strings.Contains(string(specContent), "UserServiceSpec") {
+	if !strings.Contains(string(specContent), "UserApiServiceSpec") {
 		t.Fatalf("expected API service spec in generated spec.ts: %s", string(specContent))
 	}
 	if strings.Contains(string(specContent), "InternalServiceSpec") {

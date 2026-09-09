@@ -29,7 +29,7 @@ pub data External { detail: Detail }
 import common.shared as shared
 actor ClientActor { via client {} }
 data Unused { secret: string }
-api service OrderService {
+api service OrderApiService {
     for ClientActor via client
     method get {
         input { payload: shared.Page<shared.Page<binary>> }
@@ -49,7 +49,7 @@ api service OrderService {
     }
     method ping {}
 }
-api service HealthService { method ping {} }
+api service HealthApiService { method ping {} }
 pub service BackendService { method ping {} }
 `)
 	sharedOut, out := filepath.Join(root, "sharedapi"), filepath.Join(root, "orderapi")
@@ -61,7 +61,7 @@ pub service BackendService { method ping {} }
 		t.Fatal(err)
 	}
 	for _, service := range parsed.Domain.Services() {
-		if service.Name != "OrderService" {
+		if service.Name != "OrderApiService" {
 			continue
 		}
 		for _, method := range service.Methods {
@@ -95,7 +95,7 @@ pub service BackendService { method ping {} }
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Count(string(service), "func init()") != 1 || !strings.Contains(string(service), "vrpc.Register(_HealthServiceSpec)") || !strings.Contains(string(service), "vrpc.Register(_OrderServiceSpec)") {
+	if strings.Count(string(service), "func init()") != 1 || !strings.Contains(string(service), "vrpc.Register(_HealthApiServiceSpec)") || !strings.Contains(string(service), "vrpc.Register(_OrderApiServiceSpec)") {
 		t.Fatalf("expected shared init and standalone service specs: %s", service)
 	}
 	if strings.Contains(string(service), "BackendService") || strings.Contains(string(service), "ResponseMetadata") || strings.Contains(string(service), "go.yorun.ai/vine") {
@@ -108,10 +108,10 @@ pub service BackendService { method ping {} }
 	if !strings.Contains(string(data), "type Detail struct") {
 		t.Fatalf("missing implicit dependency: %s", data)
 	}
-	if strings.Contains(string(data), "OrderServiceGetArguments") || strings.Contains(string(service), "type OrderServiceGetArguments") {
+	if strings.Contains(string(data), "OrderApiServiceGetArguments") || strings.Contains(string(service), "type OrderApiServiceGetArguments") {
 		t.Fatal("API arguments must not be public data types")
 	}
-	if !strings.Contains(string(service), "type _OrderServiceGetArguments struct") || !strings.Contains(string(service), "payload shared.Page[shared.Page[skel.Binary]]") {
+	if !strings.Contains(string(service), "type _OrderApiServiceGetArguments struct") || !strings.Contains(string(service), "payload shared.Page[shared.Page[skel.Binary]]") {
 		t.Fatalf("missing positional API arguments: %s", service)
 	}
 	for _, fragment := range []string{"Get external data", "@param payload - Nested payload", "payload example", "@returns", "External result", "result example", "Deprecated: Use fetch."} {
@@ -161,10 +161,10 @@ func TestInvoke(t *testing.T) {
         w.Header().Set("vrpc-server", serverHeader)
         w.Header().Set("content-type", "application/vrpc+json")
         switch r.URL.Path {
-        case "/invoke/shop.order.OrderService/get":
+        case "/invoke/shop.order.OrderApiService/get":
             if r.Header.Get("content-type") != "application/vrpc+cbor" { t.Error("generic binary argument did not select CBOR") }
             io.WriteString(w, "{\"result\":{\"detail\":{\"label\":\"ok\"}}}")
-        case "/invoke/shop.order.OrderService/echo":
+        case "/invoke/shop.order.OrderApiService/echo":
             bodyBytes, readErr := io.ReadAll(r.Body)
             if readErr != nil { t.Fatal(readErr) }
             var request struct {
@@ -183,7 +183,7 @@ func TestInvoke(t *testing.T) {
             body, err := cbor.Marshal(map[string]any{"result": []byte{0,255}})
             if err != nil { t.Error(err) }
             w.Write(body)
-        case "/invoke/shop.order.OrderService/ping":
+        case "/invoke/shop.order.OrderApiService/ping":
             io.WriteString(w, "{\"result\":null}")
         default: t.Errorf("unexpected path: %s", r.URL.Path)
         }
@@ -191,7 +191,7 @@ func TestInvoke(t *testing.T) {
     defer server.Close()
     raw, err := vrpc.NewClient(vrpc.Option{Endpoint: server.URL+"/invoke", Identity: identity})
     if err != nil { t.Fatal(err) }
-    var client OrderServiceClient = NewOrderServiceClient(raw)
+    var client OrderApiServiceClient = NewOrderApiServiceClient(raw)
     got, err := client.Get(context.Background(), shared.Page[shared.Page[skel.Binary]]{Items: []shared.Page[skel.Binary]{{Items: []skel.Binary{{0,255}}}}})
     if err != nil || got.Detail.Label != "ok" { t.Fatalf("get: %+v %v", got, err) }
     blob, err := client.Echo(context.Background(), skel.Binary{0,255}, "context", 7, "result", "client", "ret", "err")
@@ -205,7 +205,7 @@ func TestInvoke(t *testing.T) {
 }
 
 type fakeOrderClient struct {
-    OrderServiceClient
+    OrderApiServiceClient
     called bool
 }
 
@@ -227,7 +227,7 @@ import demo.backend as backend
 data Item { id: string }
 data Unused { hidden: string }
 pub enum State { READY }
-api service OrderService { method get { output Item } }
+api service OrderApiService { method get { output Item } }
 service LegacyService { method get { noauth output Item } }
 pub service BackendService { method get { output backend.Internal } }
 service HiddenService { method ping {} }
@@ -248,7 +248,7 @@ service HiddenService { method ping {} }
 			t.Fatal(err)
 		}
 		code := string(contents)
-		if !strings.Contains(code, "OrderService") || !strings.Contains(code, "LegacyService") || strings.Contains(code, "BackendService") || strings.Contains(code, "HiddenService") {
+		if !strings.Contains(code, "OrderApiService") || !strings.Contains(code, "LegacyService") || strings.Contains(code, "BackendService") || strings.Contains(code, "HiddenService") {
 			t.Fatalf("wrong service selection in %s: %s", path, code)
 		}
 	}
@@ -273,7 +273,7 @@ func TestApiBackendSchemaAndClientBoundary(t *testing.T) {
 	root := t.TempDir()
 	entry := filepath.Join(root, "order.skel")
 	if err := os.WriteFile(entry, []byte(`domain demo.order
-api service OrderService { method ping {} }
+api service OrderApiService { method ping {} }
 pub service BackendService { method ping {} }
 `), 0600); err != nil {
 		t.Fatal(err)
@@ -295,7 +295,7 @@ pub service BackendService { method ping {} }
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(service), "NewOrderServiceClient") || !strings.Contains(string(service), "NewBackendServiceClient") {
+	if strings.Contains(string(service), "NewOrderApiServiceClient") || !strings.Contains(string(service), "NewBackendServiceClient") {
 		t.Fatalf("wrong backend client generation: %s", service)
 	}
 	mod, err := os.ReadFile(filepath.Join(out, "go.mod"))

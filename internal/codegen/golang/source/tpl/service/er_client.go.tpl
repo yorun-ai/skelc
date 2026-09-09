@@ -34,12 +34,10 @@ func {{ .ERClientCtorName }}(rpcClient *rpc.Client) {{ .ERClientName }} {
 {{ range .Methods }}
 func ({{ .ReceiverName }} *{{ $.ERClientImplName }}) {{ .Name }}({{ range .Arguments }}{{ .Name }} {{ .Type.Plain }}, {{ end -}}
 {{ .OptionsName }} ...rpc.InvokeOption) {{ if .ResultType }}({{ .ResultType.Plain }}, ex.Error){{ else }}ex.Error{{ end }} {
-	{{ if .ResultType }}{{ .RawResultName }}{{ else }}_{{ end }}, {{ .RawErrorName }} := {{ .ReceiverName }}.rpcClient.Invoke({{ .SpecName }}.Info(), {{ if .ArgumentsData }}&{{ .ArgumentsData.Name }}{ {{ range .Arguments }}
+	{{ if .ResultType }}return {{ .ReceiverName }}.rpcClient.InvokeAs[{{ .ResultType.Plain }}]{{ else }}_, {{ .ErrorName }} := {{ .ReceiverName }}.rpcClient.Invoke{{ end }}({{ .SpecName }}.Info(), {{ if .ArgumentsData }}&{{ .ArgumentsData.Name }}{ {{ range .Arguments }}
 		{{ .MemberName }}: {{ .Name }},{{ end }}
-	{{ "}" }}{{ else }}nil{{ end }}, {{ .OptionsName }}...){{ if .ResultType }}
-	{{ .ResultName }}, _ := {{ .RawResultName }}.({{ .ResultType.Plain }}){{ end }}
-	{{ .ErrorName }}, _ := {{ .RawErrorName }}.(ex.Error)
-	return {{ if .ResultType }}{{ .ResultName }}, {{ end }}{{ .ErrorName }}
+	{{ "}" }}{{ else }}nil{{ end }}, {{ .OptionsName }}...){{ if not .ResultType }}
+	return {{ .ErrorName }}{{ end }}
 }
 {{ end }}
 {{- end }}{{- end -}}

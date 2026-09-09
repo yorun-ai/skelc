@@ -17,7 +17,7 @@ func {{ .ClientCtorName }}(rpcClient *vrpc.Client) {{ .ClientName }} {
 {{ range .Methods }}
 {{ range .CommentLines }}// {{ . }}
 {{ end }}func ({{ .ReceiverName }} *{{ $s.ClientImplName }}) {{ .Name }}({{ .ContextName }} context.Context, {{ range .Arguments }}{{ .Name }} {{ .Type.Plain }}, {{ end }}{{ .OptionsName }} ...vrpc.InvokeOption) {{ if .ResultType }}({{ .ResultType.Plain }}, error){{ else }}error{{ end }} {
-    {{ if .ResultType }}{{ .ResultName }}{{ else }}_{{ end }}, _, {{ .ErrorName }} := {{ .ReceiverName }}.rpcClient.Invoke[{{ if .ResultType }}{{ .ResultType.Plain }}{{ else }}struct{}{{ end }}]({{ .ContextName }}, _{{ $s.Name }}{{ .Name }}Method, {{ if .ArgumentsData }}&{{ .ArgumentsData.Name }}{
+    {{ if .ResultType }}{{ .ResultName }}{{ else }}_{{ end }}, _, {{ .ErrorName }} := {{ .ReceiverName }}.rpcClient.InvokeAs[{{ if .ResultType }}{{ .ResultType.Plain }}{{ else }}struct{}{{ end }}]({{ .ContextName }}, _{{ $s.Name }}{{ .Name }}Method, {{ if .ArgumentsData }}&{{ .ArgumentsData.Name }}{
         {{ range .Arguments }}{{ .MemberName }}: {{ .Name }},
         {{ end }}
     }{{ else }}nil{{ end }}, {{ .OptionsName }}...)

@@ -1,13 +1,11 @@
 package source
 
 type _ClientMethodNames struct {
-	ReceiverName  string
-	ContextName   string
-	ResultName    string
-	ErrorName     string
-	OptionsName   string
-	RawResultName string
-	RawErrorName  string
+	ReceiverName string
+	ContextName  string
+	ResultName   string
+	ErrorName    string
+	OptionsName  string
 }
 
 func buildClientMethodNames(arguments []*MethodArgument) *_ClientMethodNames {
@@ -23,12 +21,10 @@ func buildClientMethodNames(arguments []*MethodArgument) *_ClientMethodNames {
 		return name
 	}
 	return &_ClientMethodNames{
-		ReceiverName:  allocate("client"),
-		ContextName:   allocate("ctx"),
-		ResultName:    allocate("ret"),
-		ErrorName:     allocate("err"),
-		OptionsName:   allocate("_ivOpts"),
-		RawResultName: allocate("retI"),
-		RawErrorName:  allocate("errI"),
+		ReceiverName: allocate("client"),
+		ContextName:  allocate("ctx"),
+		ResultName:   allocate("ret"),
+		ErrorName:    allocate("err"),
+		OptionsName:  allocate("_ivOpts"),
 	}
 }

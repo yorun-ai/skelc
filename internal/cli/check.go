@@ -53,6 +53,7 @@ func parseCheckCommand(cmd *ucli.Command) (compiler.Option, error) {
 	}
 	compilerOption := compiler.Option{
 		SkelIn: cmd.String(flagCheckSkelIn),
+		Strict: cmd.Bool(flagStrict),
 	}
 	return compilerOption, normalizeCompilerOption(&compilerOption)
 }

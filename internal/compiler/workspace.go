@@ -188,6 +188,11 @@ func (w *WorkspaceAnalyzer) analyze(ctx context.Context, sources []Source, allow
 			return nil, nil, err
 		}
 	}
+	for _, key := range keys {
+		if domain := domains[key]; domain.analysis != nil {
+			diagnostics = append(diagnostics, MigrationDiagnostics(domain.analysis.Model())...)
+		}
+	}
 	contentByPath := make(map[string][]byte, len(ordered))
 	for _, source := range ordered {
 		contentByPath[filepath.Clean(source.Path)] = source.Content

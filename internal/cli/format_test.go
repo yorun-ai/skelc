@@ -9,6 +9,20 @@ import (
 	"go.yorun.ai/skelc/internal/command"
 )
 
+func TestRunSkelcStrictFormatPreservesLegacySource(t *testing.T) {
+	entry := filepath.Join(t.TempDir(), "order.skel")
+	original := "domain demo.order\nservice OrderService{method ping{}}\n"
+	writeCLIFile(t, entry, original)
+	result := Run([]string{"--strict", "format", "--skel-in", entry})
+	if result.ExitCode != ExitCodeError || decodeCommandError(t, result).Code != command.ErrorCodeCompilationFailed {
+		t.Fatalf("expected strict format failure: %+v", result)
+	}
+	contents, err := os.ReadFile(entry)
+	if err != nil || string(contents) != original {
+		t.Fatalf("strict format changed source: %v", err)
+	}
+}
+
 func TestRunSkelcFormat(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "domain.skel")

@@ -26,7 +26,7 @@ func TestAnalyzeWorkspaceValidatesCrossDomainTypes(t *testing.T) {
 func TestAnalyzeWorkspaceMergesSameDomainFiles(t *testing.T) {
 	diagnostics := AnalyzeWorkspace([]Source{
 		{Path: "/workspace/data.skel", Content: []byte("domain demo.user\ndata User { id: int }\n")},
-		{Path: "/workspace/service.skel", Content: []byte("domain demo.user\nservice UserService { method get { output User } }\n")},
+		{Path: "/workspace/service.skel", Content: []byte("domain demo.user\npub service UserService { method get { output User } }\n")},
 	})
 
 	assert.Empty(t, diagnostics)

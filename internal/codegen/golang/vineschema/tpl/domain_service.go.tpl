@@ -11,6 +11,9 @@
 			{{- template "deprecatedFields" $service }}
 			Hash: {{ quote $service.Hash }},
 			Pub: {{ $service.Pub }},
+			{{- if $service.Api }}
+			Api: true,
+			{{- end }}
 			AuthMode: {{ authLiteral $service.AuthMode }},
 			{{- if $service.Audiences }}
 			Audiences: []*skel.ActorAudienceSchema{

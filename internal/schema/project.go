@@ -237,8 +237,10 @@ func projectService(domainName string, importAliases map[string]string, value *m
 		Metadata: metadata(value.Description, value.Deprecated, value.DeprecatedReason),
 		Pub:      value.Pub, Name: value.Name, Kind: DeclarationTypeService, SkelName: value.SkelName, Pos: value.Pos,
 		Service: &ServiceSchema{
-			Audiences: projectAudiences(domainName, importAliases, value.Audiences), Auth: normalizedAuth(value.Auth),
-			Require: projectRequirement(value.Require), Methods: methods,
+			Audiences: projectAudiences(domainName, importAliases, value.Audiences),
+			Api:       value.Api,
+			Auth:      normalizedAuth(value.Auth),
+			Require:   projectRequirement(value.Require), Methods: methods,
 		},
 	}
 }

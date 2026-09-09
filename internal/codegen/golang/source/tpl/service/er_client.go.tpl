@@ -19,7 +19,7 @@ type {{ .ERClientName }} interface { {{- range .Methods }}
 	{{- end }}
 	{{ .Name }}(
 	{{- range .Arguments }}{{ .Name }} {{ .Type.Plain }}, {{ end -}}
-	_ivOpts ...rpc.InvokeOption){{ if .ResultType }} ({{ .ResultType.Plain }}, ex.Error){{ else }} ex.Error{{ end }}{{ end }}
+	{{ .OptionsName }} ...rpc.InvokeOption){{ if .ResultType }} ({{ .ResultType.Plain }}, ex.Error){{ else }} ex.Error{{ end }}{{ end }}
 }
 
 type {{ .ERClientImplName }} struct {
@@ -32,14 +32,14 @@ func {{ .ERClientCtorName }}(rpcClient *rpc.Client) {{ .ERClientName }} {
 	}
 }
 {{ range .Methods }}
-func (client *{{ $.ERClientImplName }}) {{ .Name }}({{ range .Arguments }}{{ .Name }} {{ .Type.Plain }}, {{ end -}}
-_ivOpts ...rpc.InvokeOption) {{ if .ResultType }}({{ .ResultType.Plain }}, ex.Error){{ else }}ex.Error{{ end }} {
-	{{ if .ResultType }}retI{{ else }}_{{ end }}, errI := client.rpcClient.Invoke({{ .SpecName }}.Info(), {{ if .ArgumentsData }}&{{ .ArgumentsData.Name }}{ {{ range .Arguments }}
+func ({{ .ReceiverName }} *{{ $.ERClientImplName }}) {{ .Name }}({{ range .Arguments }}{{ .Name }} {{ .Type.Plain }}, {{ end -}}
+{{ .OptionsName }} ...rpc.InvokeOption) {{ if .ResultType }}({{ .ResultType.Plain }}, ex.Error){{ else }}ex.Error{{ end }} {
+	{{ if .ResultType }}{{ .RawResultName }}{{ else }}_{{ end }}, {{ .RawErrorName }} := {{ .ReceiverName }}.rpcClient.Invoke({{ .SpecName }}.Info(), {{ if .ArgumentsData }}&{{ .ArgumentsData.Name }}{ {{ range .Arguments }}
 		{{ .MemberName }}: {{ .Name }},{{ end }}
-	{{ "}" }}{{ else }}nil{{ end }}, _ivOpts...){{ if .ResultType }}
-	ret, _ := retI.({{ .ResultType.Plain }}){{ end }}
-	err, _ := errI.(ex.Error)
-	return {{ if .ResultType }}ret, {{ end }}err
+	{{ "}" }}{{ else }}nil{{ end }}, {{ .OptionsName }}...){{ if .ResultType }}
+	{{ .ResultName }}, _ := {{ .RawResultName }}.({{ .ResultType.Plain }}){{ end }}
+	{{ .ErrorName }}, _ := {{ .RawErrorName }}.(ex.Error)
+	return {{ if .ResultType }}{{ .ResultName }}, {{ end }}{{ .ErrorName }}
 }
 {{ end }}
 {{- end }}{{- end -}}

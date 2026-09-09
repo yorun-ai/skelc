@@ -46,7 +46,6 @@ data InternalUser {
 	writeCLIFile(t, dir+"/service.skel", `domain demo.user
 
 pub service UserService {
-    for ClientActor
 
     method getUser {
         output User

@@ -9,7 +9,7 @@ pub data User {
     name: string
 }
 
-pub service UserService {
+api service UserService {
     for ClientActor via client
 
     method getUser {

@@ -10,6 +10,7 @@ import (
 
 	ucli "github.com/urfave/cli/v3"
 	"go.yorun.ai/skelc/internal/command"
+	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/internal/formatter"
 	"go.yorun.ai/skelc/internal/loader"
 	"go.yorun.ai/skelc/internal/parser"
@@ -26,6 +27,7 @@ const (
 type _FormatOption struct {
 	skelIn string
 	check  bool
+	strict bool
 }
 
 type _FormatResult = command.FormatResult
@@ -86,10 +88,19 @@ func parseFormatCommand(cmd *ucli.Command) (_FormatOption, error) {
 	if err != nil {
 		return _FormatOption{}, fmt.Errorf("resolve path %s: %w", skelIn, err)
 	}
-	return _FormatOption{skelIn: path, check: cmd.Bool(flagFormatCheck)}, nil
+	return _FormatOption{skelIn: path, check: cmd.Bool(flagFormatCheck), strict: cmd.Bool(flagStrict)}, nil
 }
 
 func formatFiles(option _FormatOption) (_FormatResult, error) {
+	if option.strict {
+		result, err := compiler.Check(compiler.Option{SkelIn: option.skelIn, Strict: true})
+		if err != nil {
+			return _FormatResult{}, &_FormatCompilationError{cause: err}
+		}
+		if result.Diagnostics.HasErrors() {
+			return _FormatResult{}, &_FormatCompilationError{cause: result.Diagnostics}
+		}
+	}
 	loadResult, err := loader.Load(option.skelIn)
 	if err != nil {
 		return _FormatResult{}, &_FormatCompilationError{cause: err}

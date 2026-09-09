@@ -42,7 +42,7 @@ service UserService {
 		t.Fatalf("expected string constant and check parameter: %s", resource)
 	}
 	tsOut := filepath.Join(root, "ts")
-	if _, err := skelc.CompileTypeScript(skelc.Input{SkelIn: input}, skelc.TypeScriptOption{Out: tsOut}); err != nil {
+	if _, err := skelc.CompileTypeScript(skelc.Input{SkelIn: input}, skelc.TypeScriptOption{ApiOnly: true, Out: tsOut}); err != nil {
 		t.Fatal(err)
 	}
 	ts := strings.Join(strings.Fields(readFileForTest(t, filepath.Join(tsOut, "data.ts"))), " ")

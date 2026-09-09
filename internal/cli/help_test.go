@@ -6,7 +6,7 @@ import (
 )
 
 func TestRunSkelcHelpShowsSubcommandOptions(t *testing.T) {
-	result := Run([]string{"--help"})
+	result := Run([]string{"--strict", "--help"})
 
 	if result.ExitCode != ExitCodeSuccess {
 		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
@@ -25,6 +25,9 @@ func TestRunSkelcHelpShowsSubcommandOptions(t *testing.T) {
 	}
 	if !strings.Contains(result.Stdout, "lsp") {
 		t.Fatalf("unexpected stdout: %q", result.Stdout)
+	}
+	if !strings.Contains(result.Stdout, "--strict") {
+		t.Fatalf("missing strict option: %q", result.Stdout)
 	}
 	if !strings.Contains(result.Stdout, "check OPTIONS:") {
 		t.Fatalf("unexpected stdout: %q", result.Stdout)
@@ -127,14 +130,14 @@ func TestRunSkelcGenGoHelpShowsLimitedOptions(t *testing.T) {
 			t.Fatalf("expected %s in stdout: %q", expected, result.Stdout)
 		}
 	}
-	for _, unexpected := range []string{"--pub", "--skel-import", "--go-module-prefix", "--go-module", "--go-import"} {
+	for _, unexpected := range []string{"--go-module-prefix", "--go-module"} {
 		if strings.Contains(result.Stdout, unexpected) {
 			t.Fatalf("did not expect %s in stdout: %q", unexpected, result.Stdout)
 		}
 	}
 }
 
-func TestRunSkelcGenGoModuleHelpDoesNotShowPub(t *testing.T) {
+func TestRunSkelcGenGoModuleHelpShowsModes(t *testing.T) {
 	result := Run([]string{"gen", "go-module", "--help"})
 
 	if result.ExitCode != ExitCodeSuccess {
@@ -151,8 +154,8 @@ func TestRunSkelcGenGoModuleHelpDoesNotShowPub(t *testing.T) {
 		"--go-module-prefix",
 		"--go-vine-version",
 	})
-	if strings.Contains(result.Stdout, "--pub") {
-		t.Fatalf("did not expect --pub in stdout: %q", result.Stdout)
+	if !strings.Contains(result.Stdout, "--pub") || !strings.Contains(result.Stdout, "--api") {
+		t.Fatalf("expected --pub and --api in stdout: %q", result.Stdout)
 	}
 }
 

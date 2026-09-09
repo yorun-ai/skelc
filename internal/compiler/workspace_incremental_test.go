@@ -58,7 +58,7 @@ func TestWorkspaceAnalyzerDoesNotDuplicateMethodDecoratorsOnReanalysis(t *testin
 		{Path: "/workspace/order.skel", Content: []byte(`domain demo.order
 import demo.user
 @deprecated("Use NewOrderService")
-service OrderService {
+pub service OrderService {
     @deprecated("Use getNewOrder")
     method getOrder {
         output user.User

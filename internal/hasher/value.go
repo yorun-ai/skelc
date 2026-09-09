@@ -130,6 +130,7 @@ type _ServiceHashValue struct {
 	Deprecated       bool                  `json:"deprecated,omitempty"`
 	DeprecatedReason string                `json:"deprecatedReason,omitempty"`
 	Pub              bool                  `json:"pub,omitempty"`
+	Api              bool                  `json:"api,omitempty"`
 	Actors           []*_ActorRefHashValue `json:"actors,omitempty"`
 	Auth             string                `json:"auth,omitempty"`
 	Require          *_RequireHashValue    `json:"require,omitempty"`

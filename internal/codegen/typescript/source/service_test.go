@@ -205,7 +205,7 @@ func TestTypesTemplateRendersExternalImports(t *testing.T) {
 	}
 }
 
-func TestBuildServiceTsPayloadFiltersNonClientActors(t *testing.T) {
+func TestBuildServiceTsPayloadIncludesLegacyAdmissionRules(t *testing.T) {
 	user := &model.Data{
 		Name: "User",
 		Members: []*model.DataMember{{
@@ -234,10 +234,10 @@ func TestBuildServiceTsPayloadFiltersNonClientActors(t *testing.T) {
 
 	gen := newGen(pkg, ".")
 	payload := gen.buildServiceTsPayload()
-	if len(payload.Services) != 1 {
+	if len(payload.Services) != 2 {
 		t.Fatalf("unexpected service count: %d", len(payload.Services))
 	}
-	if payload.Services[0].Name != "ClientService" {
+	if payload.Services[0].Name != "AgentService" || payload.Services[1].Name != "ClientService" {
 		t.Fatalf("unexpected service: %s", payload.Services[0].Name)
 	}
 	if got, want := payload.TypeImports, []string{"User"}; !reflect.DeepEqual(got, want) {
@@ -245,7 +245,7 @@ func TestBuildServiceTsPayloadFiltersNonClientActors(t *testing.T) {
 	}
 }
 
-func TestBuildServiceTsPayloadPubOnlyFiltersNonPubServices(t *testing.T) {
+func TestBuildServiceTsPayloadExcludesBackendServices(t *testing.T) {
 	user := &model.Data{
 		Pub:  true,
 		Name: "User",
@@ -263,18 +263,18 @@ func TestBuildServiceTsPayloadPubOnlyFiltersNonPubServices(t *testing.T) {
 		}},
 		Data: []*model.Data{user},
 		Services: []*model.Service{
-			{Pub: true, Name: "PublicClientService", Audiences: []*model.ActorAudience{{Actor: "ClientActor"}}, Methods: []*model.Method{{
+			{Name: "PublicClientService", Api: true, Audiences: []*model.ActorAudience{{Actor: "ClientActor"}}, Methods: []*model.Method{{
 				Name:       "getUser",
 				ResultType: dataTypeForTest(user),
 			}}},
-			{Name: "InternalClientService", Audiences: []*model.ActorAudience{{Actor: "ClientActor"}}, Methods: []*model.Method{{
+			{Name: "InternalClientService", Pub: true, Methods: []*model.Method{{
 				Name:       "getUser",
 				ResultType: dataTypeForTest(user),
 			}}},
 		},
 	})
 
-	gen := newGen(pkg, ".", Option{PubOnly: true})
+	gen := newGen(pkg, ".")
 	payload := gen.buildServiceTsPayload()
 	if len(payload.Services) != 1 {
 		t.Fatalf("unexpected service count: %d", len(payload.Services))

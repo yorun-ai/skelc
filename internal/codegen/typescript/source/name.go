@@ -5,11 +5,9 @@ import (
 	"strings"
 )
 
-func buildPackageName(moduleScope string, domainName string, pubOnly bool) string {
+func buildPackageName(moduleScope string, domainName string) string {
 	parts := strings.Split(domainName, ".")
-	if pubOnly {
-		parts[len(parts)-1] = parts[len(parts)-1] + "pub"
-	}
+	parts[len(parts)-1] += "api"
 	name := strings.Join(parts, "-")
 	if strings.Contains(strings.TrimPrefix(moduleScope, "@"), "/") {
 		return fmt.Sprintf("%s-%s", moduleScope, name)
@@ -17,10 +15,7 @@ func buildPackageName(moduleScope string, domainName string, pubOnly bool) strin
 	return fmt.Sprintf("%s/%s", moduleScope, name)
 }
 
-func importPackageAlias(domainName string, pubOnly bool) string {
+func importPackageAlias(domainName string) string {
 	parts := strings.Split(domainName, ".")
-	if pubOnly {
-		return parts[len(parts)-1] + "pub"
-	}
-	return parts[len(parts)-1]
+	return parts[len(parts)-1] + "api"
 }

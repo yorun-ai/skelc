@@ -84,27 +84,44 @@ func (t *Type) Name() string {
 // ContainsBinaryType reports whether t is binary or recursively contains a
 // binary member. It handles recursive data declarations and a nil receiver.
 func (t *Type) ContainsBinaryType() bool {
-	return t.containsBinaryType(map[*Data]bool{})
+	return t.containsBinaryType(nil, map[_BinaryVisit]bool{})
 }
 
-func (t *Type) containsBinaryType(visited map[*Data]bool) bool {
+type _BinaryVisit struct {
+	data      *Data
+	arguments string
+}
+
+func (t *Type) containsBinaryType(parameters map[*TypeParameter]bool, visited map[_BinaryVisit]bool) bool {
 	if t == nil {
 		return false
 	}
 	switch t.Kind {
 	case TypeKindScalar:
 		return t.Scalar == ScalarBinary
+	case TypeKindTypeParameter:
+		return parameters[t.TypeParameter]
 	case TypeKindList:
-		return t.List.Value.containsBinaryType(visited)
+		return t.List.Value.containsBinaryType(parameters, visited)
 	case TypeKindMap:
-		return t.Map.Key.containsBinaryType(visited) || t.Map.Value.containsBinaryType(visited)
+		return t.Map.Key.containsBinaryType(parameters, visited) || t.Map.Value.containsBinaryType(parameters, visited)
 	case TypeKindData:
-		if visited[t.Data] {
+		bound := map[*TypeParameter]bool{}
+		arguments := make([]byte, len(t.TypeArguments))
+		for i, arg := range t.TypeArguments {
+			if arg.containsBinaryType(parameters, visited) {
+				bound[t.Data.TypeParameters[i]] = true
+				arguments[i] = 1
+			}
+		}
+		key := _BinaryVisit{data: t.Data, arguments: string(arguments)}
+		if visited[key] {
 			return false
 		}
-		visited[t.Data] = true
+		visited[key] = true
+		defer delete(visited, key)
 		for _, member := range t.Data.Members {
-			if member.Type.containsBinaryType(visited) {
+			if member.Type.containsBinaryType(bound, visited) {
 				return true
 			}
 		}

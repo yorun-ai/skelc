@@ -10,6 +10,7 @@ import (
 )
 
 type ServiceMethod struct {
+	*_ClientMethodNames
 	Name                        string
 	SkelName                    string
 	SpecName                    string
@@ -34,6 +35,7 @@ func castServiceMethod(ps *model.Service, pm *model.Method) *ServiceMethod {
 	}
 	resultType := castType(pm.ResultType)
 	method := &ServiceMethod{
+		_ClientMethodNames:          buildClientMethodNames(methodArgs),
 		Name:                        nameutil.ToCamel(pm.Name),
 		SkelName:                    pm.Name,
 		Arguments:                   methodArgs,

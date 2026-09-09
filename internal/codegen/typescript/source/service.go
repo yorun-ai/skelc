@@ -27,7 +27,7 @@ func (g *_Gen) genServiceTs() {
 }
 
 func (g *_Gen) buildServiceTsPayload() *ServiceTsPayload {
-	clientServices := g.serviceClientServices()
+	clientServices := g.apiView.Services
 	typeImports := buildServiceTypeImports(clientServices)
 	externalTypeImports := buildServiceExternalTypeImports(clientServices)
 	payload := &ServiceTsPayload{

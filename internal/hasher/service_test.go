@@ -208,3 +208,18 @@ func TestFillHashesIncludesConfigNoTrim(t *testing.T) {
 		t.Fatal("config noTrim must change config and domain hashes")
 	}
 }
+
+func TestFillHashesIncludesApiBoundary(t *testing.T) {
+	backend := newHashTestDomain(t, "Order service")
+	api := newHashTestDomain(t, "Order service")
+	backend.Services()[0].Pub = false
+	api.Services()[0].Pub = false
+	api.Services()[0].Api = true
+	fillHashes(t, backend, api)
+	if backend.Services()[0].Hash == api.Services()[0].Hash || backend.Hash() == api.Hash() {
+		t.Fatal("API boundary must change service and domain hashes")
+	}
+	if backend.Services()[0].Methods[0].Hash != api.Services()[0].Methods[0].Hash {
+		t.Fatal("API boundary must not change method signatures")
+	}
+}

@@ -220,7 +220,7 @@ func classifyTopLine(value string, kind string) _TopLineKind {
 		return topLineDomain
 	case value == "import":
 		return topLineImport
-	case value == "pub" || grammar.IsTopLevelDeclarationKeyword(value):
+	case value == "pub" || value == "api" || grammar.IsTopLevelDeclarationKeyword(value):
 		return topLineDeclaration
 	default:
 		return topLineUnknown

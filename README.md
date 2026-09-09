@@ -44,7 +44,7 @@ pub data User {
     name: string
 }
 
-pub service UserService {
+api service UserService {
     for ClientActor via client
 
     method getUser {
@@ -56,7 +56,7 @@ pub service UserService {
 }
 ```
 
-This defines a `UserService` that can be called through a client. `pub` only allows a declaration to enter public generated output; it does not make a network endpoint anonymously accessible.
+This defines an API service called through Portal. `pub service` instead exposes a backend contract across domains; `pub` and `api` cannot be combined. API authentication defaults to `auth`, with `noauth` available for anonymous methods.
 
 Validate and format the contract first:
 
@@ -77,7 +77,7 @@ skelc gen go-module \
 Generate types and a service client for a TypeScript application:
 
 ```bash
-skelc gen ts \
+skelc gen ts --api \
   --skel-in ./user.skel \
   --ts-out ./generated/user-ts
 ```
@@ -124,6 +124,8 @@ events, resources and permissions, web capabilities, and tasks:
 
 ## Common Workflows
 
+Use `skelc --strict check --skel-in ./skel` to reject declarations accepted only for compatibility. Strict mode is off by default and also applies to generation and schema commands. Go integrations set `Input.Strict`; LSP clients can use `skelc --strict lsp` or the `strict` initialization/configuration setting. See the [CLI reference](https://skel.yorun.ai/docs/cli#strict-mode) for scope and diagnostics.
+
 ### Organize a Domain as a Directory
 
 As a contract grows, split the same domain across multiple files:
@@ -153,7 +155,7 @@ skelc gen skel \
   --skel-out ./generated/public-skel
 ```
 
-TypeScript generation also accepts `--pub` to emit only public data, enums, and eligible service clients.
+TypeScript generation requires `--api` and rejects `--pub`. API clients include API services and their data dependencies, plus explicitly public data and enums for cross-domain imports.
 
 ### Reference Other Domains
 

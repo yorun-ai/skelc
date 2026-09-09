@@ -34,6 +34,9 @@ func (content *SkelContent) Finalize() error {
 		return nil
 	}
 	for _, entry := range content.Entries {
+		if entry.Api && (entry.Pub || entry.Service == nil) {
+			return participle.Errorf(entry.Pos, "api is only allowed on services and cannot be combined with pub")
+		}
 		switch {
 		case entry.Enum != nil:
 			entry.Enum.Decorators = entry.Decorators
@@ -56,6 +59,7 @@ func (content *SkelContent) Finalize() error {
 		case entry.Service != nil:
 			entry.Service.Decorators = entry.Decorators
 			entry.Service.Pub = entry.Pub
+			entry.Service.Api = entry.Api
 		case entry.Web != nil:
 			entry.Web.Decorators = entry.Decorators
 		case entry.Event != nil:
@@ -126,6 +130,7 @@ type SkelEntry struct {
 	Pos        lexer.Position
 	Decorators []*Decorator `parser:"(@@ (Newline)*)*"`
 	Pub        bool         `parser:"@\"pub\"?"`
+	Api        bool         `parser:"@\"api\"?"`
 	Enum       *Enum        `parser:"(\"enum\" @@"`
 	Data       *Data        `parser:"| \"data\" @@"`
 	Config     *Data        `parser:"| \"config\" @@"`

@@ -30,7 +30,7 @@ func TestCompatibilityDiagnosticsUseInMemorySourceAndImpactSeverity(t *testing.T
 	document := index.Build(documentURI, path, "domain demo\ndata User { id: string }\n", 2)
 	sources, paths := SemanticSources(map[uri.URI]*index.Document{documentURI: document})
 	analyzer := compiler.NewWorkspaceAnalyzer()
-	diagnostics, domains, err := SemanticWorkspace(t.Context(), analyzer, sources, paths)
+	diagnostics, domains, err := SemanticWorkspace(t.Context(), analyzer, sources, paths, false)
 	require.NoError(t, err)
 	require.Empty(t, diagnostics)
 
@@ -56,7 +56,7 @@ func TestCompatibilityDiagnosticsPlaceRemovedDeclarationAtDomain(t *testing.T) {
 	documentURI := uri.File(path)
 	document := index.Build(documentURI, path, "domain demo\n", 2)
 	sources, paths := SemanticSources(map[uri.URI]*index.Document{documentURI: document})
-	diagnostics, domains, err := SemanticWorkspace(t.Context(), compiler.NewWorkspaceAnalyzer(), sources, paths)
+	diagnostics, domains, err := SemanticWorkspace(t.Context(), compiler.NewWorkspaceAnalyzer(), sources, paths, false)
 	require.NoError(t, err)
 	require.Empty(t, diagnostics)
 
@@ -75,7 +75,7 @@ func TestCompatibilityDiagnosticsReportExplicitBaselineFailure(t *testing.T) {
 	documentURI := uri.File(path)
 	document := index.Build(documentURI, path, "domain demo\ndata User { id: string }\n", 1)
 	sources, paths := SemanticSources(map[uri.URI]*index.Document{documentURI: document})
-	diagnostics, domains, err := SemanticWorkspace(t.Context(), compiler.NewWorkspaceAnalyzer(), sources, paths)
+	diagnostics, domains, err := SemanticWorkspace(t.Context(), compiler.NewWorkspaceAnalyzer(), sources, paths, false)
 	require.NoError(t, err)
 	require.Empty(t, diagnostics)
 

@@ -15,6 +15,24 @@ import (
 	"go.yorun.ai/skelc/internal/lsp/workspace"
 )
 
+func TestSemanticStrictModePreservesCachedWarningSeverity(t *testing.T) {
+	documentURI := uri.File("/workspace/order.skel")
+	document := index.Build(documentURI, documentURI.FsPath(), "domain demo.order\nservice OrderService { method ping {} }\n", 1)
+	sources, paths := SemanticSources(map[uri.URI]*index.Document{documentURI: document})
+	analyzer := compiler.NewWorkspaceAnalyzer()
+	for _, strict := range []bool{false, true, false} {
+		diagnostics, domains, err := SemanticWorkspace(t.Context(), analyzer, sources, paths, strict)
+		require.NoError(t, err)
+		require.Len(t, domains, 1)
+		require.Len(t, diagnostics[documentURI], 1)
+		severity := protocol.DiagnosticSeverityWarning
+		if strict {
+			severity = protocol.DiagnosticSeverityError
+		}
+		assert.Equal(t, severity, diagnostics[documentURI][0].Severity)
+	}
+}
+
 func TestSemanticDiagnosticsDoNotResolveImportsAcrossDomainRoots(t *testing.T) {
 	userURI := uri.File("/workspace/user/user.skel")
 	orderURI := uri.File("/workspace/order/order.skel")
@@ -132,9 +150,13 @@ func TestSemanticDiagnosticsKeepStandaloneFormatterFixturesIndependent(t *testin
 		documents[documentURI] = index.Build(documentURI, path, string(content), 1)
 	}
 	sources, paths := SemanticSources(documents)
-	diagnostics, domains, err := SemanticWorkspace(t.Context(), compiler.NewWorkspaceAnalyzer(), sources, paths)
+	diagnostics, domains, err := SemanticWorkspace(t.Context(), compiler.NewWorkspaceAnalyzer(), sources, paths, false)
 	require.NoError(t, err)
-	assert.Empty(t, diagnostics)
+	require.Len(t, diagnostics, 2)
+	for _, values := range diagnostics {
+		require.Len(t, values, 1)
+		assert.Equal(t, protocol.String("service.legacy-client-rules"), values[0].Code)
+	}
 	require.Len(t, domains, 2)
 	for _, domain := range domains {
 		require.Len(t, domain.Sources, 1)

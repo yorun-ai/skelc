@@ -20,7 +20,7 @@ GOWORK=off go run ./cmd/skelc gen go-module \
   --go-out "$output_root/go" \
   --go-module example.com/yorun/quickstart
 
-GOWORK=off go run ./cmd/skelc gen ts \
+GOWORK=off go run ./cmd/skelc gen ts --api \
   --skel-in "$script_dir/skel" \
   --ts-out "$output_root/typescript" \
   --ts-as-module \

@@ -10,6 +10,7 @@ import (
 type Mode string
 
 const (
+	ModeApi     Mode = "api"
 	ModeFull    Mode = "full"
 	ModePub     Mode = "pub"
 	ModeRegular Mode = "regular"
@@ -42,6 +43,10 @@ func Full(domain *model.Domain) *Domain {
 }
 
 func Build(mode Mode, domain *model.Domain) (*Domain, error) {
+	if mode == ModeApi {
+		api := common.BuildApiView(domain)
+		return &Domain{Enums: api.Enums, Data: api.Data, Services: api.Services}, nil
+	}
 	if mode == ModePub {
 		public, err := common.BuildPublicView(domain)
 		if err != nil {
@@ -65,9 +70,13 @@ func Build(mode Mode, domain *model.Domain) (*Domain, error) {
 	if mode != ModeRegular {
 		return nil, fmt.Errorf("invalid Go generation mode %q", mode)
 	}
+	public, err := common.BuildPublicView(domain)
+	if err != nil {
+		return nil, err
+	}
 	return &Domain{
-		Enums:     filterNonPubEnums(domain.Enums()),
-		Data:      filterNonPubData(domain.Data()),
+		Enums:     without(domain.Enums(), public.Enums),
+		Data:      without(domain.Data(), public.Data),
 		Configs:   filterNonPubData(domain.Configs()),
 		Actors:    filterNonPubActors(domain.Actors()),
 		Resources: filterNonPubResources(domain.Resources()),
@@ -80,3 +89,17 @@ func Build(mode Mode, domain *model.Domain) (*Domain, error) {
 
 // New constructs a generation view and reports invalid modes or public views.
 func New(mode Mode, domain *model.Domain) (*Domain, error) { return Build(mode, domain) }
+
+func without[T any](all, excluded []*T) []*T {
+	seen := map[*T]bool{}
+	for _, value := range excluded {
+		seen[value] = true
+	}
+	result := make([]*T, 0)
+	for _, value := range all {
+		if !seen[value] {
+			result = append(result, value)
+		}
+	}
+	return result
+}

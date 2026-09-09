@@ -22,7 +22,11 @@ func entryDefinition(entry *grammar.SkelEntry) (string, lexer.Position, protocol
 	case entry.Resource != nil:
 		return entry.Resource.Name.Value, entry.Resource.Name.Pos, protocol.SymbolKindObject, "resource"
 	case entry.Service != nil:
-		return entry.Service.Name.Value, entry.Service.Name.Pos, protocol.SymbolKindInterface, "service"
+		detail := "service"
+		if entry.Service.Api {
+			detail = "api service"
+		}
+		return entry.Service.Name.Value, entry.Service.Name.Pos, protocol.SymbolKindInterface, detail
 	case entry.Web != nil:
 		return entry.Web.Name.Value, entry.Web.Name.Pos, protocol.SymbolKindInterface, "web"
 	case entry.Event != nil:

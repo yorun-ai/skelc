@@ -69,6 +69,9 @@ func validateDeclarationBody(declaration *Declaration) error {
 		valid = declaration.Resource != nil
 	case DeclarationTypeService:
 		valid = declaration.Service != nil
+		if valid && declaration.Pub && declaration.Service.Api {
+			return fmt.Errorf("api and pub are mutually exclusive")
+		}
 	case DeclarationTypeWeb:
 		valid = declaration.Web != nil
 	case DeclarationTypeTask:

@@ -28,7 +28,7 @@ func TestServeLifecycle(t *testing.T) {
 	serverStream, clientStream := net.Pipe()
 	serverDone := make(chan error, 1)
 	go func() {
-		serverDone <- Serve(t.Context(), serverStream, serverStream)
+		serverDone <- Serve(t.Context(), serverStream, serverStream, false)
 	}()
 
 	_, connection, server := protocol.NewClient(
@@ -74,7 +74,7 @@ func TestServePublishesAndInvalidatesSemanticDiagnostics(t *testing.T) {
 	serverStream, clientStream := net.Pipe()
 	serverDone := make(chan error, 1)
 	go func() {
-		serverDone <- Serve(t.Context(), serverStream, serverStream)
+		serverDone <- Serve(t.Context(), serverStream, serverStream, false)
 	}()
 
 	client := &recordingClient{diagnostics: make(chan *protocol.PublishDiagnosticsParams, 16)}

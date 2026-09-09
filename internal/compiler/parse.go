@@ -15,6 +15,7 @@ import (
 type Option struct {
 	SkelIn      string
 	SkelImports map[string]string
+	Strict      bool
 }
 
 type Result struct {
@@ -35,7 +36,14 @@ func Compile(option Option) (Result, error) {
 		return Result{}, err
 	}
 	diagnostics = appendAnalysisWarnings(diagnostics, domain.Warnings())
+	diagnostics = append(diagnostics, MigrationDiagnostics(domain.Model())...)
 	slices.SortFunc(diagnostics, compareDiagnostics)
+	if option.Strict {
+		ApplyStrictMode(diagnostics)
+		if diagnostics.HasErrors() {
+			return Result{}, diagnostics
+		}
+	}
 	parsed := domain.Model()
 	if err := hasher.FillHashes(parsed); err != nil {
 		return Result{}, err
@@ -45,14 +53,21 @@ func Compile(option Option) (Result, error) {
 
 // CompileImport loads one domain without requiring its dependencies. It
 // supports symbol tooling; Compile performs complete graph analysis.
-func CompileImport(skelIn string) (Result, error) {
+func CompileImport(option Option) (Result, error) {
 	diagnostics := Diagnostics{}
-	domain, err := parseSource(skelIn, nil, true, &diagnostics)
+	domain, err := parseSource(option.SkelIn, nil, true, &diagnostics)
 	if err != nil {
 		return Result{}, err
 	}
 	diagnostics = appendAnalysisWarnings(diagnostics, domain.Warnings())
+	diagnostics = append(diagnostics, MigrationDiagnostics(domain.Model())...)
 	slices.SortFunc(diagnostics, compareDiagnostics)
+	if option.Strict {
+		ApplyStrictMode(diagnostics)
+		if diagnostics.HasErrors() {
+			return Result{}, diagnostics
+		}
+	}
 	parsed := domain.Model()
 	if err := hasher.FillHashes(parsed); err != nil {
 		return Result{}, err
@@ -124,6 +139,7 @@ func parseImportedDomains(imports map[string]string, diagnostics *Diagnostics) (
 		if err != nil {
 			return nil, err
 		}
+		*diagnostics = append(*diagnostics, MigrationDiagnostics(domain.Model())...)
 		domains = append(domains, domain)
 	}
 	return domains, nil

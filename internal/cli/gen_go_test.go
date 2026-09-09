@@ -11,6 +11,58 @@ import (
 	"go.yorun.ai/skelc/internal/command"
 )
 
+func TestRunSkelcStrictGenerationPreservesOutputs(t *testing.T) {
+	for _, kind := range []string{"go", "go-module", "ts", "skel"} {
+		t.Run(kind, func(t *testing.T) {
+			root := t.TempDir()
+			entry := filepath.Join(root, "order.skel")
+			out := filepath.Join(root, "out")
+			pubOut := filepath.Join(root, "pub")
+			writeCLIFile(t, entry, "domain demo.order\npub service LegacyService { noauth method ping {} }\n")
+			args := []string{"gen", kind, "--skel-in", entry}
+			switch kind {
+			case "go":
+				args = append(args, "--go-out", out)
+			case "go-module":
+				args = append(args, "--go-out", out, "--go-module", "example.com/order", "--go-pub-out", pubOut, "--go-pub-module", "example.com/orderpub")
+			case "ts":
+				args = append(args, "--api", "--ts-out", out)
+			case "skel":
+				args = append(args, "--pub", "--skel-out", out)
+			}
+			if result := Run(args); result.ExitCode != ExitCodeSuccess {
+				t.Fatalf("compatible generation failed: %+v", result)
+			}
+			before := map[string]string{}
+			err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+				if entry.IsDir() {
+					return nil
+				}
+				data, err := os.ReadFile(path)
+				before[path] = string(data)
+				return err
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result := Run(append([]string{"--strict"}, args...))
+			failure := decodeCommandError(t, result)
+			if result.ExitCode != ExitCodeError || failure.Code != command.ErrorCodeCompilationFailed || !strings.Contains(result.Stderr, `"severity":"error"`) {
+				t.Fatalf("expected strict generation failure: %+v", result)
+			}
+			for path, want := range before {
+				got, err := os.ReadFile(path)
+				if err != nil || string(got) != want {
+					t.Fatalf("strict failure changed %s: %v", path, err)
+				}
+			}
+		})
+	}
+}
+
 func TestRunSkelcGenGo(t *testing.T) {
 	dir := t.TempDir()
 	goOut := filepath.Join(t.TempDir(), "skeled")
@@ -190,14 +242,14 @@ func TestRunSkelcGenGoModuleRejectsGoVineVersionWithoutVPrefix(t *testing.T) {
 	assertCommandErrorMessage(t, result, "go-vine-version 1.2.3 must be v-prefixed semantic version")
 }
 
-func TestRunSkelcGenGoModuleRejectsPubFlag(t *testing.T) {
+func TestRunSkelcGenGoModuleAcceptsPubFlag(t *testing.T) {
 	dir := t.TempDir()
 	goOut := filepath.Join(t.TempDir(), "skeled")
 	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
 
 	result := Run([]string{"gen", "go-module", "--pub", "--skel-in", dir, "--go-out", goOut, "--go-module-prefix", "github.com/acme/skel"})
 
-	if result.ExitCode != ExitCodeError {
+	if result.ExitCode != ExitCodeSuccess {
 		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
 	}
 }
@@ -232,7 +284,7 @@ func TestRunSkelcGenGoRejectsModuleFlags(t *testing.T) {
 	goOut := filepath.Join(t.TempDir(), "skeled")
 	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
 
-	result := Run([]string{"gen", "go", "--pub", "--skel-in", dir, "--go-out", goOut})
+	result := Run([]string{"gen", "go", "--go-module", "example.com/invalid", "--skel-in", dir, "--go-out", goOut})
 
 	if result.ExitCode != ExitCodeError {
 		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)

@@ -118,7 +118,7 @@ func TestTypesTemplateKeepsModuleSemanticsWhenEmpty(t *testing.T) {
 	}
 }
 
-func TestBuildDataTsPayloadKeepsAllTypes(t *testing.T) {
+func TestBuildDataTsPayloadKeepsLegacyServiceDependencies(t *testing.T) {
 	userStatus := &model.Enum{Name: "UserStatus", Items: []*model.EnumItem{{Name: "ACTIVE"}}}
 	unusedStatus := &model.Enum{Name: "UnusedStatus", Items: []*model.EnumItem{{Name: "ACTIVE"}}}
 	userProfile := &model.Data{Name: "UserProfile"}
@@ -167,7 +167,7 @@ func TestBuildDataTsPayloadKeepsAllTypes(t *testing.T) {
 	}
 }
 
-func TestBuildDataTsPayloadPubOnlyKeepsAllPubTypes(t *testing.T) {
+func TestBuildDataTsPayloadKeepsExplicitPubTypes(t *testing.T) {
 	userStatus := &model.Enum{Pub: true, Name: "UserStatus", Items: []*model.EnumItem{{Name: "ACTIVE"}}}
 	internalStatus := &model.Enum{Name: "InternalStatus", Items: []*model.EnumItem{{Name: "ACTIVE"}}}
 	user := &model.Data{
@@ -190,7 +190,7 @@ func TestBuildDataTsPayloadPubOnlyKeepsAllPubTypes(t *testing.T) {
 		Data:  []*model.Data{user, unusedPublic, internalOnly},
 	})
 
-	gen := newGen(pkg, ".", Option{PubOnly: true})
+	gen := newGen(pkg, ".")
 	payload := gen.buildDataTsPayload()
 
 	enumNames := make([]string, 0, len(payload.Enums))

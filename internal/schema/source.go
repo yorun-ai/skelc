@@ -21,6 +21,9 @@ type SourceDiffOption struct {
 	// BaselineSkelIn selects an explicit baseline file or directory. An empty
 	// value reads the domain's source directory from Git HEAD.
 	BaselineSkelIn string
+	// Strict rejects migration warnings in the candidate; historical baselines
+	// retain compatibility with older declarations.
+	Strict bool
 }
 
 type _CachedSourceBaseline struct {
@@ -62,7 +65,7 @@ func DiffWorkspaceDomain(ctx context.Context, candidate compiler.WorkspaceDomain
 // DiffSource compares a candidate file or directory with either an explicit
 // source baseline or the same path at Git HEAD.
 func DiffSource(ctx context.Context, candidateSkelIn string, option SourceDiffOption) (*Report, error) {
-	candidate, err := projectSource(candidateSkelIn)
+	candidate, err := projectSource(compiler.Option{SkelIn: candidateSkelIn, Strict: option.Strict})
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +79,7 @@ func DiffSource(ctx context.Context, candidateSkelIn string, option SourceDiffOp
 		defer gitBaseline.cleanup()
 		baselineSkelIn = gitBaseline.skelIn
 	}
-	baseline, err := projectSource(baselineSkelIn)
+	baseline, err := projectSource(compiler.Option{SkelIn: baselineSkelIn})
 	if err != nil {
 		if gitBaseline != nil {
 			return nil, gitBaseline.remapError(err)
@@ -96,6 +99,13 @@ func DiffSource(ctx context.Context, candidateSkelIn string, option SourceDiffOp
 // DiffWorkspaceDomain compares a domain while reusing its unchanged Git
 // baseline across calls to the same differ.
 func (d *SourceDiffer) DiffWorkspaceDomain(ctx context.Context, candidate compiler.WorkspaceDomain, option SourceDiffOption) (*Report, error) {
+	if option.Strict {
+		diagnostics := compiler.MigrationDiagnostics(candidate.Model)
+		compiler.ApplyStrictMode(diagnostics)
+		if diagnostics.HasErrors() {
+			return nil, fmt.Errorf("%w: %w", ErrSourceCompilation, diagnostics)
+		}
+	}
 	candidateSchema, err := Project(candidate.Model, nil)
 	if err != nil {
 		return nil, err
@@ -113,7 +123,7 @@ func (d *SourceDiffer) DiffWorkspaceDomain(ctx context.Context, candidate compil
 			}
 			baselineSkelIn = filepath.Join(directory, baselineSkelIn)
 		}
-		baseline, compileErr := compiler.CompileImport(baselineSkelIn)
+		baseline, compileErr := compiler.CompileImport(compiler.Option{SkelIn: baselineSkelIn})
 		if compileErr != nil {
 			return nil, fmt.Errorf("compile schema compatibility baseline %s: %w", baselineSkelIn, compileErr)
 		}
@@ -132,8 +142,8 @@ func (d *SourceDiffer) DiffWorkspaceDomain(ctx context.Context, candidate compil
 	return report, nil
 }
 
-func projectSource(skelIn string) (*Document, error) {
-	result, err := compiler.CompileImport(skelIn)
+func projectSource(option compiler.Option) (*Document, error) {
+	result, err := compiler.CompileImport(option)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrSourceCompilation, err)
 	}

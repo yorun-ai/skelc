@@ -8,6 +8,9 @@
 	{{- template "deprecatedFields" . }}
 	Hash: {{ quote .Hash }},
 	Pub: {{ .Pub }},
+	{{- if .Api }}
+	Api: true,
+	{{- end }}
 	AuthMode: {{ authLiteral .AuthMode }},
 	{{- if .Audiences }}
 	Audiences: []*skel.ActorAudienceSchema{

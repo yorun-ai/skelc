@@ -45,6 +45,9 @@ func checkWithAnalyzer(option Option, workspaceAnalyzer *WorkspaceAnalyzer) (Che
 	}
 	filtered = append(filtered, structural...)
 	filtered = append(filtered, loaderWarningDiagnostics(loadResult.Warnings)...)
+	if option.Strict {
+		ApplyStrictMode(filtered)
+	}
 	slices.SortFunc(filtered, compareDiagnostics)
 	return CheckResult{Diagnostics: filtered}, nil
 }

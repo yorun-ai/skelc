@@ -7,7 +7,7 @@ import {{ $import.Name }}{{ with importAlias $import }} as {{ . }}{{ end }}
 {{ range $i, $enum := .Enums -}}
 {{ if $i }}
 {{ end -}}
-{{ template "description" (description $enum.Description 0) }}{{ template "deprecated" (deprecated $enum.Deprecated $enum.DeprecatedReason 0) }}pub enum {{ $enum.Name }} {
+{{ template "description" (description $enum.Description 0) }}{{ template "deprecated" (deprecated $enum.Deprecated $enum.DeprecatedReason 0) }}{{ if $enum.Pub }}pub {{ end }}enum {{ $enum.Name }} {
 {{- range $item := $enum.Items }}
 {{ template "description" (description $item.Description 4) }}{{ template "deprecated" (deprecated $item.Deprecated $item.DeprecatedReason 4) }}    {{ $item.Name }}
 {{- end }}
@@ -16,7 +16,7 @@ import {{ $import.Name }}{{ with importAlias $import }} as {{ . }}{{ end }}
 {{ range $i, $data := .Data -}}
 {{ if or $.Enums $i }}
 {{ end -}}
-{{ template "description" (description $data.Description 0) }}{{ template "deprecated" (deprecated $data.Deprecated $data.DeprecatedReason 0) }}{{ template "sensitive" (sensitive $data.Sensitive 0) }}pub data {{ $data.Name }}{{ with typeParams $data.TypeParameters }}<{{ range $i, $name := . }}{{ if $i }}, {{ end }}{{ $name }}{{ end }}>{{ end }} {
+{{ template "description" (description $data.Description 0) }}{{ template "deprecated" (deprecated $data.Deprecated $data.DeprecatedReason 0) }}{{ template "sensitive" (sensitive $data.Sensitive 0) }}{{ if $data.Pub }}pub {{ end }}data {{ $data.Name }}{{ with typeParams $data.TypeParameters }}<{{ range $i, $name := . }}{{ if $i }}, {{ end }}{{ $name }}{{ end }}>{{ end }} {
 {{- range $member := $data.Members }}
 {{ template "description" (description $member.Description 4) }}{{ template "deprecated" (deprecated $member.Deprecated $member.DeprecatedReason 4) }}{{ template "example" (example $member.Example 4) }}{{ template "sensitive" (sensitive $member.Sensitive 4) }}    {{ $member.Name }}: {{ template "type" (typeRef $member.Type) }}
 {{- end }}

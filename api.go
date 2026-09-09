@@ -29,6 +29,9 @@ const MinimumGolangVineVersion = golang.MinimumVineVersion
 // modules when GolangOption.VineVersion is empty.
 const DefaultGolangVineVersion = golang.DefaultVineVersion
 
+// MinimumGolangApiServiceVineVersion is required by explicit API service schemas.
+const MinimumGolangApiServiceVineVersion = golang.MinimumApiServiceVineVersion
+
 // Input identifies the primary Skel source and any imported domains.
 type Input struct {
 	// SkelIn is the path to a Skel source file or domain directory.
@@ -36,6 +39,8 @@ type Input struct {
 	// SkelImports maps the complete transitive import closure to Skel source
 	// files or directories. Only SkelIn is a generation target.
 	SkelImports map[string]string
+	// Strict rejects legacy declarations accepted with migration warnings.
+	Strict bool
 }
 
 // ParseResult contains a validated semantic model and non-fatal diagnostics.
@@ -65,6 +70,8 @@ const (
 	DiagnosticCodeSemanticNaming     = diagnostic.CodeSemanticNaming
 	DiagnosticCodeSemanticReference  = diagnostic.CodeSemanticReference
 	DiagnosticCodeSemanticWarning    = diagnostic.CodeSemanticWarning
+	DiagnosticCodeServiceModifier    = diagnostic.CodeServiceModifier
+	DiagnosticCodeServiceClientRules = diagnostic.CodeServiceClientRules
 	DiagnosticCodeImportMissing      = diagnostic.CodeImportMissing
 	DiagnosticCodeImportCycle        = diagnostic.CodeImportCycle
 	DiagnosticCodeDomainMissing      = diagnostic.CodeDomainMissing
@@ -104,6 +111,10 @@ type GolangOption struct {
 	// AsModule generates a standalone Go module instead of package source for an
 	// existing module.
 	AsModule bool
+	// PubOnly generates backend public contracts. It is mutually exclusive with ApiOnly.
+	PubOnly bool
+	// ApiOnly generates standalone Portal clients.
+	ApiOnly bool
 	// Out is the output directory for generated Go files.
 	Out string
 	// Module is the module path used when AsModule is true.
@@ -119,14 +130,17 @@ type GolangOption struct {
 	ModulePrefix string
 	// VineVersion selects the go.yorun.ai/vine version written to generated module
 	// metadata. It must not be lower than [MinimumGolangVineVersion]. An empty
-	// value uses [DefaultGolangVineVersion].
+	// value uses [DefaultGolangVineVersion], or [MinimumGolangApiServiceVineVersion]
+	// when backend output contains explicit API services.
 	VineVersion string
+	// VrpcVersion selects the standalone client module version.
+	VrpcVersion string
 }
 
 // TypeScriptOption configures TypeScript generation.
 type TypeScriptOption struct {
-	// PubOnly limits output to the domain's public contract.
-	PubOnly bool
+	// ApiOnly is required for TypeScript client generation.
+	ApiOnly bool
 	// AsModule emits package metadata for a standalone npm package.
 	AsModule bool
 	// Out is the output directory for generated TypeScript files.

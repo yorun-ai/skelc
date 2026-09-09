@@ -25,6 +25,12 @@ type CompatibilityOptions struct {
 	BaselineSkelIn    string
 }
 
+// Options controls semantic and compatibility diagnostics.
+type Options struct {
+	Strict        bool
+	Compatibility CompatibilityOptions
+}
+
 // Runner debounces workspace analysis and cancels superseded work.
 type Runner struct {
 	mu                sync.Mutex
@@ -44,7 +50,7 @@ func NewRunner(delay time.Duration) *Runner {
 }
 
 // Schedule replaces pending analysis with analysis of snapshot.
-func (r *Runner) Schedule(snapshot workspace.Snapshot, option CompatibilityOptions, accept func(Result)) {
+func (r *Runner) Schedule(snapshot workspace.Snapshot, option Options, accept func(Result)) {
 	r.mu.Lock()
 	r.generation++
 	generation := r.generation
@@ -77,14 +83,14 @@ func (r *Runner) Stop() {
 	}
 }
 
-func (r *Runner) run(ctx context.Context, generation uint64, snapshot workspace.Snapshot, option CompatibilityOptions, accept func(Result)) {
+func (r *Runner) run(ctx context.Context, generation uint64, snapshot workspace.Snapshot, option Options, accept func(Result)) {
 	sources, paths := SemanticSources(snapshot.DocumentsMap())
-	diagnostics, domains, err := SemanticWorkspace(ctx, r.workspaceAnalyzer, sources, paths)
+	diagnostics, domains, err := SemanticWorkspace(ctx, r.workspaceAnalyzer, sources, paths, option.Strict)
 	if err != nil {
 		return
 	}
-	if option.Enabled {
-		appendCompatibilityDiagnostics(ctx, r.compatibility, diagnostics, domains, sources, paths, option)
+	if option.Compatibility.Enabled {
+		appendCompatibilityDiagnostics(ctx, r.compatibility, diagnostics, domains, sources, paths, option.Compatibility)
 	}
 	r.mu.Lock()
 	if generation != r.generation {

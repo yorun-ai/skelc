@@ -28,6 +28,9 @@ func validateActor(actor *model.Actor) error {
 		if err := validateData(actor.AuthInfo); err != nil {
 			return fmt.Errorf("actor %s auth info: %w", actor.Name, err)
 		}
+		if actor.AuthService.Api {
+			return fmt.Errorf("API service %s cannot be used as a framework callback", actor.AuthService.Name)
+		}
 		if err := validateService(actor.AuthService); err != nil {
 			return fmt.Errorf("actor %s auth: %w", actor.Name, err)
 		}
@@ -55,6 +58,9 @@ func validateActor(actor *model.Actor) error {
 		}
 	}
 	if actor.PermService != nil {
+		if actor.PermService.Api {
+			return fmt.Errorf("API service %s cannot be used as a framework callback", actor.PermService.Name)
+		}
 		if err := validateService(actor.PermService); err != nil {
 			return fmt.Errorf("actor %s permission: %w", actor.Name, err)
 		}

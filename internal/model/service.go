@@ -28,10 +28,12 @@ type Service struct {
 	Deprecated bool
 	// DeprecatedReason explains why the service is deprecated and what to use instead.
 	DeprecatedReason string
-	// Pub reports whether the service belongs to the public contract.
+	// Pub reports whether the service uses the pub modifier.
 	Pub bool
 	// Api restricts invocation to the Portal client entry path.
 	Api bool
+	// Open exports both client and server contracts to other domains.
+	Open bool
 	// Audiences lists actors allowed to call the service.
 	Audiences []*ActorAudience
 	// Auth is the service-level authentication mode.
@@ -140,3 +142,8 @@ func (s *Service) HasClientRules() bool {
 
 // ClientApi includes explicit API services and legacy services with client rules.
 func (s *Service) ClientApi() bool { return s.Api || s.HasClientRules() }
+
+// Public reports whether the service is exported by pub or open.
+func (s *Service) Public() bool {
+	return s.Pub || s.Open
+}

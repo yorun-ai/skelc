@@ -23,6 +23,9 @@ func entryDefinition(entry *grammar.SkelEntry) (string, lexer.Position, protocol
 		return entry.Resource.Name.Value, entry.Resource.Name.Pos, protocol.SymbolKindObject, "resource"
 	case entry.Service != nil:
 		detail := "service"
+		if entry.Service.Open {
+			detail = "open service"
+		}
 		if entry.Service.Api {
 			detail = "api service"
 		}

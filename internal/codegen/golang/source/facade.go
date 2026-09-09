@@ -94,7 +94,7 @@ func (g *_Gen) genFacadeGo() {
 		}
 	}
 	for _, service := range g.Domain.Services() {
-		if service.Pub {
+		if service.Public() {
 			payload.Services = append(payload.Services, g.castService(service, true, false))
 		}
 	}
@@ -155,7 +155,7 @@ func hasPubActor(actors []*model.Actor) bool {
 
 func hasPubService(services []*model.Service) bool {
 	for _, service := range services {
-		if service.Pub {
+		if service.Public() {
 			return true
 		}
 	}

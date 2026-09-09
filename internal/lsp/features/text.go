@@ -57,7 +57,7 @@ func completionValuesBeforePosition(source string, position protocol.Position) [
 	if len(fields) == 0 {
 		return nil
 	}
-	if fields[0] == "pub" || fields[0] == "api" {
+	if fields[0] == "pub" || fields[0] == "api" || fields[0] == "open" {
 		fields = fields[1:]
 		if len(fields) == 0 {
 			return nil

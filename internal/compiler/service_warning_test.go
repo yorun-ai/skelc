@@ -68,3 +68,17 @@ func TestApiServiceNameSuffix(t *testing.T) {
 		})
 	}
 }
+
+func TestOpenServiceIncrementalAnalysis(t *testing.T) {
+	analyzer := NewWorkspaceAnalyzer()
+	for _, modifier := range []string{"open", "pub", "open"} {
+		source := Source{Path: "/workspace/open.skel", Content: []byte("domain demo.storage\n" + modifier + " service StorageService { method ping {} }\n")}
+		diagnostics, domains, err := analyzer.analyze(context.Background(), []Source{source}, true)
+		if err != nil || len(diagnostics) != 0 {
+			t.Fatalf("%s: %v %v", modifier, diagnostics, err)
+		}
+		if len(domains) != 1 || domains[0].Model.Services()[0].Open != (modifier == "open") {
+			t.Fatalf("stale open modifier after %s", modifier)
+		}
+	}
+}

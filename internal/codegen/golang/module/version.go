@@ -8,10 +8,10 @@ import (
 )
 
 // MinimumVineVersion is the minimum Vine version supported by generated Go code.
-const MinimumVineVersion = "v0.15.4"
+const MinimumVineVersion = "v0.15.5"
 
 // DefaultVineVersion is the Vine version used when generation does not select one.
-const DefaultVineVersion = "v0.15.4"
+const DefaultVineVersion = "v0.15.5"
 
 func ResolveVineVersion(version string) (string, error) {
 	version = strings.TrimSpace(version)
@@ -43,7 +43,7 @@ func ValidateVineVersion(version string) error {
 }
 
 // MinimumApiServiceVineVersion is required by schemas for explicit API services.
-const MinimumApiServiceVineVersion = "v0.15.4"
+const MinimumApiServiceVineVersion = "v0.15.5"
 
 func ResolveServiceVineVersion(version string, hasApiService bool) (string, error) {
 	if hasApiService && strings.TrimSpace(version) == "" {

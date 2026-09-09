@@ -6,6 +6,16 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-09-09
+
+### Added
+
+- Add `open service` for public client and server contracts. Go public packages include server interfaces and default implementations; split regular packages reuse them. `open`, `pub`, and `api` are mutually exclusive.
+
+### Changed
+
+- Raise the default and minimum Vine dependency for generated Go code to v0.15.5.
+
 ## [0.18.1] - 2026-09-09
 
 ### Changed

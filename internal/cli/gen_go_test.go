@@ -206,7 +206,7 @@ func TestRunSkelcGenGoModule(t *testing.T) {
 
 	result := Run([]string{"gen", "go-module", "--skel-in", dir, "--go-out", goOut, "--go-module-prefix", "github.com/acme/skel"})
 	assertGenerationResult(t, result)
-	assertFileContains(t, filepath.Join(goOut, "go.mod"), "go.yorun.ai/vine v0.15.4")
+	assertFileContains(t, filepath.Join(goOut, "go.mod"), "go.yorun.ai/vine v0.15.5")
 }
 
 func TestRunSkelcGenGoModuleWithGoVineVersion(t *testing.T) {
@@ -229,7 +229,7 @@ func TestRunSkelcGenGoModuleRejectsLowGoVineVersion(t *testing.T) {
 
 	result := Run([]string{"gen", "go-module", "--skel-in", dir, "--go-out", goOut, "--go-module-prefix", "github.com/acme/skel", "--go-vine-version", "v0.8.0"})
 
-	assertCommandErrorMessage(t, result, "go-vine-version v0.8.0 is lower than minimum v0.15.4")
+	assertCommandErrorMessage(t, result, "go-vine-version v0.8.0 is lower than minimum v0.15.5")
 }
 
 func TestRunSkelcGenGoModuleRejectsGoVineVersionWithoutVPrefix(t *testing.T) {

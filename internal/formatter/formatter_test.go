@@ -287,3 +287,16 @@ func TestApiServiceRoundTrip(t *testing.T) {
 		t.Fatalf("unstable formatting: %s", formatted)
 	}
 }
+
+func TestOpenServiceRoundTrip(t *testing.T) {
+	input := []byte("domain demo.storage\n// reusable contract\nopen   service  StorageService{method ping{}}\n")
+	before := compileTestDomain(t, "open.skel", input)
+	formatted := formatTestSource(t, input)
+	after := compileTestDomain(t, "open.skel", formatted)
+	if !after.Services()[0].Open || before.Hash() != after.Hash() {
+		t.Fatalf("lost open contract: %s", formatted)
+	}
+	if string(formatTestSource(t, formatted)) != string(formatted) {
+		t.Fatalf("unstable format: %s", formatted)
+	}
+}

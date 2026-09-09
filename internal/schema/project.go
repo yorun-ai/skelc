@@ -235,10 +235,11 @@ func projectService(domainName string, importAliases map[string]string, value *m
 	}
 	return &Declaration{
 		Metadata: metadata(value.Description, value.Deprecated, value.DeprecatedReason),
-		Pub:      value.Pub, Name: value.Name, Kind: DeclarationTypeService, SkelName: value.SkelName, Pos: value.Pos,
+		Pub:      value.Public(), Name: value.Name, Kind: DeclarationTypeService, SkelName: value.SkelName, Pos: value.Pos,
 		Service: &ServiceSchema{
 			Audiences: projectAudiences(domainName, importAliases, value.Audiences),
 			Api:       value.Api,
+			Open:      value.Open,
 			Auth:      normalizedAuth(value.Auth),
 			Require:   projectRequirement(value.Require), Methods: methods,
 		},

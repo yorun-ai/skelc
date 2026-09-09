@@ -52,6 +52,13 @@ const (
 {{ end }}
 {{ if $.Services -}}
 {{ range $service := $.Services -}}
+{{ if $service.Open }}
+type {{ $service.ServerName }} = {{ $.PubPackageName }}.{{ $service.ServerName }}
+type {{ $service.ERServerName }} = {{ $.PubPackageName }}.{{ $service.ERServerName }}
+type {{ $service.DefaultServerName }} = {{ $.PubPackageName }}.{{ $service.DefaultServerName }}
+type {{ $service.DefaultERServerName }} = {{ $.PubPackageName }}.{{ $service.DefaultERServerName }}
+
+{{ end }}
 type {{ $service.ClientName }} = {{ $.PubPackageName }}.{{ $service.ClientName }}
 type {{ $service.ERClientName }} = {{ $.PubPackageName }}.{{ $service.ERClientName }}
 

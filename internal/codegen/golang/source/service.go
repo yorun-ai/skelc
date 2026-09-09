@@ -62,6 +62,7 @@ type Service struct {
 	Hash                   string
 	CommentLines           []string
 	DeprecatedCommentLines []string
+	Open                   bool
 	ClientOnly             bool
 	ServerOnly             bool
 
@@ -99,6 +100,7 @@ func (g *_Gen) castService(p *model.Service, clientOnly bool, serverOnly bool) *
 	names := buildServiceNames(p.Name)
 	service := &Service{
 		Name:                    names.Name,
+		Open:                    p.Open,
 		SkelName:                p.SkelName,
 		Hash:                    p.Hash,
 		ClientOnly:              clientOnly,

@@ -15,7 +15,7 @@ When building a Vine application, skelc helps you:
 - Keep server and client types and service contracts in one source of truth
 - Catch syntax, naming, type, and cross-domain reference errors before generation
 - Generate a Go module and TypeScript clients ready to add to a project
-- Publish only domain boundaries marked `pub`
+- Publish domain boundaries marked `pub`; skelc v0.19.0 also supports `open service` to export server contracts
 - Format and validate contracts
 - Generate vRPC transport metadata for Binary parameters so applications can transfer binary data efficiently with CBOR
 

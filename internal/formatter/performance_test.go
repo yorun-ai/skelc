@@ -21,6 +21,7 @@ func BenchmarkSource(b *testing.B) {
 
 func FuzzSourceIdempotent(f *testing.F) {
 	f.Add(formatterBenchmarkSource)
+	f.Add([]byte("domain fuzz\nopen service StorageService { method ping {} }\n"))
 	f.Add([]byte("domain fuzz\r\ndata User{id:string}\r\n"))
 	f.Add([]byte("// comment\n@desc(\"value\")\ndata User { value: list<string?> }"))
 	f.Add([]byte("0/*\n  */"))

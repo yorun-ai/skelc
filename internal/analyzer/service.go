@@ -10,6 +10,7 @@ import (
 
 func parseService(reporter *_DiagnosticReporter, gs *grammar.Service) (*model.Service, bool) {
 	valid := reporter.checkNot(gs.Api && gs.Pub, "%s api and pub are mutually exclusive", gs.Name.Pos)
+	valid = reporter.checkNot(gs.Open && (gs.Api || gs.Pub), "%s open, api and pub are mutually exclusive", gs.Name.Pos) && valid
 	suffix := "Service"
 	if gs.Api {
 		suffix = "ApiService"
@@ -38,6 +39,7 @@ func parseService(reporter *_DiagnosticReporter, gs *grammar.Service) (*model.Se
 		Name:             gs.Name.Value,
 		Pub:              gs.Pub,
 		Api:              gs.Api,
+		Open:             gs.Open,
 		Audiences:        audiences,
 		Auth:             authMode,
 		Require:          require,

@@ -7,8 +7,8 @@ import (
 	"github.com/Masterminds/semver/v3"
 )
 
-const DefaultVrpcVersion = "v0.11.0"
-const MinimumVrpcVersion = "v0.11.0"
+const DefaultVrpcVersion = "v0.12.0"
+const MinimumVrpcVersion = "v0.12.0"
 
 func ResolveVrpcVersion(version string) (string, error) {
 	version = strings.TrimSpace(version)

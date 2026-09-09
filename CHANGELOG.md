@@ -10,7 +10,7 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 - Add global `--strict`, `Input.Strict`, and LSP strict settings to reject migration warnings while preserving ordinary warnings.
 - Add explicit `api service` contracts, mutually exclusive with `pub`, Portal-only invocation metadata, and migration warnings for unmodified services and legacy client rules.
-- Add `--api` Go clients using `go.yorun.ai/vrpc` v0.11.0 and its shared Skel types. Prefix-derived modules use an `api` suffix; cross-domain client types reference API packages.
+- Add `--api` Go clients using `go.yorun.ai/vrpc` v0.12.0 and its shared Skel types. Prefix-derived modules use an `api` suffix; cross-domain client types reference API packages.
 - Require `--api` for TypeScript generation and reject `--pub`. Both client targets include API dependencies and standalone public types.
 - Collect public contract data dependencies without requiring local `pub` data/enum markers, preserving explicit cross-domain Skel visibility.
 

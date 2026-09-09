@@ -50,3 +50,17 @@ func TestApiServiceVineVersion(t *testing.T) {
 		t.Fatalf("newer API schema version: %s %v", got, err)
 	}
 }
+
+func TestResolveVrpcVersion(t *testing.T) {
+	for _, version := range []string{"", "v0.12.0"} {
+		got, err := ResolveVrpcVersion(version)
+		if err != nil || got != "v0.12.0" {
+			t.Fatalf("resolve %q: %q %v", version, got, err)
+		}
+	}
+	for _, version := range []string{"v0.11.0", "v0.12.0-rc.1"} {
+		if _, err := ResolveVrpcVersion(version); err == nil {
+			t.Fatalf("accepted unsupported vRPC version %q", version)
+		}
+	}
+}

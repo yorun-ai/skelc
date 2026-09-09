@@ -6,6 +6,12 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+## [0.18.1] - 2026-09-09
+
+### Changed
+
+- Require explicit `api service` names to end with `ApiService`. Rename existing API contracts and regenerate server/client code together because service wire names change.
+
 ## [0.18.0] - 2026-09-09
 
 ### Added

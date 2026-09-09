@@ -1,7 +1,7 @@
 domain commerce.order
 
 @desc("Queries and commands for customer orders")
-api service OrderService {
+api service OrderApiService {
     for CustomerActor via client
     auth
     require any(Order:read, user.User:read)

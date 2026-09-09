@@ -44,7 +44,7 @@ pub data User {
     name: string
 }
 
-api service UserService {
+api service UserApiService {
     for ClientActor via client
 
     method getUser {

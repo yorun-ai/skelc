@@ -15,6 +15,7 @@ import (
 
 const (
 	commandVersion = "version"
+	flagFeatures   = "features"
 
 	cliName    = "Skelc CLI"
 	devVersion = "v0.0.0-dev"
@@ -28,6 +29,9 @@ var (
 func newVersionCommand() *ucli.Command {
 	return &ucli.Command{
 		Name: commandVersion,
+		Flags: []ucli.Flag{
+			&ucli.BoolFlag{Name: flagFeatures, Usage: "include supported compiler features"},
+		},
 		Action: func(_ context.Context, cmd *ucli.Command) error {
 			if cmd.Args().Len() != 0 {
 				return commandFailure(command.ErrorCodeInvalidArgument, fmt.Errorf("unexpected args for %s", commandVersion))
@@ -35,6 +39,9 @@ func newVersionCommand() *ucli.Command {
 			info, err := versionInfo()
 			if err != nil {
 				return commandFailure(command.ErrorCodeCommandFailed, err)
+			}
+			if cmd.Bool(flagFeatures) {
+				info.Features = new(command.VersionFeaturesResult{ApiModifier: true})
 			}
 			if err := writeJSONResult(cmd, info, "version result"); err != nil {
 				return commandFailure(command.ErrorCodeCommandFailed, err)
@@ -63,8 +70,9 @@ func versionInfo() (_VersionInfo, error) {
 		Platform:  buildInfo.Platform,
 		GoVersion: buildInfo.GoVersion,
 		GolangCodeGen: command.VersionGolangCodeGenResult{
-			MinimumVineVersion: golang.MinimumVineVersion,
-			DefaultVineVersion: golang.DefaultVineVersion,
+			MinimumVineVersion:           golang.MinimumVineVersion,
+			DefaultVineVersion:           golang.DefaultVineVersion,
+			MinimumApiServiceVineVersion: golang.MinimumApiServiceVineVersion,
 		},
 	}, nil
 }

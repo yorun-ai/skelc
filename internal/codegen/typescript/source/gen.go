@@ -12,19 +12,17 @@ const packageScope = "@yorun-ai/skeled"
 type _Gen struct {
 	domain *model.Domain
 
-	pubOnly     bool
 	moduleScope string
 	pkgName     string
 	tsImports   map[string]string
 	outputDir   string
 	err         error
-	publicView  *common.PublicView
+	apiView     *common.PublicView
 
 	renderer *common.Renderer
 }
 
 type Option struct {
-	PubOnly     bool
 	ModuleScope string
 	Module      string
 	Imports     map[string]string
@@ -59,7 +57,6 @@ func newGen(domain *model.Domain, outputDir string, options ...Option) *_Gen {
 	}
 	g := &_Gen{
 		domain:      domain,
-		pubOnly:     option.PubOnly,
 		moduleScope: strings.TrimRight(option.ModuleScope, "/"),
 		pkgName:     strings.TrimRight(option.Module, "/"),
 		tsImports:   option.Imports,
@@ -71,14 +68,9 @@ func newGen(domain *model.Domain, outputDir string, options ...Option) *_Gen {
 		if scope == "" {
 			scope = packageScope
 		}
-		g.pkgName = buildPackageName(scope, g.domain.Name(), g.pubOnly)
+		g.pkgName = buildPackageName(scope, g.domain.Name())
 	}
-	if g.pubOnly {
-		g.publicView, g.err = common.BuildPublicView(domain)
-		if g.err != nil {
-			return g
-		}
-	}
+	g.apiView = common.BuildApiView(domain)
 	g.resolveExternalTypeImports()
 	return g
 }

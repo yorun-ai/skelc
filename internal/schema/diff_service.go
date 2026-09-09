@@ -9,6 +9,9 @@ import (
 )
 
 func (c *_Diff) compareService(owner string, baseline, candidate *ServiceSchema) {
+	if baseline.Api != candidate.Api {
+		c.add(ImpactBreaking, "service.api.changed", owner, "service invocation boundary changed", model.Position{}, model.Position{})
+	}
 	c.compareAudiences(owner, "service.audience", baseline.Audiences, candidate.Audiences)
 	c.compareAuth(owner, "service", baseline.Auth, candidate.Auth, model.Position{}, model.Position{})
 	c.compareRequirement(owner, "service", baseline.Require, candidate.Require, model.Position{}, model.Position{})

@@ -9,11 +9,13 @@ func (g *_Gen) buildServiceSchema(value *model.Service, projected *contractschem
 	result := &_ServiceSchema{
 		Name: projected.Name, SkelName: projected.SkelName, Hash: value.Hash,
 		Description: projected.Description, Deprecated: projected.Deprecated,
-		DeprecatedReason: projected.DeprecatedReason, Pub: projected.Pub,
-		AuthMode:  _AuthMode(projected.Service.Auth),
-		Audiences: g.buildActorAudienceSchemas(projected.Service.Audiences),
-		Require:   g.buildPermRequireSchema(value.Require, projected.Service.Require),
-		Methods:   make([]*_MethodSchema, 0, len(projected.Service.Methods)),
+		DeprecatedReason: projected.DeprecatedReason,
+		Pub:              projected.Pub,
+		Api:              projected.Service.Api,
+		AuthMode:         _AuthMode(projected.Service.Auth),
+		Audiences:        g.buildActorAudienceSchemas(projected.Service.Audiences),
+		Require:          g.buildPermRequireSchema(value.Require, projected.Service.Require),
+		Methods:          make([]*_MethodSchema, 0, len(projected.Service.Methods)),
 	}
 	for index, method := range projected.Service.Methods {
 		result.Methods = append(result.Methods, g.buildMethodSchema(value.Methods[index], method))

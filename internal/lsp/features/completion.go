@@ -12,7 +12,7 @@ import (
 var completionKeywords = []string{
 	"actor", "action", "all", "any", "as", "auth", "check", "config", "credential", "data",
 	"domain", "enum", "event", "for", "import", "info", "input", "method", "noauth", "output",
-	"payload", "permission", "pub", "require", "resource", "service", "task", "trigger", "via", "web",
+	"api", "payload", "permission", "pub", "require", "resource", "service", "task", "trigger", "via", "web",
 }
 
 var completionDecorators = []string{"deprecated", "desc", "example", "identifier", "noTrim", "sensitive"}

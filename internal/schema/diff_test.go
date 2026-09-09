@@ -11,8 +11,8 @@ func TestStableChangeRuleMatrix(t *testing.T) {
 	_testResourceRules(t, coverage)
 	_testServiceRules(t, coverage)
 	_testTaskRules(t, coverage)
-	if len(coverage.covered) != 120 {
-		t.Fatalf("stable change rule matrix covers %d codes, expected 120", len(coverage.covered))
+	if len(coverage.covered) != 121 {
+		t.Fatalf("stable change rule matrix covers %d codes, expected 121", len(coverage.covered))
 	}
 }
 
@@ -151,5 +151,20 @@ func TestDiffTreatsAuthenticationAndPermissionSemanticsAsDangerous(t *testing.T)
 				t.Fatalf("unexpected report: %+v", report)
 			}
 		})
+	}
+}
+
+func TestDiffApiBoundaryIsBreaking(t *testing.T) {
+	baseline := newTestDocument(serviceDeclaration("OrderService", "get"))
+	candidate := newTestDocument(serviceDeclaration("OrderService", "get"))
+	baseline.Declarations[0].Pub = false
+	candidate.Declarations[0].Pub = false
+	candidate.Declarations[0].Service.Api = true
+	report, err := Diff(baseline, candidate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Compatible || len(report.Changes) != 1 || report.Changes[0].Code != "service.api.changed" || report.Changes[0].Impact != ImpactBreaking {
+		t.Fatalf("unexpected report: %+v", report)
 	}
 }

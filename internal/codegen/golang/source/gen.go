@@ -45,6 +45,10 @@ func newGen(option Option) *_Gen {
 }
 
 func (g *_Gen) gen() {
+	if g.mode == view.ModeApi {
+		g.genApiGo()
+		return
+	}
 	g.genDocGo()
 	g.genEnumGo()
 	g.genDataGo()

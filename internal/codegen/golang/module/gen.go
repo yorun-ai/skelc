@@ -21,7 +21,9 @@ const (
 type Option struct {
 	Out               string
 	Module            string
+	Api               bool
 	VineVersion       string
+	VrpcVersion       string
 	Imports           map[string]string
 	ExtraDependencies []string
 }
@@ -38,8 +40,12 @@ func Generate(option Option) error {
 	if err := file.AddRequire(decimalModule, decimalVersion); err != nil {
 		return fmt.Errorf("add Go requirement %s: %w", decimalModule, err)
 	}
-	if err := file.AddRequire(vineModule, option.VineVersion); err != nil {
-		return fmt.Errorf("add Go requirement %s: %w", vineModule, err)
+	runtimeModule, runtimeVersion := vineModule, option.VineVersion
+	if option.Api {
+		runtimeModule, runtimeVersion = "go.yorun.ai/vrpc", option.VrpcVersion
+	}
+	if err := file.AddRequire(runtimeModule, runtimeVersion); err != nil {
+		return fmt.Errorf("add Go requirement %s: %w", runtimeModule, err)
 	}
 	dependencies, err := goModDependencies(option.Imports, option.ExtraDependencies)
 	if err != nil {

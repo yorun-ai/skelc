@@ -22,6 +22,9 @@ func validateResource(resource *model.Resource) error {
 		}
 	}
 	if resource.CheckService != nil {
+		if resource.CheckService.Api {
+			return fmt.Errorf("API service %s cannot be used as a framework callback", resource.CheckService.Name)
+		}
 		if err := validateService(resource.CheckService); err != nil {
 			return err
 		}

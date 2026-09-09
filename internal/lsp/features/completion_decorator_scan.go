@@ -25,7 +25,10 @@ func optionalPubOffsetBefore(source string, offset int) int {
 	for end > 0 && (source[end-1] == ' ' || source[end-1] == '\t') {
 		end--
 	}
-	const pub = "pub"
+	pub := "pub"
+	if end >= 3 && source[end-3:end] == "api" {
+		pub = "api"
+	}
 	start := end - len(pub)
 	if start >= 0 && source[start:end] == pub &&
 		(start == 0 || !isIdentifierByte(source[start-1])) {

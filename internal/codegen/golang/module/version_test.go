@@ -34,3 +34,19 @@ func TestResolveVineVersionRejectsInvalidVersion(t *testing.T) {
 		})
 	}
 }
+
+func TestApiServiceVineVersion(t *testing.T) {
+	got, err := ResolveServiceVineVersion("", true)
+	if err != nil || got != MinimumApiServiceVineVersion {
+		t.Fatalf("default API schema version: %s %v", got, err)
+	}
+	if got, err := ResolveServiceVineVersion("v0.15.4", true); err != nil || got != "v0.15.4" {
+		t.Fatalf("minimum API schema version: %s %v", got, err)
+	}
+	if _, err := ResolveServiceVineVersion("v0.15.3", true); err == nil {
+		t.Fatal("accepted Vine without API schema support")
+	}
+	if got, err := ResolveServiceVineVersion("v1.0.0", true); err != nil || got != "v1.0.0" {
+		t.Fatalf("newer API schema version: %s %v", got, err)
+	}
+}

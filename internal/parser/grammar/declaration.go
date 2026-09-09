@@ -64,6 +64,7 @@ type Service struct {
 	Pos        lexer.Position
 	Decorators []*Decorator
 	Pub        bool
+	Api        bool
 	Name       *Identifier       `parser:"@@"`
 	Sections   []*ServiceSection `parser:"\"{\" (Newline)* (@@ (Newline)*)* \"}\""`
 

@@ -3,6 +3,7 @@ package source
 import (
 	"strings"
 
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/model"
 )
 
@@ -55,15 +56,16 @@ func (g *_Gen) genFacadeGo() {
 		Services:           make([]*Service, 0),
 		Events:             make([]*Event, 0),
 	}
-	for _, enum := range g.Domain.Enums() {
-		if enum.Pub {
-			payload.Enums = append(payload.Enums, castEnum(enum))
-		}
+	public, err := common.BuildPublicView(g.Domain)
+	if err != nil {
+		g.Renderer.Fail(err)
+		return
 	}
-	for _, data := range g.Domain.Data() {
-		if data.Pub {
-			payload.Data = append(payload.Data, castData(data))
-		}
+	for _, enum := range public.Enums {
+		payload.Enums = append(payload.Enums, castEnum(enum))
+	}
+	for _, data := range public.Data {
+		payload.Data = append(payload.Data, castData(data))
 	}
 	for _, config := range g.Domain.Configs() {
 		if config.Pub {

@@ -450,7 +450,7 @@ actor DemoActor {
 		{
 			name: "imported domain",
 			parse: func() error {
-				_, err := CompileImport(skelFile)
+				_, err := CompileImport(Option{SkelIn: skelFile})
 				return err
 			},
 		},
@@ -478,7 +478,7 @@ data Booking {
 }
 `)
 
-	result, err := CompileImport(skelDir)
+	result, err := CompileImport(Option{SkelIn: skelDir})
 	if err != nil {
 		t.Fatalf("CompileImport() error = %v", err)
 	}

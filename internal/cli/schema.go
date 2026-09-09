@@ -117,7 +117,7 @@ func newSchemaDiffCommand() *ucli.Command {
 				return commandFailure(command.ErrorCodeInvalidArgument,
 					fmt.Errorf("unexpected args for %s %s", commandSchema, commandSchemaDiff))
 			}
-			candidateOption := compiler.Option{SkelIn: cmd.String(flagSchemaSkelIn)}
+			candidateOption := compiler.Option{SkelIn: cmd.String(flagSchemaSkelIn), Strict: cmd.Bool(flagStrict)}
 			if err := normalizeCompilerOption(&candidateOption); err != nil {
 				return commandFailure(command.ErrorCodeInvalidArgument, err)
 			}
@@ -129,7 +129,7 @@ func newSchemaDiffCommand() *ucli.Command {
 				}
 				baselineSkelIn = baselineOption.SkelIn
 			}
-			report, err := schemas.DiffSource(ctx, candidateOption.SkelIn, schemas.SourceDiffOption{BaselineSkelIn: baselineSkelIn})
+			report, err := schemas.DiffSource(ctx, candidateOption.SkelIn, schemas.SourceDiffOption{BaselineSkelIn: baselineSkelIn, Strict: cmd.Bool(flagStrict)})
 			if err != nil {
 				switch {
 				case errors.Is(err, schemas.ErrGitHistoryUnavailable):
@@ -204,11 +204,11 @@ func filterSchemaEntries(entries []*schemas.Entry, kind string) []*schemas.Entry
 }
 
 func loadQuerySchema(cmd *ucli.Command) (*schemas.Document, error) {
-	option := compiler.Option{SkelIn: cmd.String(flagSchemaSkelIn)}
+	option := compiler.Option{SkelIn: cmd.String(flagSchemaSkelIn), Strict: cmd.Bool(flagStrict)}
 	if err := normalizeCompilerOption(&option); err != nil {
 		return nil, commandFailure(command.ErrorCodeInvalidArgument, err)
 	}
-	result, err := compiler.CompileImport(option.SkelIn)
+	result, err := compiler.CompileImport(option)
 	if err != nil {
 		return nil, commandFailure(command.ErrorCodeCompilationFailed, err)
 	}
@@ -224,11 +224,11 @@ func loadSourceSchema(cmd *ucli.Command, flagName, skelIn string) (*schemas.Docu
 	if strings.TrimSpace(skelIn) == "" {
 		return nil, commandFailure(command.ErrorCodeInvalidArgument, fmt.Errorf("missing flag %s", flagName))
 	}
-	option := compiler.Option{SkelIn: skelIn}
+	option := compiler.Option{SkelIn: skelIn, Strict: cmd.Bool(flagStrict)}
 	if err := normalizeCompilerOption(&option); err != nil {
 		return nil, commandFailure(command.ErrorCodeInvalidArgument, err)
 	}
-	shallow, err := compiler.CompileImport(option.SkelIn)
+	shallow, err := compiler.CompileImport(option)
 	if err != nil {
 		return nil, commandFailure(command.ErrorCodeCompilationFailed, err)
 	}

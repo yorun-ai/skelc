@@ -73,6 +73,9 @@ func jsonCommandRequested(args []string) bool {
 		if strings.HasPrefix(arg, "--"+flagLogFormat+"=") {
 			continue
 		}
+		if arg == "--"+flagStrict || strings.HasPrefix(arg, "--"+flagStrict+"=") {
+			continue
+		}
 		if arg == "--help" || arg == "-h" || arg == commandLSP {
 			return false
 		}

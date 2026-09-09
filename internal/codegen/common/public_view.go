@@ -30,6 +30,7 @@ func BuildPublicView(domain *model.Domain) (*PublicView, error) {
 		Events:    filter(domain.Events(), func(value *model.Data) bool { return value.Pub }),
 		Services:  filter(domain.Services(), func(value *model.Service) bool { return value.Pub }),
 	}
+	collectViewData(domain, view)
 	if err := validatePublicView(domain, view); err != nil {
 		return nil, err
 	}
@@ -122,14 +123,14 @@ func validateType(context string, valueType *model.Type, visited map[*model.Data
 	}
 	switch valueType.Kind {
 	case model.TypeKindEnum:
-		if valueType.Enum != nil && !valueType.Enum.Pub {
+		if valueType.ExternalDomain != "" && valueType.Enum != nil && !valueType.Enum.Pub {
 			return fmt.Errorf("%s references non-pub enum %s", context, valueType.Enum.Name)
 		}
 	case model.TypeKindData:
 		if valueType.Data == nil {
 			return nil
 		}
-		if valueType.Data.Kind == model.DataKindData && !valueType.Data.Pub {
+		if valueType.ExternalDomain != "" && valueType.Data.Kind == model.DataKindData && !valueType.Data.Pub {
 			return fmt.Errorf("%s references non-pub data %s", context, valueType.Data.Name)
 		}
 		if visited[valueType.Data] {

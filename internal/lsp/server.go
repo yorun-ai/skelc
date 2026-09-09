@@ -24,6 +24,7 @@ type _Server struct {
 	snippetSupport         bool
 	codeLensRefreshSupport bool
 	schemaCompatibility    _SchemaCompatibilitySettings
+	strict                 bool
 	exit                   chan struct{}
 	exitOnce               sync.Once
 }
@@ -42,8 +43,9 @@ func (rw *_ReadWriteCloser) Close() error {
 }
 
 // Serve runs a Language Server Protocol connection over the supplied streams.
-func Serve(ctx context.Context, input io.Reader, output io.Writer) error {
+func Serve(ctx context.Context, input io.Reader, output io.Writer, strict bool) error {
 	server := newServer()
+	server.strict = strict
 	closer, _ := input.(io.Closer)
 	stream := jsonrpc2.NewStream(&_ReadWriteCloser{Reader: input, Writer: output, closer: closer})
 	_, connection, _ := protocol.NewServer(ctx, server, stream)
@@ -70,6 +72,7 @@ func newServer() *_Server {
 func (s *_Server) Initialize(_ context.Context, params *protocol.InitializeParams) (*protocol.InitializeResult, error) {
 	s.mu.Lock()
 	s.schemaCompatibility = decodeInitializationSettings(params.InitializationOptions)
+	s.strict = decodeStrictSettings(params.InitializationOptions, s.strict)
 	s.mu.Unlock()
 	if textDocument := params.Capabilities.TextDocument; textDocument != nil &&
 		textDocument.Completion != nil &&

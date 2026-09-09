@@ -13,8 +13,11 @@ func TestRunSkelcLSPUsesRegisteredCommand(t *testing.T) {
 	t.Cleanup(func() { serveLSP = original })
 
 	var called bool
-	serveLSP = func(_ context.Context, input io.Reader, output io.Writer) error {
+	serveLSP = func(_ context.Context, input io.Reader, output io.Writer, strict bool) error {
 		called = true
+		if !strict {
+			t.Fatal("strict mode was not passed to LSP")
+		}
 		request, err := io.ReadAll(input)
 		if err != nil {
 			return err
@@ -24,7 +27,7 @@ func TestRunSkelcLSPUsesRegisteredCommand(t *testing.T) {
 	}
 
 	var stdout strings.Builder
-	result := run([]string{"--log-format", "text", "lsp"}, strings.NewReader("request"), &stdout)
+	result := run([]string{"--log-format", "text", "--strict", "lsp"}, strings.NewReader("request"), &stdout)
 
 	if result.ExitCode != ExitCodeSuccess {
 		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
@@ -44,7 +47,7 @@ func TestRunSkelcLSPHelpDoesNotStartServer(t *testing.T) {
 	original := serveLSP
 	t.Cleanup(func() { serveLSP = original })
 
-	serveLSP = func(context.Context, io.Reader, io.Writer) error {
+	serveLSP = func(context.Context, io.Reader, io.Writer, bool) error {
 		t.Fatal("lsp server started while rendering help")
 		return nil
 	}
@@ -66,7 +69,7 @@ func TestRunSkelcLSPReportsServerError(t *testing.T) {
 	original := serveLSP
 	t.Cleanup(func() { serveLSP = original })
 
-	serveLSP = func(context.Context, io.Reader, io.Writer) error {
+	serveLSP = func(context.Context, io.Reader, io.Writer, bool) error {
 		return fmt.Errorf("serve lsp")
 	}
 

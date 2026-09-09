@@ -8,6 +8,7 @@ type _ServiceSchema struct {
 	DeprecatedReason string
 	Hash             string
 	Pub              bool
+	Api              bool
 	AuthMode         _AuthMode
 	Audiences        []*_ActorAudienceSchema
 	Require          *_PermRequire

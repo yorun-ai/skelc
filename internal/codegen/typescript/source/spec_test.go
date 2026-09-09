@@ -53,7 +53,7 @@ func TestBuildSpecTsPayloadUsesFinalClientServiceSet(t *testing.T) {
 		Actors: []*model.Actor{{Name: "AgentActor", Vias: []*model.ActorVia{actorViaForTest(model.ActorViaAgent)}}},
 		Services: []*model.Service{
 			{Name: "ExternalClientService", Audiences: []*model.ActorAudience{{Actor: "app.UserActor"}}, Methods: []*model.Method{{Name: "ping"}}},
-			{Name: "AgentService", Audiences: []*model.ActorAudience{{Actor: "AgentActor"}}, Methods: []*model.Method{{Name: "ping"}}},
+			{Name: "BackendService", Pub: true, Methods: []*model.Method{{Name: "ping"}}},
 		},
 	})
 

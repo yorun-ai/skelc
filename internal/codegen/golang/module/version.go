@@ -41,3 +41,20 @@ func ValidateVineVersion(version string) error {
 	}
 	return nil
 }
+
+// MinimumApiServiceVineVersion is required by schemas for explicit API services.
+const MinimumApiServiceVineVersion = "v0.15.4"
+
+func ResolveServiceVineVersion(version string, hasApiService bool) (string, error) {
+	if hasApiService && strings.TrimSpace(version) == "" {
+		return MinimumApiServiceVineVersion, nil
+	}
+	resolved, err := ResolveVineVersion(version)
+	if err != nil || !hasApiService {
+		return resolved, err
+	}
+	if semver.MustParse(resolved).Compare(semver.MustParse(MinimumApiServiceVineVersion)) < 0 {
+		return "", fmt.Errorf("api service schemas require Vine %s or later; got %s", MinimumApiServiceVineVersion, resolved)
+	}
+	return resolved, nil
+}

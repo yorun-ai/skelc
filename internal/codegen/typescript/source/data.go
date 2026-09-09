@@ -29,28 +29,10 @@ func (g *_Gen) genDataTs() {
 }
 
 func (g *_Gen) buildDataTsPayload() *DataTsPayload {
-	if g.pubOnly {
-		return g.buildPubDataTsPayload()
-	}
-
-	dataList := g.domain.Data()
+	dataList := g.apiView.Data
 	payload := &DataTsPayload{
 		TypeImports: buildDataExternalImports(dataList),
-		Enums:       sliceutil.Map(g.domain.Enums(), castEnum),
-		Data:        make([]*Data, 0, len(dataList)),
-	}
-	for _, dataType := range dataList {
-		castedData := castData(dataType)
-		payload.Data = append(payload.Data, castedData)
-	}
-	return payload
-}
-
-func (g *_Gen) buildPubDataTsPayload() *DataTsPayload {
-	dataList := g.publicView.Data
-	payload := &DataTsPayload{
-		TypeImports: buildDataExternalImports(dataList),
-		Enums:       sliceutil.Map(g.publicView.Enums, castEnum),
+		Enums:       sliceutil.Map(g.apiView.Enums, castEnum),
 		Data:        make([]*Data, 0, len(dataList)),
 	}
 	for _, dataType := range dataList {

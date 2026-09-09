@@ -144,7 +144,7 @@ func topLevelTokenKind(tokens []lexer.Token, index int, identifier lexer.TokenTy
 		return "decorator"
 	}
 	line := tokens[index].Pos.Line
-	if value == "pub" {
+	for value == "pub" || value == "api" {
 		index = nextSignificantToken(tokens, index+1, line, elided)
 		if index < 0 {
 			return ""

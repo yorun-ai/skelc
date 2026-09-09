@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/codegen/golang"
 	gomodule "go.yorun.ai/skelc/internal/codegen/golang/module"
 	"go.yorun.ai/skelc/internal/codegen/skeleton"
@@ -29,10 +30,27 @@ func normalizeInput(input Input) (compiler.Option, error) {
 	if err != nil {
 		return compiler.Option{}, err
 	}
-	return compiler.Option{SkelIn: skelIn, SkelImports: imports}, nil
+	return compiler.Option{SkelIn: skelIn, SkelImports: imports, Strict: input.Strict}, nil
 }
 
 func normalizeGolangOption(option GolangOption) (golang.Option, error) {
+	if option.ApiOnly && option.PubOnly {
+		return golang.Option{}, fmt.Errorf("api and pub are mutually exclusive")
+	}
+	if (option.ApiOnly || option.PubOnly) && (option.PubOut != "" || option.PubModule != "") {
+		return golang.Option{}, fmt.Errorf("api/pub mode cannot be combined with go-pub-out or go-pub-module")
+	}
+	if option.VrpcVersion != "" && !option.ApiOnly {
+		return golang.Option{}, fmt.Errorf("go-vrpc-version requires api")
+	}
+	if option.ApiOnly && option.VineVersion != "" {
+		return golang.Option{}, fmt.Errorf("go-vine-version is not used by api clients")
+	}
+	if option.ApiOnly {
+		if _, err := gomodule.ResolveVrpcVersion(option.VrpcVersion); err != nil {
+			return golang.Option{}, err
+		}
+	}
 	if strings.TrimSpace(option.Out) == "" {
 		return golang.Option{}, optionvalidation.NewValidationError(optionvalidation.FieldGoOutput, optionvalidation.RuleRequired, "Go output is required")
 	}
@@ -108,6 +126,9 @@ func normalizeGolangOption(option GolangOption) (golang.Option, error) {
 	}
 
 	return golang.Option{
+		PubOnly:         option.PubOnly,
+		ApiOnly:         option.ApiOnly,
+		VrpcVersion:     option.VrpcVersion,
 		CompilerVersion: strings.TrimSpace(option.CompilerVersion),
 		AsModule:        option.AsModule,
 		Out:             out,
@@ -121,9 +142,20 @@ func normalizeGolangOption(option GolangOption) (golang.Option, error) {
 }
 
 func validateGolangImports(domain *model.Domain, option golang.Option) error {
+	var apiDomains map[string]bool
+	if option.ApiOnly {
+		var err error
+		apiDomains, err = apiImportDomains(domain)
+		if err != nil {
+			return err
+		}
+	}
 	for _, domainImport := range domain.Imports() {
 		if domainImport == nil {
 			return fmt.Errorf("generated model contains nil import")
+		}
+		if option.ApiOnly && !apiDomains[domainImport.Name] {
+			continue
 		}
 		if option.Imports[domainImport.Name] == "" && option.ModulePrefix == "" {
 			return optionvalidation.NewValidationError(optionvalidation.FieldGoImport, optionvalidation.RuleRequired,
@@ -134,6 +166,9 @@ func validateGolangImports(domain *model.Domain, option golang.Option) error {
 }
 
 func normalizeTypeScriptOption(option TypeScriptOption) (typescript.Option, error) {
+	if !option.ApiOnly {
+		return typescript.Option{}, fmt.Errorf("TypeScript generation requires api")
+	}
 	if strings.TrimSpace(option.Out) == "" {
 		return typescript.Option{}, optionvalidation.NewValidationError(optionvalidation.FieldTypeScriptOutput, optionvalidation.RuleRequired, "TypeScript output is required")
 	}
@@ -166,7 +201,6 @@ func normalizeTypeScriptOption(option TypeScriptOption) (typescript.Option, erro
 	}
 
 	return typescript.Option{
-		PubOnly:     option.PubOnly,
 		AsModule:    option.AsModule,
 		Out:         out,
 		Module:      module,
@@ -176,9 +210,16 @@ func normalizeTypeScriptOption(option TypeScriptOption) (typescript.Option, erro
 }
 
 func validateTypeScriptImports(domain *model.Domain, option typescript.Option) error {
+	apiDomains, err := apiImportDomains(domain)
+	if err != nil {
+		return err
+	}
 	for _, domainImport := range domain.Imports() {
 		if domainImport == nil {
 			return fmt.Errorf("generated model contains nil import")
+		}
+		if !apiDomains[domainImport.Name] {
+			continue
 		}
 		if option.Imports[domainImport.Name] == "" && option.ModuleScope == "" {
 			return optionvalidation.NewValidationError(optionvalidation.FieldTypeScriptImport, optionvalidation.RuleRequired,
@@ -328,4 +369,18 @@ func sortedMapKeys(values map[string]string) []string {
 	}
 	slices.Sort(keys)
 	return keys
+}
+
+func apiImportDomains(domain *model.Domain) (map[string]bool, error) {
+	if err := common.ValidateDomain(domain); err != nil {
+		return nil, err
+	}
+	view := common.BuildApiView(domain)
+	domains := map[string]bool{}
+	common.VisitTypes(common.ApiTypeRoots(view.Data, view.Services), func(kind *model.Type) {
+		if kind.ExternalDomain != "" {
+			domains[kind.ExternalDomain] = true
+		}
+	})
+	return domains, nil
 }

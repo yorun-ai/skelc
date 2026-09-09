@@ -9,7 +9,8 @@ import (
 )
 
 func parseService(reporter *_DiagnosticReporter, gs *grammar.Service) (*model.Service, bool) {
-	valid := checkCaseAdvanced(reporter, "Service", "", "Service", caseTypeCamel, gs.Name)
+	valid := reporter.checkNot(gs.Api && gs.Pub, "%s api and pub are mutually exclusive", gs.Name.Pos)
+	valid = checkCaseAdvanced(reporter, "Service", "", "Service", caseTypeCamel, gs.Name) && valid
 	meta, metaValid := parseDecoratorMeta(reporter, gs.Decorators, _DecoratorContext{
 		allowDesc:       true,
 		allowDeprecated: true,
@@ -32,6 +33,7 @@ func parseService(reporter *_DiagnosticReporter, gs *grammar.Service) (*model.Se
 		Pos:              position(gs.Name.Pos),
 		Name:             gs.Name.Value,
 		Pub:              gs.Pub,
+		Api:              gs.Api,
 		Audiences:        audiences,
 		Auth:             authMode,
 		Require:          require,

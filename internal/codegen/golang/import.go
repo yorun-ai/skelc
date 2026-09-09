@@ -6,6 +6,7 @@ import (
 
 	"go.yorun.ai/skelc/internal/codegen/common"
 	gomodule "go.yorun.ai/skelc/internal/codegen/golang/module"
+	"go.yorun.ai/skelc/internal/codegen/golang/view"
 	"go.yorun.ai/skelc/internal/model"
 )
 
@@ -21,6 +22,9 @@ func (g *_Gen) resolveExternalTypeImports() error {
 		type_.ExternalImportPath = path
 		if !type_.ExternalAliasExplicit {
 			type_.ExternalAlias = importPackageName(type_.ExternalDomain, true)
+			if g.mode == view.ModeApi {
+				type_.ExternalAlias = importPackageName(type_.ExternalDomain, false) + "api"
+			}
 		}
 		return nil
 	})
@@ -33,11 +37,17 @@ func (g *_Gen) goImportPath(domainName string) (string, error) {
 	if g.modulePrefix == "" {
 		return "", fmt.Errorf("missing Go import for domain %s; pass --go-import %s=PACKAGE or --go-module-prefix", domainName, domainName)
 	}
+	if g.mode == view.ModeApi {
+		return buildModuleName(g.modulePrefix, strings.Split(domainName, "."), false) + "api", nil
+	}
 	return buildModuleName(g.modulePrefix, strings.Split(domainName, "."), true), nil
 }
 
 func (g *_Gen) visitDomainTypes(visit common.TypeVisitor) error {
 	types := make([]*model.Type, 0)
+	if g.mode == view.ModeApi {
+		return common.WalkTypes(common.ApiTypeRoots(g.view.Data, g.view.Services), visit)
+	}
 	for _, dataType := range g.domain.Data() {
 		types = appendDataTypes(types, dataType)
 	}

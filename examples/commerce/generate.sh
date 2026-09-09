@@ -26,7 +26,7 @@ GOWORK=off go run ./cmd/skelc gen go-module \
   --go-pub-out "$identity_go_public" \
   --go-pub-module example.com/yorun/commerce/identitypub
 
-GOWORK=off go run ./cmd/skelc gen ts \
+GOWORK=off go run ./cmd/skelc gen ts --api \
   --skel-in "$identity_skel" \
   --ts-out "$output_root/typescript/identity" \
   --ts-as-module \
@@ -48,7 +48,7 @@ GOWORK=off go run ./cmd/skelc gen go-module \
   --go-out "$output_root/go/order" \
   --go-module example.com/yorun/commerce/order
 
-GOWORK=off go run ./cmd/skelc gen ts \
+GOWORK=off go run ./cmd/skelc gen ts --api \
   --skel-in "$order_skel" \
   --skel-import "identity.user=$identity_skel" \
   --ts-import identity.user=@yorun-example/commerce-identity \

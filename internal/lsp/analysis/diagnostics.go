@@ -44,7 +44,7 @@ func SemanticSources(documents map[uri.URI]*index.Document) ([]compiler.Source, 
 // SemanticDiagnostics analyzes sources and converts compiler diagnostics to
 // their LSP representation.
 func SemanticDiagnostics(ctx context.Context, workspaceAnalyzer *compiler.WorkspaceAnalyzer, sources []compiler.Source, paths map[string]uri.URI) (map[uri.URI][]protocol.Diagnostic, error) {
-	result, _, err := SemanticWorkspace(ctx, workspaceAnalyzer, sources, paths)
+	result, _, err := SemanticWorkspace(ctx, workspaceAnalyzer, sources, paths, false)
 	return result, err
 }
 
@@ -55,6 +55,7 @@ func SemanticWorkspace(
 	workspaceAnalyzer *compiler.WorkspaceAnalyzer,
 	sources []compiler.Source,
 	paths map[string]uri.URI,
+	strict bool,
 ) (map[uri.URI][]protocol.Diagnostic, []compiler.WorkspaceDomain, error) {
 	result := map[uri.URI][]protocol.Diagnostic{}
 	contents := make(map[string]string, len(sources))
@@ -64,6 +65,9 @@ func SemanticWorkspace(
 	diagnostics, domains, err := workspaceAnalyzer.AnalyzeDomainsContext(ctx, sources)
 	if err != nil {
 		return nil, nil, err
+	}
+	if strict {
+		compiler.ApplyStrictMode(diagnostics)
 	}
 	for _, diagnostic := range diagnostics {
 		if strings.HasPrefix(diagnostic.Code, "syntax.") {

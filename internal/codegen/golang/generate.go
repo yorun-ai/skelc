@@ -22,6 +22,7 @@ type _Gen struct {
 	asModule          bool
 	compilerVersion   string
 	vineVersion       string
+	vrpcVersion       string
 	modulePrefix      string
 	goImports         map[string]string
 	pubImportPath     string
@@ -32,6 +33,17 @@ type _Gen struct {
 func Generate(domain *model.Domain, option Option) error {
 	if err := common.ValidateDomain(domain); err != nil {
 		return fmt.Errorf("validate Go generation model: %w", err)
+	}
+	if option.ApiOnly || option.PubOnly {
+		mode := view.ModePub
+		if option.ApiOnly {
+			mode = view.ModeApi
+		}
+		g, err := newGen(_GenOption{Mode: mode, Domain: domain, Out: option.Out, AsModule: option.AsModule, Module: option.Module, ModulePrefix: option.ModulePrefix, Imports: option.Imports, VineVersion: option.VineVersion, VrpcVersion: option.VrpcVersion, CompilerVersion: option.CompilerVersion})
+		if err != nil {
+			return err
+		}
+		return g.gen()
 	}
 	if option.PubOut == "" {
 		gen, err := newGen(_GenOption{
@@ -104,11 +116,21 @@ func newGen(option _GenOption) (*_Gen, error) {
 		out:               option.Out,
 	}
 	var err error
-	g.vineVersion, err = gomodule.ResolveVineVersion(option.VineVersion)
+	g.vrpcVersion, err = gomodule.ResolveVrpcVersion(option.VrpcVersion)
 	if err != nil {
 		return nil, err
 	}
 	g.view, err = view.Build(option.Mode, option.Domain)
+	if err != nil {
+		return nil, err
+	}
+	hasApiService := false
+	if g.mode != view.ModeApi {
+		for _, service := range g.view.Services {
+			hasApiService = hasApiService || service.Api
+		}
+	}
+	g.vineVersion, err = gomodule.ResolveServiceVineVersion(option.VineVersion, hasApiService)
 	if err != nil {
 		return nil, err
 	}
@@ -117,14 +139,35 @@ func newGen(option _GenOption) (*_Gen, error) {
 		g.modName = option.Module
 		if g.modName == "" {
 			g.modName = buildModuleName(g.modulePrefix, domainParts, option.Mode == view.ModePub)
+			if option.Mode == view.ModeApi {
+				g.modName += "api"
+			}
 		}
 	}
-	g.pkgName, err = inferPackageName(option.Out, packageNameFallback(domainParts, option.Mode == view.ModePub), option.AsModule)
+	fallback := packageNameFallback(domainParts, option.Mode == view.ModePub)
+	if option.Mode == view.ModeApi {
+		fallback += "api"
+	}
+	g.pkgName, err = inferPackageName(option.Out, fallback, option.AsModule)
 	if err != nil {
 		return nil, err
 	}
 	if err := g.resolveExternalTypeImports(); err != nil {
 		return nil, err
+	}
+	if g.mode == view.ModeApi {
+		imports := map[string]string{}
+		common.VisitTypes(common.ApiTypeRoots(g.view.Data, g.view.Services), func(kind *model.Type) {
+			if kind.ExternalDomain == "" {
+				return
+			}
+			path := g.goImports[kind.ExternalDomain]
+			if path == "" {
+				path = kind.ExternalImportPath
+			}
+			imports[kind.ExternalDomain] = path
+		})
+		g.goImports = imports
 	}
 	return g, nil
 }
@@ -135,6 +178,8 @@ func (g *_Gen) gen() error {
 			Out:               g.out,
 			Module:            g.modName,
 			VineVersion:       g.vineVersion,
+			Api:               g.mode == view.ModeApi,
+			VrpcVersion:       g.vrpcVersion,
 			Imports:           g.goImports,
 			ExtraDependencies: g.extraDependencies,
 		}); err != nil {
@@ -150,6 +195,9 @@ func (g *_Gen) gen() error {
 		Out:           g.out,
 	}); err != nil {
 		return err
+	}
+	if g.mode == view.ModeApi {
+		return nil
 	}
 	return vineschema.GenerateValidated(vineschema.Option{
 		Domain:          g.domain,

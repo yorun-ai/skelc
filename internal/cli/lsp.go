@@ -17,7 +17,7 @@ func newLSPCommand() *ucli.Command {
 		Name:  commandLSP,
 		Usage: "run the Skel language server over standard input and output",
 		Action: func(ctx context.Context, cmd *ucli.Command) error {
-			return serveLSP(ctx, commandReader(cmd), cmd.Writer)
+			return serveLSP(ctx, commandReader(cmd), cmd.Writer, cmd.Bool(flagStrict))
 		},
 	}
 }

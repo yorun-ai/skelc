@@ -57,6 +57,7 @@ func (s *_hashState) serviceHash(service *model.Service) string {
 			Deprecated:       service.Deprecated,
 			DeprecatedReason: service.DeprecatedReason,
 			Pub:              service.Pub,
+			Api:              service.Api,
 			Actors:           s.buildActorAudienceHashValues(service.Audiences),
 			Auth:             authModeHashValue(service.Auth),
 			Require:          s.buildRequireHashValue(service.Require),

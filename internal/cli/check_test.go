@@ -5,9 +5,48 @@ import (
 	"strings"
 	"testing"
 
+	"go.yorun.ai/skelc/diagnostic"
 	"go.yorun.ai/skelc/internal/command"
 	"go.yorun.ai/skelc/internal/compiler"
 )
+
+func TestRunSkelcCheckStrictMigrationDiagnostics(t *testing.T) {
+	dir := t.TempDir()
+	writeCLIFile(t, dir+"/domain.skel", "domain demo.order")
+	writeCLIFile(t, dir+"/service.skel", "domain demo.order\nservice LegacyService { method ping {} }\npub service DualService { noauth method ping {} }\n")
+	writeCLIFile(t, dir+"/.hidden.skel", "ignored")
+	for _, test := range []struct {
+		name   string
+		args   []string
+		strict bool
+	}{
+		{name: "default", args: []string{"check"}},
+		{name: "disabled", args: []string{"--strict=false", "check"}},
+		{name: "global", args: []string{"--strict", "check"}, strict: true},
+		{name: "inherited", args: []string{"check", "--strict"}, strict: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			result := Run(append(test.args, "--skel-in", dir))
+			checked := decodeCheckResult(t, result)
+			exitCode := ExitCodeSuccess
+			if test.strict {
+				exitCode = ExitCodeUnsatisfied
+			}
+			if result.ExitCode != exitCode || checked.Valid == test.strict || len(checked.Diagnostics) != 3 {
+				t.Fatalf("unexpected strict check: %+v", result)
+			}
+			for _, item := range checked.Diagnostics {
+				severity := compiler.DiagnosticSeverityWarning
+				if test.strict && item.Code != diagnostic.CodeLoaderHiddenFile {
+					severity = compiler.DiagnosticSeverityError
+				}
+				if item.Severity != severity {
+					t.Fatalf("unexpected severity: %+v", item)
+				}
+			}
+		})
+	}
+}
 
 func TestRunSkelcCheck(t *testing.T) {
 	dir := t.TempDir()

@@ -23,6 +23,8 @@ const (
 	flagGenGoOut          = "go-out"
 	flagGenGoPubOut       = "go-pub-out"
 	flagGenTSOut          = "ts-out"
+	flagGenApi            = "api"
+	flagGenGoVrpcVersion  = "go-vrpc-version"
 	flagGenGoModulePrefix = "go-module-prefix"
 	flagGenGoModule       = "go-module"
 	flagGenGoPubModule    = "go-pub-module"
@@ -149,8 +151,13 @@ func compilerVersion() (string, error) {
 
 func newGenGoFlags() []ucli.Flag {
 	return []ucli.Flag{
+		&ucli.BoolFlag{Name: flagGenApi, Usage: "generate Portal API clients"},
+		&ucli.BoolFlag{Name: flagGenPub, Usage: "generate backend public contracts"},
+		&ucli.StringFlag{Name: flagGenGoVrpcVersion, Usage: "vRPC module version for API clients"},
 		&ucli.StringFlag{Name: flagGenSkelIn, Usage: "skeleton input file or directory"},
 		&ucli.StringFlag{Name: flagGenGoOut, Usage: "Go output directory"},
+		&ucli.StringSliceFlag{Name: flagGenSkelImport, Usage: "Skel dependency in domain=path form"},
+		&ucli.StringSliceFlag{Name: flagGenGoImport, Usage: "Go dependency in domain=package form"},
 		&ucli.StringFlag{Name: flagGenGoVineVersion, Usage: "Vine module version for generated Go code"},
 	}
 }
@@ -160,11 +167,25 @@ func parseGenGoCommand(cmd *ucli.Command) (skelc.Input, skelc.GolangOption, erro
 		return skelc.Input{}, skelc.GolangOption{}, fmt.Errorf("unexpected args for %s %s", commandGen, commandGenGo)
 	}
 
+	skelImports, err := parseMappingFlags(cmd.StringSlice(flagGenSkelImport), flagGenSkelImport)
+	if err != nil {
+		return skelc.Input{}, skelc.GolangOption{}, err
+	}
+	goImports, err := parseMappingFlags(cmd.StringSlice(flagGenGoImport), flagGenGoImport)
+	if err != nil {
+		return skelc.Input{}, skelc.GolangOption{}, err
+	}
 	input := skelc.Input{
-		SkelIn: cmd.String(flagGenSkelIn),
+		SkelIn:      cmd.String(flagGenSkelIn),
+		SkelImports: skelImports,
+		Strict:      cmd.Bool(flagStrict),
 	}
 
 	option := skelc.GolangOption{
+		Imports:     goImports,
+		PubOnly:     cmd.Bool(flagGenPub),
+		ApiOnly:     cmd.Bool(flagGenApi),
+		VrpcVersion: cmd.String(flagGenGoVrpcVersion),
 		Out:         cmd.String(flagGenGoOut),
 		VineVersion: strings.TrimSpace(cmd.String(flagGenGoVineVersion)),
 	}
@@ -173,6 +194,9 @@ func parseGenGoCommand(cmd *ucli.Command) (skelc.Input, skelc.GolangOption, erro
 
 func newGenGoModuleFlags() []ucli.Flag {
 	return []ucli.Flag{
+		&ucli.BoolFlag{Name: flagGenApi, Usage: "generate Portal API clients"},
+		&ucli.BoolFlag{Name: flagGenPub, Usage: "generate backend public contracts"},
+		&ucli.StringFlag{Name: flagGenGoVrpcVersion, Usage: "vRPC module version for API clients"},
 		&ucli.StringFlag{Name: flagGenSkelIn, Usage: "skeleton input file or directory"},
 		&ucli.StringSliceFlag{Name: flagGenSkelImport, Usage: "skel dependency mapping in domain=path form; repeat for transitive imports"},
 		&ucli.StringFlag{Name: flagGenGoOut, Usage: "Go output directory"},
@@ -202,9 +226,13 @@ func parseGenGoModuleCommand(cmd *ucli.Command) (skelc.Input, skelc.GolangOption
 	input := skelc.Input{
 		SkelIn:      cmd.String(flagGenSkelIn),
 		SkelImports: skelImports,
+		Strict:      cmd.Bool(flagStrict),
 	}
 
 	option := skelc.GolangOption{
+		PubOnly:      cmd.Bool(flagGenPub),
+		ApiOnly:      cmd.Bool(flagGenApi),
+		VrpcVersion:  cmd.String(flagGenGoVrpcVersion),
 		Out:          cmd.String(flagGenGoOut),
 		AsModule:     true,
 		PubOut:       cmd.String(flagGenGoPubOut),
@@ -238,6 +266,7 @@ func parseGenSkelCommand(cmd *ucli.Command) (skelc.Input, skelc.SkeletonOption, 
 	input := skelc.Input{
 		SkelIn:      cmd.String(flagGenSkelIn),
 		SkelImports: skelImports,
+		Strict:      cmd.Bool(flagStrict),
 	}
 	option := skelc.SkeletonOption{
 		PubOnly: cmd.Bool(flagGenPub),
@@ -248,7 +277,7 @@ func parseGenSkelCommand(cmd *ucli.Command) (skelc.Input, skelc.SkeletonOption, 
 
 func newGenTSFlags() []ucli.Flag {
 	return []ucli.Flag{
-		&ucli.BoolFlag{Name: flagGenPub, Usage: "generate only pub TypeScript code"},
+		&ucli.BoolFlag{Name: flagGenApi, Usage: "generate Portal API clients"},
 		&ucli.StringFlag{Name: flagGenSkelIn, Usage: "skeleton input file or directory"},
 		&ucli.StringFlag{Name: flagGenTSOut, Usage: "TypeScript output directory"},
 		&ucli.StringSliceFlag{Name: flagGenSkelImport, Usage: "skel dependency mapping in domain=path form; repeat for transitive imports"},
@@ -275,9 +304,10 @@ func parseGenTSCommand(cmd *ucli.Command) (skelc.Input, skelc.TypeScriptOption, 
 	input := skelc.Input{
 		SkelIn:      cmd.String(flagGenSkelIn),
 		SkelImports: skelImports,
+		Strict:      cmd.Bool(flagStrict),
 	}
 	option := skelc.TypeScriptOption{
-		PubOnly:     cmd.Bool(flagGenPub),
+		ApiOnly:     cmd.Bool(flagGenApi),
 		Out:         cmd.String(flagGenTSOut),
 		AsModule:    cmd.Bool(flagGenTSAsModule),
 		ModuleScope: cmd.String(flagGenTSModuleScope),

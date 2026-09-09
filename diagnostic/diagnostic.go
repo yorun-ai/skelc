@@ -4,6 +4,8 @@ package diagnostic
 import "go.yorun.ai/skelc/model"
 
 const (
+	CodeServiceModifier    = "service.legacy-modifier"
+	CodeServiceClientRules = "service.legacy-client-rules"
 	CodeSyntaxUnexpected   = "syntax.unexpected-token"
 	CodeSyntaxEOF          = "syntax.unexpected-eof"
 	CodeSyntaxFinalize     = "syntax.invalid-declaration"

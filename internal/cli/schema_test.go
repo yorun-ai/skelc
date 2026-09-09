@@ -11,6 +11,34 @@ import (
 	schemas "go.yorun.ai/skelc/internal/schema"
 )
 
+func TestRunSkelcStrictSchemaCommands(t *testing.T) {
+	dir := t.TempDir()
+	entry, baseline := filepath.Join(dir, "order.skel"), filepath.Join(dir, "baseline.skel")
+	writeCLIFile(t, entry, "domain demo.order\nservice OrderService { method ping {} }\n")
+	writeCLIFile(t, baseline, "domain demo.order\nservice OrderService { method ping {} }\n")
+	for _, args := range [][]string{
+		{"schema", "list"},
+		{"schema", "get", "service", "demo.order.OrderService"},
+		{"schema", "snapshot"},
+		{"schema", "diff", "--baseline-skel-in", baseline},
+	} {
+		args = append(args, "--skel-in", entry)
+		if result := Run(args); result.ExitCode != ExitCodeSuccess {
+			t.Fatalf("compatible schema failed: %+v", result)
+		}
+		result := Run(append([]string{"--strict"}, args...))
+		failure := decodeCommandError(t, result)
+		if result.ExitCode != ExitCodeError || failure.Code != command.ErrorCodeCompilationFailed || !strings.Contains(result.Stderr, `"severity":"error"`) {
+			t.Fatalf("expected strict schema failure: %+v", result)
+		}
+	}
+	writeCLIFile(t, entry, "domain demo.order\npub service OrderService { method ping {} }\n")
+	result := Run([]string{"--strict", "schema", "diff", "--skel-in", entry, "--baseline-skel-in", baseline})
+	if result.ExitCode != ExitCodeSuccess {
+		t.Fatalf("historical baseline blocked migration comparison: %+v", result)
+	}
+}
+
 func TestRunSkelcSchemaListAndGet(t *testing.T) {
 	dir := t.TempDir()
 	writeCLIFile(t, filepath.Join(dir, "domain.skel"), `domain demo.user`)

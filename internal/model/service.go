@@ -30,6 +30,8 @@ type Service struct {
 	DeprecatedReason string
 	// Pub reports whether the service belongs to the public contract.
 	Pub bool
+	// Api restricts invocation to the Portal client entry path.
+	Api bool
 	// Audiences lists actors allowed to call the service.
 	Audiences []*ActorAudience
 	// Auth is the service-level authentication mode.
@@ -122,3 +124,19 @@ type Argument struct {
 	// Type is the argument's resolved semantic type.
 	Type *Type
 }
+
+// HasClientRules reports whether a service declares Portal admission rules.
+func (s *Service) HasClientRules() bool {
+	if len(s.Audiences) > 0 || (s.Auth != "" && s.Auth != AuthModeUnset) || s.Require != nil {
+		return true
+	}
+	for _, method := range s.Methods {
+		if (method.Auth != "" && method.Auth != AuthModeUnset) || method.Require != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// ClientApi includes explicit API services and legacy services with client rules.
+func (s *Service) ClientApi() bool { return s.Api || s.HasClientRules() }

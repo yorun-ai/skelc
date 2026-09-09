@@ -19,7 +19,7 @@ type {{ .ClientName }} interface { {{- range .Methods }}
 	{{- end }}
 	{{ .Name }}(
 	{{- range .Arguments }}{{ .Name }} {{ .Type.Plain }}, {{ end -}}
-	_ivOpts ...rpc.InvokeOption){{ if .ResultType }} {{ .ResultType.Plain }}{{ end }}{{ end }}
+	{{ .OptionsName }} ...rpc.InvokeOption){{ if .ResultType }} {{ .ResultType.Plain }}{{ end }}{{ end }}
 }
 
 type {{ .ClientImplName }} struct {
@@ -30,11 +30,11 @@ func {{ .ClientCtorName }}(clientER {{ .ERClientName }}) {{ .ClientName }} {
 	return &{{ .ClientImplName }}{clientER: clientER}
 }
 {{ range .Methods }}
-func (client *{{ $.ClientImplName }}) {{ .Name }}({{ range .Arguments }}{{ .Name }} {{ .Type.Plain }}, {{ end -}}
-_ivOpts ...rpc.InvokeOption){{ if .ResultType }} {{ .ResultType.Plain }}{{ end }} {
-	{{ if .ResultType }}ret, {{ end }}err := client.clientER.{{ .Name }}({{ range .Arguments }}{{ .Name }}, {{ end }}_ivOpts...)
-	ex.PanicIfError(err){{ if .ResultType }}
-	return ret{{ end }}
+func ({{ .ReceiverName }} *{{ $.ClientImplName }}) {{ .Name }}({{ range .Arguments }}{{ .Name }} {{ .Type.Plain }}, {{ end -}}
+{{ .OptionsName }} ...rpc.InvokeOption){{ if .ResultType }} {{ .ResultType.Plain }}{{ end }} {
+	{{ if .ResultType }}{{ .ResultName }}, {{ end }}{{ .ErrorName }} := {{ .ReceiverName }}.clientER.{{ .Name }}({{ range .Arguments }}{{ .Name }}, {{ end }}{{ .OptionsName }}...)
+	ex.PanicIfError({{ .ErrorName }}){{ if .ResultType }}
+	return {{ .ResultName }}{{ end }}
 }
 {{ end }}
 {{- end }}{{- end -}}

@@ -16,7 +16,7 @@ func TestNewGenDerivesPackageNameForApp(t *testing.T) {
 
 	gen := newGen(pkg, filepath.Join(t.TempDir(), "ts"))
 
-	if gen.pkgName != "@yorun-ai/skeled-app" {
+	if gen.pkgName != "@yorun-ai/skeled-appapi" {
 		t.Fatalf("unexpected package name: %s", gen.pkgName)
 	}
 }
@@ -26,7 +26,7 @@ func TestNewGenDerivesPackageNameForAppDomain(t *testing.T) {
 
 	gen := newGen(pkg, filepath.Join(t.TempDir(), "ts"))
 
-	if gen.pkgName != "@yorun-ai/skeled-sales-order" {
+	if gen.pkgName != "@yorun-ai/skeled-sales-orderapi" {
 		t.Fatalf("unexpected package name: %s", gen.pkgName)
 	}
 }
@@ -50,7 +50,7 @@ func TestNewGenDerivesPackageNameFromTypeScriptModuleScope(t *testing.T) {
 		ModuleScope: "@acme/skeled",
 	})
 
-	if gen.pkgName != "@acme/skeled-sales-order" {
+	if gen.pkgName != "@acme/skeled-sales-orderapi" {
 		t.Fatalf("unexpected package name: %s", gen.pkgName)
 	}
 }
@@ -62,20 +62,7 @@ func TestNewGenDerivesPackageNameFromNpmScope(t *testing.T) {
 		ModuleScope: "@acme",
 	})
 
-	if gen.pkgName != "@acme/sales-order" {
-		t.Fatalf("unexpected package name: %s", gen.pkgName)
-	}
-}
-
-func TestNewGenDerivesPubPackageNameFromTypeScriptModuleScope(t *testing.T) {
-	pkg := buildModelDomainForTest(t, domainModelForTest("sales.order"))
-
-	gen := newGen(pkg, filepath.Join(t.TempDir(), "ts"), Option{
-		PubOnly:     true,
-		ModuleScope: "@acme/skeled",
-	})
-
-	if gen.pkgName != "@acme/skeled-sales-orderpub" {
+	if gen.pkgName != "@acme/sales-orderapi" {
 		t.Fatalf("unexpected package name: %s", gen.pkgName)
 	}
 }
@@ -101,7 +88,8 @@ func TestNewGenDerivesExternalTypeImportsFromTypeScriptModuleScope(t *testing.T)
 			Alias:         "user",
 			ExplicitAlias: true,
 		}},
-		Data: []*model.Data{order},
+		Data:     []*model.Data{order},
+		Services: []*model.Service{{Name: "OrderService", Api: true, Methods: []*model.Method{{Name: "get", ResultType: dataTypeForTest(order)}}}},
 	})
 
 	gen := newGen(pkg, filepath.Join(t.TempDir(), "ts"), Option{
@@ -112,7 +100,7 @@ func TestNewGenDerivesExternalTypeImportsFromTypeScriptModuleScope(t *testing.T)
 		t.Fatal(gen.err)
 	}
 	memberType := pkg.Data()[0].Members[0].Type
-	if memberType.ExternalImportPath != "@acme/skeled-demo-userpub" {
+	if memberType.ExternalImportPath != "@acme/skeled-demo-userapi" {
 		t.Fatalf("unexpected import path: %s", memberType.ExternalImportPath)
 	}
 	if memberType.ExternalAlias != "user" {
@@ -120,7 +108,7 @@ func TestNewGenDerivesExternalTypeImportsFromTypeScriptModuleScope(t *testing.T)
 	}
 }
 
-func TestNewGenDerivesPubExternalTypeImportsFromTypeScriptModuleScope(t *testing.T) {
+func TestNewGenDerivesPublicTypeImportsFromTypeScriptModuleScope(t *testing.T) {
 	userSummary := &model.Data{Name: "UserSummary", Pub: true}
 	userDomain := buildModelDomainForTest(t, model.DomainSpec{
 		Name: "demo.user",
@@ -146,7 +134,6 @@ func TestNewGenDerivesPubExternalTypeImportsFromTypeScriptModuleScope(t *testing
 	})
 
 	gen := newGen(pkg, filepath.Join(t.TempDir(), "ts"), Option{
-		PubOnly:     true,
 		ModuleScope: "@acme/skeled",
 	})
 
@@ -154,7 +141,7 @@ func TestNewGenDerivesPubExternalTypeImportsFromTypeScriptModuleScope(t *testing
 		t.Fatal(gen.err)
 	}
 	memberType := pkg.Data()[0].Members[0].Type
-	if memberType.ExternalImportPath != "@acme/skeled-demo-userpub" {
+	if memberType.ExternalImportPath != "@acme/skeled-demo-userapi" {
 		t.Fatalf("unexpected import path: %s", memberType.ExternalImportPath)
 	}
 	if memberType.ExternalAlias != "user" {
@@ -162,7 +149,7 @@ func TestNewGenDerivesPubExternalTypeImportsFromTypeScriptModuleScope(t *testing
 	}
 }
 
-func TestNewGenPubOnlyIgnoresInternalExternalTypeImports(t *testing.T) {
+func TestNewGenIgnoresUnusedBackendTypeImports(t *testing.T) {
 	userSummary := &model.Data{Name: "UserSummary", Pub: true}
 	userDomain := buildModelDomainForTest(t, model.DomainSpec{
 		Name: "demo.user",
@@ -186,7 +173,7 @@ func TestNewGenPubOnlyIgnoresInternalExternalTypeImports(t *testing.T) {
 		Data: []*model.Data{internalOrder},
 	})
 
-	gen := newGen(pkg, filepath.Join(t.TempDir(), "ts"), Option{PubOnly: true})
+	gen := newGen(pkg, filepath.Join(t.TempDir(), "ts"))
 
 	if gen.err != nil {
 		t.Fatal(gen.err)
@@ -209,7 +196,7 @@ func TestRenderTsTrimsTrailingWhitespace(t *testing.T) {
 	}
 }
 
-func TestClientServicesFiltersByActorVia(t *testing.T) {
+func TestApiViewIncludesLegacyAdmissionRulesAcrossTransports(t *testing.T) {
 	pkg := buildModelDomainForTest(t, model.DomainSpec{
 		Name: "demo.user",
 		Actors: []*model.Actor{
@@ -229,9 +216,9 @@ func TestClientServicesFiltersByActorVia(t *testing.T) {
 	})
 
 	gen := newGen(pkg, filepath.Join(t.TempDir(), "ts"))
-	services := gen.clientServices()
+	services := gen.apiView.Services
 	got := sliceutil.Map(services, func(service *model.Service) string { return service.Name })
-	if want := []string{"ClientActorClientViaService", "ClientOnlyService", "HybridService"}; !reflect.DeepEqual(got, want) {
+	if want := []string{"AgentOnlyService", "ClientActorClientViaService", "ClientActorOpenAPIOnlyService", "ClientOnlyService", "HybridService", "OpenAPIOnlyService"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected client services: got=%v want=%v", got, want)
 	}
 }
@@ -254,7 +241,7 @@ func TestClientServicesIncludesImportedClientActors(t *testing.T) {
 	})
 
 	gen := newGen(pkg, filepath.Join(t.TempDir(), "ts"))
-	services := gen.clientServices()
+	services := gen.apiView.Services
 	got := sliceutil.Map(services, func(service *model.Service) string { return service.Name })
 	if want := []string{"ImportedActorService"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected client services: got=%v want=%v", got, want)

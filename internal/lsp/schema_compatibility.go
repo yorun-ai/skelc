@@ -60,7 +60,7 @@ func (s *_Server) ExecuteCommand(ctx context.Context, params *protocol.ExecuteCo
 	if err := json.Unmarshal(params.Arguments[0], &rawURI); err != nil || rawURI == "" {
 		return nil, fmt.Errorf("%s requires a valid document URI", commandSchemaDiff)
 	}
-	report, err := diffDocument(ctx, s.workspace.Snapshot(), uri.URI(rawURI), s.compatibilityAnalysisOptions())
+	report, err := diffDocument(ctx, s.workspace.Snapshot(), uri.URI(rawURI), s.analysisOptions())
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func diffDocument(
 	ctx context.Context,
 	snapshot workspace.Snapshot,
 	documentURI uri.URI,
-	option analysis.CompatibilityOptions,
+	option analysis.Options,
 ) (*schema.Report, error) {
 	document := snapshot.Document(documentURI)
 	if document == nil {
@@ -93,7 +93,7 @@ func diffDocument(
 	for _, domain := range domains {
 		for _, candidate := range domain.Sources {
 			if filepath.Clean(candidate.Path) == filepath.Clean(document.Path) {
-				return schema.DiffWorkspaceDomain(ctx, domain, schema.SourceDiffOption{BaselineSkelIn: option.BaselineSkelIn})
+				return schema.DiffWorkspaceDomain(ctx, domain, schema.SourceDiffOption{BaselineSkelIn: option.Compatibility.BaselineSkelIn, Strict: option.Strict})
 			}
 		}
 	}

@@ -10,6 +10,9 @@ func validateService(service *model.Service) error {
 	if service == nil {
 		return fmt.Errorf("generated model contains nil service")
 	}
+	if service.Api && service.Pub {
+		return fmt.Errorf("service %s cannot combine api and pub", service.Name)
+	}
 	if err := validateAuthMode(service.Auth); err != nil {
 		return fmt.Errorf("service %s: %w", service.Name, err)
 	}

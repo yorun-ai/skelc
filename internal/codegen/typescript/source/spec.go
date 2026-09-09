@@ -19,7 +19,7 @@ func (g *_Gen) genSpecTs() {
 }
 
 func (g *_Gen) buildSpecTsPayload() *SpecTsPayload {
-	serviceTokens := g.serviceClientServices()
+	serviceTokens := g.apiView.Services
 	services := castServices(serviceTokens)
 	builder := newWireSchemaBuilder()
 	for _, service := range serviceTokens {

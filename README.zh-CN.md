@@ -44,7 +44,7 @@ pub data User {
     name: string
 }
 
-pub service UserService {
+api service UserService {
     for ClientActor via client
 
     method getUser {
@@ -56,7 +56,7 @@ pub service UserService {
 }
 ```
 
-这里定义了一个可以通过 client 调用的 `UserService`。`pub` 只表示对应声明可以进入公开生成输出，不代表网络接口可以匿名访问。
+这里定义了经 Portal 调用的 API 服务。`pub service` 则是跨领域后端契约，`pub` 与 `api` 不能同时使用。API 认证默认 `auth`，匿名方法可显式声明 `noauth`。
 
 先检查并格式化契约：
 
@@ -77,7 +77,7 @@ skelc gen go-module \
 为 TypeScript 应用生成类型和 service client：
 
 ```bash
-skelc gen ts \
+skelc gen ts --api \
   --skel-in ./user.skel \
   --ts-out ./generated/user-ts
 ```
@@ -122,6 +122,8 @@ permission、web 和 task：
 
 ## 常用工作流
 
+使用 `skelc --strict check --skel-in ./skel` 拒绝仅为兼容而保留的旧写法。严格模式默认关闭，也适用于生成和 schema 命令。Go 集成设置 `Input.Strict`；LSP 客户端可使用 `skelc --strict lsp` 或初始化、配置中的 `strict` 选项。作用范围和诊断规则见 [CLI 参考](https://skel.yorun.ai/zh-CN/docs/cli#strict-mode)。
+
 ### 使用目录管理一个 domain
 
 契约变多后，可以把同一 domain 拆成多个文件：
@@ -151,7 +153,7 @@ skelc gen skel \
   --skel-out ./generated/public-skel
 ```
 
-TypeScript 生成也支持 `--pub`，只输出公开 data、enum 和符合条件的 service client。
+TypeScript 生成必须传 `--api`，不接受 `--pub`。API 输出包含 API 服务及其数据依赖，以及供跨领域 import 使用的显式公开 data、enum。
 
 ### 引用其他 domain
 

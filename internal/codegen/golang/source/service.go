@@ -92,7 +92,7 @@ func (g *_Gen) serviceClientOnly(service *model.Service) bool {
 }
 
 func (g *_Gen) serviceServerOnly(service *model.Service) bool {
-	return g.isSplitRegular() && service.Pub
+	return service.Api || (g.isSplitRegular() && service.Pub)
 }
 
 func (g *_Gen) castService(p *model.Service, clientOnly bool, serverOnly bool) *Service {

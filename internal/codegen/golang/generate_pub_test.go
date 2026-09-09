@@ -265,7 +265,7 @@ func TestGeneratorRendersPubGoView(t *testing.T) {
 	assertFileMissing(t, filepath.Join(goPubOutDir, "task.go"))
 }
 
-func TestGeneratorRejectsImplicitPubDependencies(t *testing.T) {
+func TestGeneratorIncludesImplicitPubDependencies(t *testing.T) {
 	goOutDir := filepath.Join(t.TempDir(), "skeled")
 	goPubOutDir := filepath.Join(t.TempDir(), "skeledpub")
 
@@ -299,7 +299,10 @@ func TestGeneratorRejectsImplicitPubDependencies(t *testing.T) {
 		PubOut:       goPubOutDir,
 		ModulePrefix: "github.com/acme/skel",
 	})
-	if err == nil || !strings.Contains(err.Error(), "pub service UserService.getUser references non-pub data User") {
+	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	if content := readFileForTest(t, filepath.Join(goPubOutDir, "data.go")); !strings.Contains(content, "type User struct") {
+		t.Fatalf("missing implicit dependency: %s", content)
 	}
 }

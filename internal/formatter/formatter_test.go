@@ -43,7 +43,7 @@ func checkTestSource(t *testing.T, name string, source []byte) {
 	if err != nil {
 		t.Fatalf("check %s: %v", name, err)
 	}
-	if len(result.Diagnostics) != 0 {
+	if result.Diagnostics.HasErrors() {
 		t.Fatalf("invalid fixture %s: %v", name, result.Diagnostics)
 	}
 }
@@ -270,5 +270,20 @@ func TestActorIdentifierRoundTrip(t *testing.T) {
 	}
 	if second := formatTestSource(t, formatted); string(second) != string(formatted) {
 		t.Fatal("format is not idempotent")
+	}
+}
+
+func TestApiServiceRoundTrip(t *testing.T) {
+	input := []byte("domain demo.order\n// client endpoint\napi   service  OrderService{method ping{}}\n")
+	formatted := formatTestSource(t, input)
+	parsed, err := parser.ParseSource("api.skel", formatted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !parsed.Entries[0].Service.Api || parsed.Entries[0].Service.Pub {
+		t.Fatalf("lost API modifier: %s", formatted)
+	}
+	if string(formatTestSource(t, formatted)) != string(formatted) {
+		t.Fatalf("unstable formatting: %s", formatted)
 	}
 }

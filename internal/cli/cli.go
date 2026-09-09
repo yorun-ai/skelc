@@ -28,6 +28,7 @@ const (
 	ExitCodeError       = commandresult.ExitCodeError
 
 	flagLogFormat = "log-format"
+	flagStrict    = "strict"
 
 	logFormatText  = "text"
 	logFormatJSONL = "jsonl"
@@ -71,6 +72,7 @@ func newCommand() *ucli.Command {
 		CustomRootCommandHelpTemplate: groupCommandHelpTemplate,
 		Flags: []ucli.Flag{
 			&ucli.StringFlag{Name: flagLogFormat, Usage: "log output format: jsonl/text", Value: logFormatJSONL},
+			&ucli.BoolFlag{Name: flagStrict, Usage: "reject legacy declarations accepted with migration warnings"},
 		},
 		Before: func(ctx context.Context, cmd *ucli.Command) (context.Context, error) {
 			return ctx, validateLogFormat(cmd)

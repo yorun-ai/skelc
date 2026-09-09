@@ -1,7 +1,6 @@
 package common
 
 import (
-	"strings"
 	"testing"
 
 	"go.yorun.ai/skelc/internal/model"
@@ -32,8 +31,8 @@ func TestBuildValidatesPublicActorCredentialClosure(t *testing.T) {
 		Name: "demo.user", Data: []*model.Data{privateData},
 		Actors: []*model.Actor{{Pub: true, Name: "UserActor", AuthEnabled: true, AuthCredential: credential, AuthInfo: &model.Data{Name: "Info"}}},
 	})
-	_, err := BuildPublicView(domain)
-	if err == nil || !strings.Contains(err.Error(), "pub actor UserActor credential references non-pub data Secret") {
+	view, err := BuildPublicView(domain)
+	if err != nil || len(view.Data) != 1 || view.Data[0] != privateData {
 		t.Fatalf("unexpected validation error: %v", err)
 	}
 }

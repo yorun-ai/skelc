@@ -10,6 +10,54 @@ import (
 	"go.lsp.dev/uri"
 )
 
+func TestStrictSettingsInitializationAndChanges(t *testing.T) {
+	for _, test := range []struct {
+		value    string
+		fallback bool
+		want     bool
+	}{
+		{value: `{}`, fallback: true, want: true},
+		{value: `{"strict":true}`, want: true},
+		{value: `{"strict":false}`, fallback: true},
+		{value: `{"skelc":{"strict":true}}`, want: true},
+		{value: `{"skelc":{"strict":false}}`, fallback: true},
+		{value: `{"schemaCompatibility":{"codeLens":false}}`, fallback: true, want: true},
+		{value: `{"strict":"true"}`, fallback: true, want: true},
+	} {
+		assert.Equal(t, test.want, decodeStrictSettings(protocol.LSPAny(test.value), test.fallback), test.value)
+	}
+	server := newServer()
+	t.Cleanup(server.stopSemanticAnalysis)
+	_, err := server.Initialize(t.Context(), &protocol.InitializeParams{InitializationOptions: protocol.LSPAny(`{"strict":true}`)})
+	require.NoError(t, err)
+	assert.True(t, server.strict)
+	require.NoError(t, server.DidChangeConfiguration(t.Context(), &protocol.DidChangeConfigurationParams{Settings: protocol.LSPAny(`{"strict":false}`)}))
+	assert.False(t, server.strict)
+}
+
+func TestStrictConfigurationRepublishesDiagnostics(t *testing.T) {
+	server := newServer()
+	t.Cleanup(server.stopSemanticAnalysis)
+	documentURI := uri.File("/workspace/order.skel")
+	client := &recordingClient{diagnostics: make(chan *protocol.PublishDiagnosticsParams, 16)}
+	server.client = client
+	require.NoError(t, server.DidOpen(t.Context(), &protocol.DidOpenTextDocumentParams{TextDocument: protocol.TextDocumentItem{
+		URI: documentURI, LanguageID: "skel", Version: 1, Text: "domain demo.order\nservice OrderService { method ping {} }\n",
+	}}))
+	for _, strict := range []bool{false, true, false} {
+		settings, err := json.Marshal(map[string]bool{"strict": strict})
+		require.NoError(t, err)
+		require.NoError(t, server.DidChangeConfiguration(t.Context(), &protocol.DidChangeConfigurationParams{Settings: settings}))
+		severity := protocol.DiagnosticSeverityWarning
+		if strict {
+			severity = protocol.DiagnosticSeverityError
+		}
+		waitForDiagnostics(t, client.diagnostics, func(params *protocol.PublishDiagnosticsParams) bool {
+			return params.URI == documentURI && len(params.Diagnostics) == 1 && params.Diagnostics[0].Severity == severity
+		})
+	}
+}
+
 func TestDecodeChangedSettingsMergesPartialUpdates(t *testing.T) {
 	fallback := _SchemaCompatibilitySettings{
 		Diagnostics: true, IncludeCompatible: true, CodeLens: true, Baseline: "../baseline",

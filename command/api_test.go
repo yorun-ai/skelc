@@ -21,6 +21,7 @@ func TestFacadeWireContract(t *testing.T) {
 		{name: "check", value: command.CheckResult{Valid: true, Diagnostics: []diagnostic.Diagnostic{}}, want: `{"valid":true,"diagnostics":[]}`},
 		{name: "format", value: command.FormatResult{Changed: false, Files: []string{}}, want: `{"changed":false,"files":[]}`},
 		{name: "generation", value: command.GenerationResult{Generated: true}, want: `{"generated":true}`},
+		{name: "features", value: command.VersionFeaturesResult{ApiModifier: true}, want: `{"apiModifier":true}`},
 		{
 			name: "version",
 			value: command.VersionResult{

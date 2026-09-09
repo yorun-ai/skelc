@@ -8,6 +8,13 @@ import (
 
 func _testServiceRules(t *testing.T, coverage *_RuleCoverage) {
 	t.Helper()
+	t.Run("api boundary", func(t *testing.T) {
+		changes := diffChanges(func(diff *_Diff) {
+			diff.compareService("owner", &ServiceSchema{}, &ServiceSchema{Api: true})
+		})
+		coverage.assert(t, changes, map[string]ImpactLevel{"service.api.changed": ImpactBreaking})
+	})
+
 	t.Run("arguments", func(t *testing.T) {
 		prefixes := []string{"resource.check.argument", "method.argument", "task.trigger.argument"}
 		for _, prefix := range prefixes {

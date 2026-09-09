@@ -14,7 +14,6 @@ func Generate(domain *model.Domain, option Option) error {
 		return fmt.Errorf("validate TypeScript generation model: %w", err)
 	}
 	result, err := source.GenerateValidated(domain, option.Out, source.Option{
-		PubOnly:     option.PubOnly,
 		ModuleScope: option.ModuleScope,
 		Module:      option.Module,
 		Imports:     option.Imports,
@@ -23,6 +22,13 @@ func Generate(domain *model.Domain, option Option) error {
 		return err
 	}
 	if option.AsModule {
+		imports := map[string]string{}
+		for domain := range result.ResolvedImports {
+			if path := option.Imports[domain]; path != "" {
+				imports[domain] = path
+			}
+		}
+		option.Imports = imports
 		return module.Generate(module.Option{
 			Out:             option.Out,
 			PackageName:     result.PackageName,

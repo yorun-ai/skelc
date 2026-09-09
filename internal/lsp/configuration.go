@@ -80,11 +80,33 @@ func applySchemaCompatibilitySettings(settings _SchemaCompatibilitySettings, pat
 	return settings
 }
 
+func decodeStrictSettings(value protocol.LSPAny, fallback bool) bool {
+	var settings struct {
+		Strict *bool `json:"strict"`
+		Skelc  *struct {
+			Strict *bool `json:"strict"`
+		} `json:"skelc"`
+	}
+	if json.Unmarshal(value, &settings) != nil {
+		return fallback
+	}
+	if settings.Skelc != nil && settings.Skelc.Strict != nil {
+		return *settings.Skelc.Strict
+	}
+	if settings.Strict != nil {
+		return *settings.Strict
+	}
+	return fallback
+}
+
 func (s *_Server) DidChangeConfiguration(ctx context.Context, params *protocol.DidChangeConfigurationParams) error {
 	s.mu.Lock()
 	previous := s.schemaCompatibility
+	previousStrict := s.strict
 	s.schemaCompatibility = decodeChangedSettings(params.Settings, previous)
-	changed := previous != s.schemaCompatibility
+	s.strict = decodeStrictSettings(params.Settings, previousStrict)
+	compatibilityChanged := previous != s.schemaCompatibility
+	changed := compatibilityChanged || previousStrict != s.strict
 	client := s.client
 	refreshCodeLens := s.codeLensRefreshSupport
 	s.mu.Unlock()
@@ -92,17 +114,21 @@ func (s *_Server) DidChangeConfiguration(ctx context.Context, params *protocol.D
 		return nil
 	}
 	s.invalidateSemanticDiagnostics(ctx)
-	if client != nil && refreshCodeLens {
+	if client != nil && refreshCodeLens && compatibilityChanged {
 		_ = client.CodeLensRefresh(ctx)
 	}
 	return nil
 }
 
-func (s *_Server) compatibilityAnalysisOptions() analysis.CompatibilityOptions {
+func (s *_Server) analysisOptions() analysis.Options {
 	s.mu.RLock()
 	settings := s.schemaCompatibility
+	strict := s.strict
 	s.mu.RUnlock()
-	return analysis.CompatibilityOptions{
-		Enabled: settings.Diagnostics, IncludeCompatible: settings.IncludeCompatible, BaselineSkelIn: settings.Baseline,
+	return analysis.Options{
+		Strict: strict,
+		Compatibility: analysis.CompatibilityOptions{
+			Enabled: settings.Diagnostics, IncludeCompatible: settings.IncludeCompatible, BaselineSkelIn: settings.Baseline,
+		},
 	}
 }

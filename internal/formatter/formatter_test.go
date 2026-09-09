@@ -274,8 +274,13 @@ func TestActorIdentifierRoundTrip(t *testing.T) {
 }
 
 func TestApiServiceRoundTrip(t *testing.T) {
-	input := []byte("domain demo.order\n// client endpoint\napi   service  OrderService{method ping{}}\n")
+	input := []byte("domain demo.order\n// client endpoint\napi   service  OrderApiService{method ping{}}\n")
+	before := compileTestDomain(t, "api.skel", input)
 	formatted := formatTestSource(t, input)
+	after := compileTestDomain(t, "api.skel", formatted)
+	if before.Hash() != after.Hash() {
+		t.Fatalf("format changed API contract: %s", formatted)
+	}
 	parsed, err := parser.ParseSource("api.skel", formatted)
 	if err != nil {
 		t.Fatal(err)

@@ -24,6 +24,9 @@ pub service NameService {
         }
         output string
     }
+    method find {
+        output string?
+    }
     method ping {
         input { err: string }
     }

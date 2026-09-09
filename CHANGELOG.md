@@ -16,10 +16,9 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ### Changed
 
-- Backend output containing explicit API services requires Vine v0.15.4; existing backend contracts keep their current minimum.
-
 - Raise both the default and minimum supported Vine versions for generated Go
-  code to v0.15.3. Explicit `--go-vine-version` values below v0.15.3 are rejected.
+  code to v0.15.4. Explicit `--go-vine-version` values below v0.15.4 are rejected.
+- Generate typed Vine client calls with `InvokeAs`, removing intermediate result and error assertions.
 
 ### Fixed
 

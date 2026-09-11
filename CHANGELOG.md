@@ -6,6 +6,13 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+## [0.19.1] - 2026-09-12
+
+### Fixed
+
+- Generate YAML tags for config object fields so their YAML names match the
+  corresponding JSON tags, preserving camelCase field names during decoding.
+
 ## [0.19.0] - 2026-09-09
 
 ### Added

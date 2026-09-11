@@ -42,8 +42,8 @@ func TestGeneratedConfigNoTrimTags(t *testing.T) {
 			}
 			content := readFileForTest(t, filepath.Join(out, "config.go"))
 			for _, tag := range []string{
-				"`json:\"plain\"`", `json:"raw" skel:"noTrim"`, `json:"optional" skel:"noTrim"`,
-				`json:"items" skel:"noTrim"`, `json:"values" skel:"sensitive,noTrim"`, `json:"secret" skel:"sensitive"`,
+				"`json:\"plain\" yaml:\"plain\"`", `json:"raw" yaml:"raw" skel:"noTrim"`, `json:"optional" yaml:"optional" skel:"noTrim"`,
+				`json:"items" yaml:"items" skel:"noTrim"`, `json:"values" yaml:"values" skel:"sensitive,noTrim"`, `json:"secret" yaml:"secret" skel:"sensitive"`,
 			} {
 				if !strings.Contains(content, tag) {
 					t.Fatalf("missing %s in:\n%s", tag, content)

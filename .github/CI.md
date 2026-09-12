@@ -1,6 +1,6 @@
 # CI maintenance
 
-`ci.yml` runs three independent jobs on pull requests and pushes to main:
+`ci.yml` runs three independent jobs on pull requests:
 
 | Job | Checks |
 | --- | --- |
@@ -18,9 +18,10 @@ another job fails and requires all three jobs to succeed; failures,
 cancellations, and skipped jobs must not pass. There are no path filters or
 reduced package lists, so changes to templates and fixtures retain full coverage.
 
-PR updates cancel older runs for that PR. Main runs are grouped by commit and
-are not cancelled by later pushes, preserving validation of release candidates.
-Each check has a 15-minute timeout; the final gate has a 5-minute timeout.
+PR updates cancel older runs for that PR. There is no duplicate post-merge run
+on `main`; the branch ruleset requires strict required checks and squash merging,
+so the merged content has already passed this full suite. Each check has a
+15-minute timeout; the final gate has a 5-minute timeout.
 
 This split lets static and example failures surface without waiting for race
 tests. It adds runner setup work, so compare actual run durations and runner

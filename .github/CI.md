@@ -1,6 +1,9 @@
 # CI maintenance
 
-`ci.yml` runs three independent jobs on pull requests:
+`ci.yml` classifies pull request changes, then runs three independent jobs when
+the change affects code, dependencies, examples, or CI configuration. Markdown,
+LICENSE, and issue-template-only changes skip those jobs while the required gate
+still completes successfully:
 
 | Job | Checks |
 | --- | --- |

@@ -15,6 +15,7 @@
 
 # Go build / test artifacts
 /bin/
+/dist/
 *.test
 *.out
 *.prof

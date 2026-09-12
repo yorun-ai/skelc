@@ -46,6 +46,15 @@ jobs:
 
           git tag --points-at HEAD --list "$RELEASE_TAG" | grep -Fx "$RELEASE_TAG"
           gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
+
+          version="${RELEASE_TAG#v}"
+          names="$(printf 'skelc_%s_%s.tar.gz\n' "$version" darwin_amd64 "$version" darwin_arm64 "$version" linux_amd64 "$version" linux_arm64 |
+            jq -Rsc 'split("\n")[:-1] + ["checksums.txt"]')"
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets |
+            jq -e --argjson names "$names" '
+              [.assets[].name | select(. as $name | $names | index($name))] |
+              if length == 0 then true
+              else error("Existing binary assets; refusing to overwrite: " + join(", ")) end'
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -125,5 +134,4 @@ jobs:
           gh release upload "$RELEASE_TAG" \
             "$RELEASE_DIST"/skelc_*.tar.gz \
             "$RELEASE_DIST/checksums.txt" \
-            --clobber \
             --repo "$GITHUB_REPOSITORY"

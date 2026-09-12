@@ -15,8 +15,36 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    name: Classify changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run-ci: ${{ steps.classify.outputs.run-ci }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: classify
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          run_ci=false
+          while IFS= read -r path; do
+            case "$path" in
+              *.md|*.mdx|LICENSE|.github/ISSUE_TEMPLATE/*) ;;
+              *) run_ci=true; break ;;
+            esac
+          done < <(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          echo "run-ci=$run_ci" >> "$GITHUB_OUTPUT"
+
   go-static:
     name: Go static
+    needs: changes
+    if: needs.changes.outputs.run-ci == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -38,6 +66,8 @@ jobs:
 
   go-race:
     name: Go race
+    needs: changes
+    if: needs.changes.outputs.run-ci == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -58,6 +88,8 @@ jobs:
 
   examples:
     name: Examples
+    needs: changes
+    if: needs.changes.outputs.run-ci == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -99,11 +131,17 @@ jobs:
   ci-checks:
     name: CI / Required Checks
     if: ${{ always() }}
-    needs: [go-static, go-race, examples]
+    needs: [changes, go-static, go-race, examples]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Verify CI results
         env:
           NEEDS: ${{ toJSON(needs) }}
-        run: echo "$NEEDS" | jq --exit-status 'all(.[]; .result == "success")'
+        run: |
+          if [[ "${{ needs.changes.outputs.run-ci }}" != true ]]; then
+            exit 0
+          fi
+          echo "$NEEDS" | jq --exit-status '
+            all(.[]; .result == "success")
+          '

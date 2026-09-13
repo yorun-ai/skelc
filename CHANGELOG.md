@@ -6,6 +6,11 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+### Fixed
+
+- Allow enum values in config maps, including nullable enum values, consistently
+  with enum fields and list elements.
+
 ## [0.19.1] - 2026-09-12
 
 ### Fixed

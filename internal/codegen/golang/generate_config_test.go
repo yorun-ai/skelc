@@ -10,7 +10,7 @@ import (
 	"go.yorun.ai/skelc/internal/compiler"
 )
 
-func TestGeneratedConfigNoTrimTags(t *testing.T) {
+func TestGeneratedConfigTags(t *testing.T) {
 	for _, lifecycle := range []string{"eternal", "instant"} {
 		t.Run(lifecycle, func(t *testing.T) {
 			dir := t.TempDir()
@@ -41,9 +41,12 @@ func TestGeneratedConfigNoTrimTags(t *testing.T) {
 				t.Fatal(err)
 			}
 			content := readFileForTest(t, filepath.Join(out, "config.go"))
+			if strings.Contains(content, `yaml:"`) {
+				t.Fatalf("unexpected YAML tag in:\n%s", content)
+			}
 			for _, tag := range []string{
-				"`json:\"plain\" yaml:\"plain\"`", `json:"raw" yaml:"raw" skel:"noTrim"`, `json:"optional" yaml:"optional" skel:"noTrim"`,
-				`json:"items" yaml:"items" skel:"noTrim"`, `json:"values" yaml:"values" skel:"sensitive,noTrim"`, `json:"secret" yaml:"secret" skel:"sensitive"`,
+				"`json:\"plain\"`", `json:"raw" skel:"noTrim"`, `json:"optional" skel:"noTrim"`,
+				`json:"items" skel:"noTrim"`, `json:"values" skel:"sensitive,noTrim"`, `json:"secret" skel:"sensitive"`,
 			} {
 				if !strings.Contains(content, tag) {
 					t.Fatalf("missing %s in:\n%s", tag, content)

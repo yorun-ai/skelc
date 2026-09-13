@@ -6,6 +6,11 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+### Changed
+
+- Stop generating YAML tags on Go config fields. Vine loads config objects as
+  JSON; Hub seed YAML handling does not depend on these tags.
+
 ### Fixed
 
 - Allow enum values in config maps, including nullable enum values, consistently

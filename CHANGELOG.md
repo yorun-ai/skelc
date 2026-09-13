@@ -6,6 +6,8 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+## [0.19.2] - 2026-09-13
+
 ### Removed
 
 - Remove `skelc version --features`, the optional `features` response field, and
@@ -21,6 +23,8 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 - Allow enum values in config maps, including nullable enum values, consistently
   with enum fields and list elements.
+- Release archives embed the exact tagged module version and clean source
+  revision, and release builds refuse to overwrite existing binary assets.
 
 ## [0.19.1] - 2026-09-12
 

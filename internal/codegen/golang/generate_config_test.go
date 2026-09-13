@@ -52,3 +52,38 @@ func TestGeneratedConfigNoTrimTags(t *testing.T) {
 		})
 	}
 }
+
+func TestGeneratedConfigMapEnumValues(t *testing.T) {
+	for _, lifecycle := range []string{"eternal", "instant"} {
+		t.Run(lifecycle, func(t *testing.T) {
+			dir := t.TempDir()
+			input := filepath.Join(dir, "config.skel")
+			source := "domain demo\nenum Mode { ACTIVE DISABLED }\nconfig AppConfig " + lifecycle + ` {
+    modes: map<string, Mode>
+    optionalModes: map<string, Mode?>?
+    transitions: map<Mode, Mode>
+}`
+			if err := os.WriteFile(input, []byte(source), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			parsed, err := compiler.Compile(compiler.Option{SkelIn: input})
+			if err != nil {
+				t.Fatal(err)
+			}
+			out := filepath.Join(dir, "generated")
+			if err := golang.Generate(parsed.Domain, golang.Option{Out: out}); err != nil {
+				t.Fatal(err)
+			}
+			content := strings.Join(strings.Fields(readFileForTest(t, filepath.Join(out, "config.go"))), " ")
+			for _, field := range []string{
+				"Modes map[string]Mode",
+				"OptionalModes *map[string]*Mode",
+				"Transitions map[Mode]Mode",
+			} {
+				if !strings.Contains(content, field) {
+					t.Fatalf("missing %s in:\n%s", field, content)
+				}
+			}
+		})
+	}
+}

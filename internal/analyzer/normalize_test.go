@@ -172,8 +172,8 @@ func TestAnalyzeReturnsErrorWhenConfigListValueIsData(t *testing.T) {
 	})
 }
 
-func TestAnalyzeReturnsErrorWhenConfigMapValueIsNotScalar(t *testing.T) {
-	expectAnalyzeDiagnosticsContains(t, "config AppConfig member databases map value type must be scalar", &grammar.SkelContent{
+func TestAnalyzeReturnsErrorWhenConfigMapValueIsNotScalarOrEnum(t *testing.T) {
+	expectAnalyzeDiagnosticsContains(t, "config AppConfig member databases map value type must be scalar or enum", &grammar.SkelContent{
 		Domain: domainContent("demo.user"),
 		Entries: []*grammar.SkelEntry{
 			{

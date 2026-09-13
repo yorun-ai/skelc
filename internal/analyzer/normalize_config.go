@@ -36,7 +36,8 @@ func checkConfigMemberType(reporter *_DiagnosticReporter, dataType *model.Data, 
 		valid = reporter.checkNot(member.Type.Map.Key.Kind == model.TypeKindScalar && member.Type.Map.Key.Scalar == model.ScalarBinary,
 			"%s config %s member %s map key cannot use binary type", member.Pos, dataType.Name, member.Name) && valid
 		valueScalar := member.Type.Map.Value.Kind == model.TypeKindScalar
-		valid = reporter.check(valueScalar, "%s config %s member %s map value type must be scalar", member.Pos, dataType.Name, member.Name) && valid
+		valid = reporter.check(valueScalar || member.Type.Map.Value.Kind == model.TypeKindEnum,
+			"%s config %s member %s map value type must be scalar or enum", member.Pos, dataType.Name, member.Name) && valid
 		if valueScalar {
 			valid = reporter.check(member.Type.Map.Value.Scalar != model.ScalarBinary,
 				"%s config %s member %s map value cannot use binary type", member.Pos, dataType.Name, member.Name) && valid

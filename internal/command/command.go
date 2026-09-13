@@ -51,11 +51,6 @@ type VersionResult struct {
 	Platform      string                     `json:"platform"`
 	GoVersion     string                     `json:"goVersion"`
 	GolangCodeGen VersionGolangCodeGenResult `json:"golangCodeGen"`
-	Features      *VersionFeaturesResult     `json:"features,omitempty"`
-}
-
-type VersionFeaturesResult struct {
-	ApiModifier bool `json:"apiModifier"`
 }
 
 // VersionGolangCodeGenResult reports Vine compatibility for generated Go code.

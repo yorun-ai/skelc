@@ -38,7 +38,5 @@ type GenerationResult = internalcommand.GenerationResult
 // VersionResult is emitted by skelc version.
 type VersionResult = internalcommand.VersionResult
 
-type VersionFeaturesResult = internalcommand.VersionFeaturesResult
-
 // VersionGolangCodeGenResult reports Vine compatibility for generated Go code.
 type VersionGolangCodeGenResult = internalcommand.VersionGolangCodeGenResult

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"runtime"
 	"runtime/debug"
+	"strings"
 	"testing"
 
 	"go.yorun.ai/skelc/internal/command"
@@ -40,36 +41,25 @@ func TestGoVineVersions(t *testing.T) {
 	}
 }
 
-func TestRunSkelcVersionFeatures(t *testing.T) {
-	for _, test := range []struct {
-		name string
-		args []string
-		want bool
-	}{
-		{"default", []string{"version"}, false},
-		{"enabled", []string{"version", "--features"}, true},
-		{"disabled", []string{"version", "--features=false"}, false},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			result := Run(test.args)
-			if result.ExitCode != ExitCodeSuccess || result.Stderr != "" {
-				t.Fatalf("unexpected result: %+v", result)
-			}
-			var fields map[string]json.RawMessage
-			if err := json.Unmarshal([]byte(result.Stdout), &fields); err != nil {
+func TestRunSkelcVersionRejectsFeatures(t *testing.T) {
+	for _, flag := range []string{"--features", "--features=false"} {
+		t.Run(flag, func(t *testing.T) {
+			result := Run([]string{"version", flag})
+			var failure command.Error
+			if err := json.Unmarshal([]byte(result.Stdout), &failure); err != nil {
 				t.Fatal(err)
 			}
-			features, present := fields["features"]
-			if present != test.want {
-				t.Fatalf("unexpected features presence: %s", result.Stdout)
-			}
-			if present {
-				var flags map[string]bool
-				if err := json.Unmarshal(features, &flags); err != nil || !flags["apiModifier"] {
-					t.Fatalf("unexpected features: %s, %v", features, err)
-				}
+			if result.ExitCode != command.ExitCodeError || failure.Code != command.ErrorCodeInvalidArgument {
+				t.Fatalf("unexpected result: %+v", result)
 			}
 		})
+	}
+}
+
+func TestRunSkelcVersionHelpOmitsFeatures(t *testing.T) {
+	result := Run([]string{"version", "--help"})
+	if result.ExitCode != ExitCodeSuccess || result.Stderr != "" || strings.Contains(result.Stdout, "--features") {
+		t.Fatalf("unexpected result: %+v", result)
 	}
 }
 

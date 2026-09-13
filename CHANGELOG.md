@@ -6,6 +6,12 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+### Removed
+
+- Remove `skelc version --features`, the optional `features` response field, and
+  the Go `VersionFeaturesResult` type. Integrations should use compiler version
+  requirements instead; the removed flag now returns `INVALID_ARGUMENT`.
+
 ### Changed
 
 - Stop generating YAML tags on Go config fields. Vine loads config objects as

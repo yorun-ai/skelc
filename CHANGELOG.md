@@ -6,6 +6,8 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+## [0.19.3] - 2026-09-14
+
 ### Removed
 
 - Remove `MinimumGolangApiServiceVineVersion` and the

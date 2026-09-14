@@ -37,10 +37,11 @@ pub service NameService {
 	}
 	output := filepath.Join(root, "generated")
 	if _, err := skelc.CompileGolang(skelc.Input{SkelIn: input}, skelc.GolangOption{
-		PubOnly:  true,
-		AsModule: true,
-		Module:   "example.com/names",
-		Out:      output,
+		CompilerVersion: "v0.0.0-dev",
+		PubOnly:         true,
+		AsModule:        true,
+		Module:          "example.com/names",
+		Out:             output,
 	}); err != nil {
 		t.Fatal(err)
 	}

@@ -37,7 +37,7 @@ func TestGeneratedConfigTags(t *testing.T) {
 				t.Fatal(err)
 			}
 			out := filepath.Join(dir, "generated")
-			if err := golang.Generate(parsed.Domain, golang.Option{Out: out}); err != nil {
+			if err := generateFixture(parsed.Domain, golang.Option{Out: out}); err != nil {
 				t.Fatal(err)
 			}
 			content := readFileForTest(t, filepath.Join(out, "config.go"))
@@ -74,7 +74,7 @@ func TestGeneratedConfigMapEnumValues(t *testing.T) {
 				t.Fatal(err)
 			}
 			out := filepath.Join(dir, "generated")
-			if err := golang.Generate(parsed.Domain, golang.Option{Out: out}); err != nil {
+			if err := generateFixture(parsed.Domain, golang.Option{Out: out}); err != nil {
 				t.Fatal(err)
 			}
 			content := strings.Join(strings.Fields(readFileForTest(t, filepath.Join(out, "config.go"))), " ")

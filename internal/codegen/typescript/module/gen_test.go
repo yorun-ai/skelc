@@ -1,8 +1,14 @@
 package module
 
 import (
+	"encoding/json"
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"go.yorun.ai/skelc/internal/optionvalidation"
 )
 
 func TestBuildPackageJSONPayload(t *testing.T) {
@@ -10,13 +16,17 @@ func TestBuildPackageJSONPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if payload.PackageName != "@yorun-ai/skeled-example" {
-		t.Fatalf("unexpected package name: %s", payload.PackageName)
+	if payload.Name != "@yorun-ai/skeled-example" {
+		t.Fatalf("unexpected package name: %s", payload.Name)
 	}
-	if got := joinPackageJSONDependencies(payload.PeerDependencies); got != "@yorun-ai/vrpc@*" {
+	if got := joinPackageJSONDependencies(sortedPackageJSONDependencies(payload.PeerDependencies)); got != "@yorun-ai/vrpc@*" {
 		t.Fatalf("unexpected peer dependencies: %#v", payload.PeerDependencies)
 	}
-	output := renderTemplate(t, packageJSONTemplate, payload)
+	data, err := json.MarshalIndent(payload, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	output := string(data)
 	if !strings.Contains(output, `"@yorun-ai/vrpc": "*"`) {
 		t.Fatalf("expected rendered package.json to include @yorun-ai/vrpc, got:\n%s", output)
 	}
@@ -42,7 +52,7 @@ func TestBuildPackageJSONPayloadIncludesConfiguredAndResolvedImports(t *testing.
 	}
 
 	want := "@vine-demo/skeled-app@*,@vine-demo/skeled-inventory@*,@vine-demo/skeled-user@workspace:*,@yorun-ai/vrpc@*"
-	if got := joinPackageJSONDependencies(payload.PeerDependencies); got != want {
+	if got := joinPackageJSONDependencies(sortedPackageJSONDependencies(payload.PeerDependencies)); got != want {
 		t.Fatalf("unexpected peer dependencies: got=%s want=%s", got, want)
 	}
 }
@@ -63,21 +73,22 @@ func TestImportPathRejectsMissingVersion(t *testing.T) {
 	}
 }
 
-func TestPackageJSONTemplateUsesPureTypeScriptEntry(t *testing.T) {
-	output := renderTemplate(t, packageJSONTemplate, &PackageJSONPayload{
-		PackageName: "@yorun-ai/skeled-example",
-		PeerDependencies: []PackageJSONDependency{
-			{Package: "@vine-demo/skeled-user", Version: "workspace:*"},
-			{Package: "@yorun-ai/vrpc", Version: "*"},
-		},
-	})
-	for _, expected := range []string{
-		`"name": "@yorun-ai/skeled-example"`, `"private": true`,
-		`"types": "./index.ts"`, `"default": "./index.ts"`, `"peerDependencies": {`,
-	} {
-		if !strings.Contains(output, expected) {
-			t.Fatalf("expected package.json to contain %q, got:\n%s", expected, output)
-		}
+func TestPackageJSONUsesPureTypeScriptEntryAndEscapesConstraints(t *testing.T) {
+	out := t.TempDir()
+	constraint := "file:../some\"directory\\path"
+	if err := Generate(Option{Out: out, PackageName: "@yorun-ai/skeled-example", Imports: map[string]string{"user": "@vine-demo/skeled-user@" + constraint}}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(out, "package.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var payload _PackageJSON
+	if err := json.Unmarshal(data, &payload); err != nil {
+		t.Fatalf("invalid JSON: %v\n%s", err, data)
+	}
+	if payload.Name != "@yorun-ai/skeled-example" || !payload.Private || payload.Type != "module" || payload.Exports["."].Types != "./index.ts" || payload.Exports["."].Default != "./index.ts" || payload.PeerDependencies["@vine-demo/skeled-user"] != constraint {
+		t.Fatalf("unexpected package metadata: %+v", payload)
 	}
 }
 
@@ -87,4 +98,47 @@ func joinPackageJSONDependencies(dependencies []PackageJSONDependency) string {
 		values = append(values, dependency.Package+"@"+dependency.Version)
 	}
 	return strings.Join(values, ",")
+}
+
+func TestDependencyConstraintsRejectExplicitConflicts(t *testing.T) {
+	var previous string
+	for range 40 {
+		_, err := packageJSONDependencies(Option{Imports: map[string]string{
+			"first": "@example/shared@1.0.0", "second": "@example/shared@2.0.0",
+		}})
+		var validation *optionvalidation.ValidationError
+		if !errors.As(err, &validation) || validation.Field != optionvalidation.FieldTypeScriptImport {
+			t.Fatalf("expected typed dependency conflict, got %v", err)
+		}
+		if previous != "" && err.Error() != previous {
+			t.Fatalf("non-deterministic conflict: %s / %s", previous, err)
+		}
+		previous = err.Error()
+	}
+}
+
+func TestImplicitDependenciesPreserveExplicitConstraints(t *testing.T) {
+	for _, version := range []string{"1.0.0", "^1.0.0", "workspace:*", "*"} {
+		t.Run(version, func(t *testing.T) {
+			dependencies, err := packageJSONDependencies(Option{
+				Imports:         map[string]string{"explicit": "@example/shared@" + version, "implicit": "@example/shared", "same": "@example/shared@" + version},
+				ResolvedImports: map[string]string{"derived": "@example/shared"},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			found := false
+			for _, dependency := range dependencies {
+				if dependency.Package == "@example/shared" {
+					found = true
+					if dependency.Version != version {
+						t.Fatalf("lost explicit constraint: %+v", dependency)
+					}
+				}
+			}
+			if !found {
+				t.Fatal("missing shared dependency")
+			}
+		})
+	}
 }

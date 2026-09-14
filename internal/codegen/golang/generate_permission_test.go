@@ -34,7 +34,7 @@ service UserService {
 		t.Fatal(err)
 	}
 	out := filepath.Join(root, "generated")
-	if _, err := skelc.CompileGolang(skelc.Input{SkelIn: input}, skelc.GolangOption{Out: out, AsModule: true, Module: "example.com/permissions"}); err != nil {
+	if _, err := skelc.CompileGolang(skelc.Input{SkelIn: input}, skelc.GolangOption{CompilerVersion: "v0.0.0-dev", Out: out, AsModule: true, Module: "example.com/permissions"}); err != nil {
 		t.Fatal(err)
 	}
 	resource := strings.Join(strings.Fields(readFileForTest(t, filepath.Join(out, "resource.go"))), " ")
@@ -53,7 +53,7 @@ service UserService {
 	if _, err := skelc.CompileSkeleton(skelc.Input{SkelIn: input}, skelc.SkeletonOption{Out: public, PubOnly: true}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := skelc.CompileGolang(skelc.Input{SkelIn: public}, skelc.GolangOption{Out: filepath.Join(root, "roundtrip")}); err != nil {
+	if _, err := skelc.CompileGolang(skelc.Input{SkelIn: public}, skelc.GolangOption{CompilerVersion: "v0.0.0-dev", Out: filepath.Join(root, "roundtrip")}); err != nil {
 		t.Fatal(err)
 	}
 	command := exec.Command("go", "test", "-mod=mod", "./...")
@@ -89,7 +89,7 @@ pub service UserService {
 				t.Fatal(err)
 			}
 			out := filepath.Join(root, "generated")
-			if _, err := skelc.CompileGolang(skelc.Input{SkelIn: input}, skelc.GolangOption{Out: out}); err != nil {
+			if _, err := skelc.CompileGolang(skelc.Input{SkelIn: input}, skelc.GolangOption{CompilerVersion: "v0.0.0-dev", Out: out}); err != nil {
 				t.Fatal(err)
 			}
 			generatedSchema := strings.Join(strings.Fields(readFileForTest(t, filepath.Join(out, "schema.go"))), " ")
@@ -109,7 +109,7 @@ pub service UserService {
 				t.Fatal(err)
 			}
 			out2 := filepath.Join(root, "roundtrip")
-			if _, err := skelc.CompileGolang(skelc.Input{SkelIn: public}, skelc.GolangOption{Out: out2}); err != nil {
+			if _, err := skelc.CompileGolang(skelc.Input{SkelIn: public}, skelc.GolangOption{CompilerVersion: "v0.0.0-dev", Out: out2}); err != nil {
 				t.Fatal(err)
 			}
 			if got := readFileForTest(t, filepath.Join(out2, "resource.go")); !strings.Contains(got, `json:"code2" skel:"index(0)"`) {
@@ -132,7 +132,7 @@ service ConsumerService {
 				t.Fatal(err)
 			}
 			consumerOut := filepath.Join(root, "consumer")
-			if _, err := skelc.CompileGolang(skelc.Input{SkelIn: consumer, SkelImports: map[string]string{"demo": public}}, skelc.GolangOption{Out: consumerOut, Imports: map[string]string{"demo": "example.com/demo"}}); err != nil {
+			if _, err := skelc.CompileGolang(skelc.Input{SkelIn: consumer, SkelImports: map[string]string{"demo": public}}, skelc.GolangOption{CompilerVersion: "v0.0.0-dev", Out: consumerOut, Imports: map[string]string{"demo": "example.com/demo"}}); err != nil {
 				t.Fatal(err)
 			}
 			if got := strings.Join(strings.Fields(readFileForTest(t, filepath.Join(consumerOut, "schema.go"))), " "); !strings.Contains(got, `CodeArgumentName: "code2"`) {

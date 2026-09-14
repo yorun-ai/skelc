@@ -30,7 +30,9 @@ type _Gen struct {
 	out               string
 }
 
-func Generate(domain *model.Domain, option Option) error {
+// Generate consumes validated options from ResolveOption.
+func Generate(domain *model.Domain, resolved ResolvedOption) error {
+	option := resolved.option
 	if err := common.ValidateDomain(domain); err != nil {
 		return fmt.Errorf("validate Go generation model: %w", err)
 	}
@@ -109,6 +111,8 @@ func newGen(option _GenOption) (*_Gen, error) {
 		mode:              option.Mode,
 		asModule:          option.AsModule,
 		compilerVersion:   option.CompilerVersion,
+		vineVersion:       option.VineVersion,
+		vrpcVersion:       option.VrpcVersion,
 		modulePrefix:      option.ModulePrefix,
 		goImports:         option.Imports,
 		pubImportPath:     option.PubImportPath,
@@ -116,21 +120,7 @@ func newGen(option _GenOption) (*_Gen, error) {
 		out:               option.Out,
 	}
 	var err error
-	g.vrpcVersion, err = gomodule.ResolveVrpcVersion(option.VrpcVersion)
-	if err != nil {
-		return nil, err
-	}
 	g.view, err = view.Build(option.Mode, option.Domain)
-	if err != nil {
-		return nil, err
-	}
-	hasApiService := false
-	if g.mode != view.ModeApi {
-		for _, service := range g.view.Services {
-			hasApiService = hasApiService || service.Api
-		}
-	}
-	g.vineVersion, err = gomodule.ResolveServiceVineVersion(option.VineVersion, hasApiService)
 	if err != nil {
 		return nil, err
 	}

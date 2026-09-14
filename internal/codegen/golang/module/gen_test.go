@@ -9,14 +9,16 @@ import (
 
 func TestGenerateIncludesVersionedGoImports(t *testing.T) {
 	outputDir := filepath.Join(t.TempDir(), "golang")
-	Generate(Option{
+	if err := Generate(Option{
 		Out:         outputDir,
 		Module:      "go.yorun.ai/app/vine/demo/skeled/booker",
 		VineVersion: "v1.2.3",
 		Imports: map[string]string{
 			"user": "go.yorun.ai/app/vine/demo/skeled/userpub@v0.0.0-00010101000000-000000000000",
 		},
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	content := readGoModForTest(t, outputDir)
 	if !strings.Contains(content, "go 1.27.0") {
@@ -29,14 +31,16 @@ func TestGenerateIncludesVersionedGoImports(t *testing.T) {
 
 func TestGenerateIncludesDefaultVersionForGoImports(t *testing.T) {
 	outputDir := filepath.Join(t.TempDir(), "golang")
-	Generate(Option{
+	if err := Generate(Option{
 		Out:         outputDir,
 		Module:      "go.yorun.ai/app/vine/demo/skeled/booker",
 		VineVersion: "v1.2.3",
 		Imports: map[string]string{
 			"user": "go.yorun.ai/app/vine/demo/skeled/userpub",
 		},
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	content := readGoModForTest(t, outputDir)
 	if !strings.Contains(content, "go.yorun.ai/app/vine/demo/skeled/userpub v0.0.0-00010101000000-000000000000") {
@@ -51,4 +55,15 @@ func readGoModForTest(t *testing.T, outputDir string) string {
 		t.Fatalf("read go.mod: %v", err)
 	}
 	return string(content)
+}
+
+func TestGenerateRejectsRuntimeDependencyOverride(t *testing.T) {
+	out := t.TempDir()
+	err := Generate(Option{Out: out, Module: "example.com/generated", VineVersion: DefaultVineVersion, Imports: map[string]string{"runtime": "go.yorun.ai/vine@v0.15.6"}})
+	if err == nil || !strings.Contains(err.Error(), "conflicting Go dependency versions") {
+		t.Fatalf("runtime override accepted: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(out, "go.mod")); !os.IsNotExist(err) {
+		t.Fatalf("wrote output on conflict: %v", err)
+	}
 }

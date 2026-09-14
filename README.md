@@ -238,10 +238,11 @@ result, err := skelc.CompileGolang(
 		},
 	},
 	skelc.GolangOption{
-		Out:         "./generated/user-go",
-		AsModule:    true,
-		Module:      "example.com/generated/user",
-		VineVersion: skelc.DefaultGolangVineVersion,
+		CompilerVersion: "v0.19.2",
+		Out:             "./generated/user-go",
+		AsModule:        true,
+		Module:          "example.com/generated/user",
+		VineVersion:     skelc.DefaultGolangVineVersion,
 	},
 )
 if err != nil {
@@ -251,6 +252,8 @@ for _, diagnostic := range result.Diagnostics {
 	log.Printf("%s [%s] %s", diagnostic.Severity, diagnostic.Code, diagnostic.Message)
 }
 ```
+
+`CompilerVersion` is required for backend Go output and must identify the actual skelc dependency version, at least `v0.17.1` (adjust the example to your pinned version). The CLI fills it automatically. Use `v0.0.0-dev` only when running a development build.
 
 The API also provides `CompileTypeScript` and `CompileSkeleton`. Parser and loader warnings use the same structured diagnostic model instead of a separate string list. Stable diagnostic code constants are exported by the root package and by `go.yorun.ai/skelc/diagnostic`, so integrations do not need to repeat raw code strings. All public-contract generators consume one validated `internal/codegen/common` projection, preventing Go, Skel, and TypeScript visibility rules from drifting. Generation marks ownership in every generated file, atomically replaces individual outputs, rolls back every affected target when a commit fails, removes stale marked files, and preserves unmarked files in a shared output directory.
 

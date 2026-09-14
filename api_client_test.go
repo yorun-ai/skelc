@@ -53,7 +53,7 @@ api service HealthApiService { method ping {} }
 pub service BackendService { method ping {} }
 `)
 	sharedOut, out := filepath.Join(root, "sharedapi"), filepath.Join(root, "orderapi")
-	if _, err := skelc.CompileGolang(skelc.Input{SkelIn: shared}, skelc.GolangOption{ApiOnly: true, AsModule: true, Out: sharedOut, ModulePrefix: "example.com/gen"}); err != nil {
+	if _, err := skelc.CompileGolang(skelc.Input{SkelIn: shared}, skelc.GolangOption{CompilerVersion: "v0.0.0-dev", ApiOnly: true, AsModule: true, Out: sharedOut, ModulePrefix: "example.com/gen"}); err != nil {
 		t.Fatal(err)
 	}
 	parsed, err := skelc.Parse(skelc.Input{SkelIn: order, SkelImports: map[string]string{"common.shared": shared}})
@@ -77,7 +77,7 @@ pub service BackendService { method ping {} }
 			method.OutputExample = "result example"
 		}
 	}
-	if err := skelc.GenerateGolang(parsed.Domain, skelc.GolangOption{ApiOnly: true, AsModule: true, Out: out, ModulePrefix: "example.com/gen"}); err != nil {
+	if err := skelc.GenerateGolang(parsed.Domain, skelc.GolangOption{CompilerVersion: "v0.0.0-dev", ApiOnly: true, AsModule: true, Out: out, ModulePrefix: "example.com/gen"}); err != nil {
 		t.Fatal(err)
 	}
 	tsOut := filepath.Join(root, "typescript")
@@ -236,7 +236,7 @@ service HiddenService { method ping {} }
 	}
 	input := skelc.Input{SkelIn: entry, SkelImports: map[string]string{"demo.backend": backend}}
 	goOut, tsOut := filepath.Join(root, "orderapi"), filepath.Join(root, "ts")
-	if _, err := skelc.CompileGolang(input, skelc.GolangOption{ApiOnly: true, AsModule: true, Module: "example.com/orderapi", Out: goOut}); err != nil {
+	if _, err := skelc.CompileGolang(input, skelc.GolangOption{CompilerVersion: "v0.0.0-dev", ApiOnly: true, AsModule: true, Module: "example.com/orderapi", Out: goOut}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := skelc.CompileTypeScript(input, skelc.TypeScriptOption{ApiOnly: true, Out: tsOut}); err != nil {
@@ -264,7 +264,7 @@ service HiddenService { method ping {} }
 	if _, err := skelc.CompileTypeScript(input, skelc.TypeScriptOption{Out: tsOut}); err == nil {
 		t.Fatal("accepted TypeScript generation without api")
 	}
-	if _, err := skelc.CompileGolang(input, skelc.GolangOption{ApiOnly: true, PubOnly: true, Out: goOut}); err == nil {
+	if _, err := skelc.CompileGolang(input, skelc.GolangOption{CompilerVersion: "v0.0.0-dev", ApiOnly: true, PubOnly: true, Out: goOut}); err == nil {
 		t.Fatal("accepted both Go modes")
 	}
 }
@@ -280,7 +280,7 @@ pub service BackendService { method ping {} }
 	}
 	input := skelc.Input{SkelIn: entry}
 	out := filepath.Join(root, "server")
-	option := skelc.GolangOption{AsModule: true, Module: "example.com/orderserver", Out: out}
+	option := skelc.GolangOption{CompilerVersion: "v0.0.0-dev", AsModule: true, Module: "example.com/orderserver", Out: out}
 	if _, err := skelc.CompileGolang(input, option); err != nil {
 		t.Fatal(err)
 	}
@@ -302,11 +302,11 @@ pub service BackendService { method ping {} }
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(mod), "go.yorun.ai/vine "+skelc.MinimumGolangApiServiceVineVersion) {
+	if !strings.Contains(string(mod), "go.yorun.ai/vine "+skelc.DefaultGolangVineVersion) {
 		t.Fatalf("unsupported Vine requirement: %s", mod)
 	}
-	option.VineVersion = "v0.15.3"
+	option.VineVersion = "v0.15.6"
 	if _, err := skelc.CompileGolang(input, option); err == nil {
-		t.Fatal("accepted runtime without API support")
+		t.Fatal("accepted runtime below the minimum Vine version")
 	}
 }

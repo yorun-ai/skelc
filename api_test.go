@@ -195,7 +195,8 @@ func TestPublicOptionsRejectEmptyImportMappings(t *testing.T) {
 	}
 	domain := model.NewDomainFromSpec(model.DomainSpec{Name: "demo.test"})
 	if err := skelc.GenerateGolang(domain, skelc.GolangOption{
-		Out: filepath.Join(t.TempDir(), "golang"), Imports: map[string]string{"demo.user": ""},
+		CompilerVersion: "v0.0.0-dev",
+		Out:             filepath.Join(t.TempDir(), "golang"), Imports: map[string]string{"demo.user": ""},
 	}); err == nil {
 		t.Fatal("expected empty Go import path error")
 	}
@@ -332,8 +333,9 @@ data AppItem {
 			name: "Go",
 			compile: func() error {
 				_, err := skelc.CompileGolang(input, skelc.GolangOption{
-					Out:     filepath.Join(t.TempDir(), "golang"),
-					Imports: map[string]string{"base": "example.com/basepub"},
+					CompilerVersion: "v0.0.0-dev",
+					Out:             filepath.Join(t.TempDir(), "golang"),
+					Imports:         map[string]string{"base": "example.com/basepub"},
 				})
 				return err
 			},
@@ -411,8 +413,9 @@ data AppUser {
 			},
 		},
 		skelc.GolangOption{
-			Out:     goOut,
-			Imports: map[string]string{"user": "example.com/userpub"},
+			CompilerVersion: "v0.0.0-dev",
+			Out:             goOut,
+			Imports:         map[string]string{"user": "example.com/userpub"},
 		},
 	)
 	if err != nil {
@@ -441,7 +444,7 @@ func TestGenerateTargetsShareParsedDomain(t *testing.T) {
 		t.Fatalf("parse Skel: %v", err)
 	}
 	goOut := filepath.Join(t.TempDir(), "golang")
-	if err := skelc.GenerateGolang(parsed.Domain, skelc.GolangOption{Out: goOut}); err != nil {
+	if err := skelc.GenerateGolang(parsed.Domain, skelc.GolangOption{CompilerVersion: "v0.0.0-dev", Out: goOut}); err != nil {
 		t.Fatalf("generate Go: %v", err)
 	}
 	tsOut := filepath.Join(t.TempDir(), "typescript")
@@ -498,7 +501,7 @@ func TestGenerateGolangReturnsErrorBeforeCleaningOutput(t *testing.T) {
 
 	_, err := skelc.CompileGolang(
 		skelc.Input{SkelIn: skelDir},
-		skelc.GolangOption{Out: goOut},
+		skelc.GolangOption{CompilerVersion: "v0.0.0-dev", Out: goOut},
 	)
 	if err == nil {
 		t.Fatal("expected generation error")
@@ -516,7 +519,7 @@ func TestCompileNormalizesGenerationOptionsBeforeReadingInput(t *testing.T) {
 		{
 			name: "Go",
 			compile: func() error {
-				_, err := skelc.CompileGolang(missingInput, skelc.GolangOption{})
+				_, err := skelc.CompileGolang(missingInput, skelc.GolangOption{CompilerVersion: "v0.0.0-dev"})
 				return err
 			},
 			expected: "Go output is required",
@@ -566,7 +569,7 @@ func TestGeneratorsReturnErrorsForMalformedProgrammaticModels(t *testing.T) {
 		{
 			name: "Go",
 			generate: func() error {
-				return skelc.GenerateGolang(domain, skelc.GolangOption{Out: filepath.Join(t.TempDir(), "generated")})
+				return skelc.GenerateGolang(domain, skelc.GolangOption{CompilerVersion: "v0.0.0-dev", Out: filepath.Join(t.TempDir(), "generated")})
 			},
 		},
 		{
@@ -620,7 +623,7 @@ func TestGeneratorsReturnErrorsForMalformedNestedModels(t *testing.T) {
 				generate func() error
 			}{
 				{name: "Go", generate: func() error {
-					return skelc.GenerateGolang(malformed.domain, skelc.GolangOption{Out: filepath.Join(t.TempDir(), "generated")})
+					return skelc.GenerateGolang(malformed.domain, skelc.GolangOption{CompilerVersion: "v0.0.0-dev", Out: filepath.Join(t.TempDir(), "generated")})
 				}},
 				{name: "TypeScript", generate: func() error {
 					return skelc.GenerateTypeScript(malformed.domain, skelc.TypeScriptOption{ApiOnly: true, Out: t.TempDir()})
@@ -657,7 +660,7 @@ func TestGeneratorsReturnErrorsForMissingExternalImportMappings(t *testing.T) {
 		t.Fatalf("parse imported domain: %v", err)
 	}
 
-	goErr := skelc.GenerateGolang(parsed.Domain, skelc.GolangOption{Out: filepath.Join(t.TempDir(), "golang")})
+	goErr := skelc.GenerateGolang(parsed.Domain, skelc.GolangOption{CompilerVersion: "v0.0.0-dev", Out: filepath.Join(t.TempDir(), "golang")})
 	if goErr == nil || !strings.Contains(goErr.Error(), "missing Go import for domain demo.user") {
 		t.Fatalf("expected missing Go import error, got %v", goErr)
 	}
@@ -721,7 +724,7 @@ pub actor UserActor {
 `)
 	input := skelc.Input{SkelIn: source}
 	goOut, tsOut, skelOut := filepath.Join(root, "golang"), filepath.Join(root, "ts"), filepath.Join(root, "skel")
-	if _, err := skelc.CompileGolang(input, skelc.GolangOption{Out: goOut}); err != nil {
+	if _, err := skelc.CompileGolang(input, skelc.GolangOption{CompilerVersion: "v0.0.0-dev", Out: goOut}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := skelc.CompileTypeScript(input, skelc.TypeScriptOption{ApiOnly: true, Out: tsOut}); err != nil {

@@ -10,7 +10,7 @@ func TestResolveVineVersion(t *testing.T) {
 	}{
 		{name: "default", expected: DefaultVineVersion},
 		{name: "trimmed default", version: "  ", expected: DefaultVineVersion},
-		{name: "explicit minimum", version: "v0.15.5", expected: "v0.15.5"},
+		{name: "explicit minimum", version: "v0.15.7", expected: "v0.15.7"},
 		{name: "higher", version: "v1.2.3", expected: "v1.2.3"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -26,28 +26,12 @@ func TestResolveVineVersion(t *testing.T) {
 }
 
 func TestResolveVineVersionRejectsInvalidVersion(t *testing.T) {
-	for _, version := range []string{"v0.15.4", "v0.15.3", "v0.15.5-rc.1", "v0.15.1", "v0.15.2", "v0.15.3-rc.1", "v0.15.0", "v0.14.0", "v0.14.1", "v0.15.1-rc.1", "0.15.0", "v0.13.1", "v0.13.0", "v0.12.0", "v0.10.1", "v-invalid"} {
+	for _, version := range []string{"v0.15.6", "v0.15.7-rc.1", "0.15.7", "v-invalid", "v01.15.7", "v1.2", "v2.0.0"} {
 		t.Run(version, func(t *testing.T) {
 			if _, err := ResolveVineVersion(version); err == nil {
 				t.Fatalf("expected %q to return an error", version)
 			}
 		})
-	}
-}
-
-func TestApiServiceVineVersion(t *testing.T) {
-	got, err := ResolveServiceVineVersion("", true)
-	if err != nil || got != MinimumApiServiceVineVersion {
-		t.Fatalf("default API schema version: %s %v", got, err)
-	}
-	if got, err := ResolveServiceVineVersion("v0.15.5", true); err != nil || got != "v0.15.5" {
-		t.Fatalf("minimum API schema version: %s %v", got, err)
-	}
-	if _, err := ResolveServiceVineVersion("v0.15.3", true); err == nil {
-		t.Fatal("accepted Vine without API schema support")
-	}
-	if got, err := ResolveServiceVineVersion("v1.0.0", true); err != nil || got != "v1.0.0" {
-		t.Fatalf("newer API schema version: %s %v", got, err)
 	}
 }
 
@@ -58,7 +42,7 @@ func TestResolveVrpcVersion(t *testing.T) {
 			t.Fatalf("resolve %q: %q %v", version, got, err)
 		}
 	}
-	for _, version := range []string{"v0.11.0", "v0.12.0-rc.1"} {
+	for _, version := range []string{"v0.11.0", "v0.12.0-rc.1", "v01.12.0", "v1.2", "v2.0.0"} {
 		if _, err := ResolveVrpcVersion(version); err == nil {
 			t.Fatalf("accepted unsupported vRPC version %q", version)
 		}

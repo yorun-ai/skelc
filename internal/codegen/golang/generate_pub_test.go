@@ -134,12 +134,14 @@ func TestGeneratorRendersPubGoView(t *testing.T) {
 		},
 	})
 
-	golang.Generate(pkg, golang.Option{
+	if err := generateFixture(pkg, golang.Option{
 		Out:          goOutDir,
 		AsModule:     true,
 		PubOut:       goPubOutDir,
 		ModulePrefix: "github.com/acme/skel",
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	for _, outDir := range []string{goOutDir, goPubOutDir} {
 		docContent := readFileForTest(t, filepath.Join(outDir, "doc.go"))
@@ -293,7 +295,7 @@ func TestGeneratorIncludesImplicitPubDependencies(t *testing.T) {
 		},
 	})
 
-	err := golang.Generate(pkg, golang.Option{
+	err := generateFixture(pkg, golang.Option{
 		Out:          goOutDir,
 		AsModule:     true,
 		PubOut:       goPubOutDir,

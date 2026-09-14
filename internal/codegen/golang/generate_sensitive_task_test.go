@@ -47,7 +47,7 @@ task RebuildIndexTask {
 	}
 
 	outputDir := filepath.Join(t.TempDir(), "skeled")
-	if err := golang.Generate(parsed.Domain, golang.Option{Out: outputDir}); err != nil {
+	if err := generateFixture(parsed.Domain, golang.Option{Out: outputDir}); err != nil {
 		t.Fatalf("generate Go: %v", err)
 	}
 

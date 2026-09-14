@@ -29,9 +29,6 @@ const MinimumGolangVineVersion = golang.MinimumVineVersion
 // modules when GolangOption.VineVersion is empty.
 const DefaultGolangVineVersion = golang.DefaultVineVersion
 
-// MinimumGolangApiServiceVineVersion is required by explicit API service schemas.
-const MinimumGolangApiServiceVineVersion = golang.MinimumApiServiceVineVersion
-
 // Input identifies the primary Skel source and any imported domains.
 type Input struct {
 	// SkelIn is the path to a Skel source file or domain directory.
@@ -106,7 +103,9 @@ func Parse(input Input) (ParseResult, error) {
 
 // GolangOption configures Go generation.
 type GolangOption struct {
-	// CompilerVersion identifies the skelc version embedded in generated metadata.
+	// CompilerVersion identifies the actual skelc version embedded in generated metadata.
+	// Required for backend output and must be at least v0.17.1.
+	// Use v0.0.0-dev only for development builds.
 	CompilerVersion string
 	// AsModule generates a standalone Go module instead of package source for an
 	// existing module.
@@ -130,8 +129,7 @@ type GolangOption struct {
 	ModulePrefix string
 	// VineVersion selects the go.yorun.ai/vine version written to generated module
 	// metadata. It must not be lower than [MinimumGolangVineVersion]. An empty
-	// value uses [DefaultGolangVineVersion], or [MinimumGolangApiServiceVineVersion]
-	// when backend output contains explicit API services.
+	// value uses [DefaultGolangVineVersion].
 	VineVersion string
 	// VrpcVersion selects the standalone client module version.
 	VrpcVersion string
@@ -174,14 +172,13 @@ func GenerateGolang(domain *model.Domain, option GolangOption) error {
 	return generateGolang(domain, codegenOption)
 }
 
-func generateGolang(domain *model.Domain, option golang.Option) error {
+func generateGolang(domain *model.Domain, resolved golang.ResolvedOption) error {
+	option := resolved.Options()
 	if err := validateGolangImports(domain, option); err != nil {
 		return err
 	}
 	return output.RunManagedOutputs([]string{option.Out, option.PubOut}, func(staged []string) error {
-		option.Out = staged[0]
-		option.PubOut = staged[1]
-		return golang.Generate(domain, option)
+		return golang.Generate(domain, resolved.WithOutputs(staged[0], staged[1]))
 	})
 }
 

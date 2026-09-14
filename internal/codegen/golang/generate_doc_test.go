@@ -13,7 +13,9 @@ func TestGeneratorAlwaysRendersGoDocFile(t *testing.T) {
 
 	pkg := newModelDomainForTest(t, domainModelForTest("demo.user"))
 
-	golang.Generate(pkg, golang.Option{Out: goOutDir})
+	if err := generateFixture(pkg, golang.Option{Out: goOutDir}); err != nil {
+		t.Fatal(err)
+	}
 
 	goDocContent, err := os.ReadFile(filepath.Join(goOutDir, "doc.go"))
 	if err != nil {

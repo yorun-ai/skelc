@@ -2,8 +2,13 @@ package module
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
+
+	"github.com/Masterminds/semver/v3"
+	"go.yorun.ai/skelc/internal/optionvalidation"
+	gomodule "golang.org/x/mod/module"
 )
 
 type _GoImportDependency struct {
@@ -11,22 +16,31 @@ type _GoImportDependency struct {
 	Version string
 }
 
-func goModDependencies(imports map[string]string, extraDependencies []string) ([]_GoImportDependency, error) {
+func goModDependencies(imports map[string]string, extraDependencies []string) (result []_GoImportDependency, err error) {
+	defer func() {
+		if err != nil {
+			err = optionvalidation.NewValidationError(optionvalidation.FieldGoImport, optionvalidation.RuleInvalid, err.Error())
+		}
+	}()
 	dependencies := map[string]string{}
+	paths := make([]string, 0, len(imports)+len(extraDependencies))
 	for _, path := range imports {
-		dependency, err := parseGoImportDependency(path)
-		if err != nil {
-			return nil, err
-		}
-		dependency.fillDefaultVersion()
-		dependencies[dependency.Module] = dependency.Version
+		paths = append(paths, path)
 	}
-	for _, path := range extraDependencies {
+	paths = append(paths, extraDependencies...)
+	slices.Sort(paths)
+	for _, path := range paths {
 		dependency, err := parseGoImportDependency(path)
 		if err != nil {
 			return nil, err
 		}
 		dependency.fillDefaultVersion()
+		if err := gomodule.Check(dependency.Module, dependency.Version); err != nil {
+			return nil, err
+		}
+		if version, exists := dependencies[dependency.Module]; exists && version != dependency.Version {
+			return nil, fmt.Errorf("conflicting Go dependency versions for %s: %s and %s", dependency.Module, version, dependency.Version)
+		}
 		dependencies[dependency.Module] = dependency.Version
 	}
 	return sortedGoImportDependencies(dependencies), nil
@@ -44,6 +58,9 @@ func parseGoImportDependency(path string) (_GoImportDependency, error) {
 		if path == "" {
 			return _GoImportDependency{}, fmt.Errorf("invalid Go import %q: missing module", path)
 		}
+		if err := gomodule.CheckImportPath(path); err != nil {
+			return _GoImportDependency{}, err
+		}
 		return _GoImportDependency{Module: path}, nil
 	}
 	module := path[:index]
@@ -53,6 +70,15 @@ func parseGoImportDependency(path string) (_GoImportDependency, error) {
 	}
 	if version == "" {
 		return _GoImportDependency{}, fmt.Errorf("invalid Go import %q: missing version", path)
+	}
+	if !strings.HasPrefix(version, "v") {
+		return _GoImportDependency{}, fmt.Errorf("invalid Go import %q: version must be a v-prefixed semantic version", path)
+	}
+	if _, err := semver.StrictNewVersion(strings.TrimPrefix(version, "v")); err != nil {
+		return _GoImportDependency{}, fmt.Errorf("invalid Go import %q: %w", path, err)
+	}
+	if err := gomodule.Check(module, version); err != nil {
+		return _GoImportDependency{}, err
 	}
 	return _GoImportDependency{Module: module, Version: version}, nil
 }

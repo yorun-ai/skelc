@@ -12,9 +12,6 @@ const MinimumVineVersion = gomodule.MinimumVineVersion
 // DefaultVineVersion is the Vine version used when generation does not select one.
 const DefaultVineVersion = gomodule.DefaultVineVersion
 
-// MinimumApiServiceVineVersion is required by schemas for explicit API services.
-const MinimumApiServiceVineVersion = gomodule.MinimumApiServiceVineVersion
-
 type Option struct {
 	CompilerVersion string
 	AsModule        bool
@@ -28,6 +25,18 @@ type Option struct {
 	ModulePrefix    string
 	VineVersion     string
 	VrpcVersion     string
+}
+
+// ResolvedOption carries generation options with validated compiler and runtime versions.
+type ResolvedOption struct{ option Option }
+
+// Options returns a copy of the resolved generation settings.
+func (o ResolvedOption) Options() Option { return o.option }
+
+// WithOutputs redirects generated files to managed staging directories.
+func (o ResolvedOption) WithOutputs(out, pubOut string) ResolvedOption {
+	o.option.Out, o.option.PubOut = out, pubOut
+	return o
 }
 
 type _GenOption struct {

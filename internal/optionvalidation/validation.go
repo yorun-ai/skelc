@@ -10,6 +10,8 @@ const (
 	FieldSkelImport               Field = "skel.import"
 	FieldGoOutput                 Field = "go.output"
 	FieldGoVineVersion            Field = "go.vine-version"
+	FieldGoVrpcVersion            Field = "go.vrpc-version"
+	FieldGoCompilerVersion        Field = "go.compiler-version"
 	FieldGoModuleIdentity         Field = "go.module-identity"
 	FieldGoPublicOutput           Field = "go.public-output"
 	FieldGoPublicModule           Field = "go.public-module"

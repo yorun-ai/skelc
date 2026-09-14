@@ -25,7 +25,9 @@ func TestGeneratorSkipsGoModuleFilesByDefault(t *testing.T) {
 		},
 	})
 
-	golang.Generate(pkg, golang.Option{Out: goOutDir})
+	if err := generateFixture(pkg, golang.Option{Out: goOutDir}); err != nil {
+		t.Fatal(err)
+	}
 
 	assertFileMissing(t, filepath.Join(goOutDir, "go.mod"))
 	assertFileMissing(t, filepath.Join(goOutDir, "go.sum"))
@@ -53,12 +55,14 @@ func TestGeneratorRendersGoModuleFiles(t *testing.T) {
 		},
 	})
 
-	golang.Generate(pkg, golang.Option{
+	if err := generateFixture(pkg, golang.Option{
 		Out:          goOutDir,
 		AsModule:     true,
 		ModulePrefix: "github.com/acme/skel",
-		VineVersion:  "v9.8.7",
-	})
+		VineVersion:  "v1.8.7",
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	if _, err := os.ReadFile(filepath.Join(goOutDir, "go.mod")); err != nil {
 		t.Fatalf("expected go.mod to exist: %v", err)
@@ -71,7 +75,7 @@ func TestGeneratorRendersGoModuleFiles(t *testing.T) {
 	if !strings.Contains(string(goModContent), "module github.com/acme/skel/demo/user") {
 		t.Fatalf("unexpected go.mod content: %q", string(goModContent))
 	}
-	if !strings.Contains(string(goModContent), "go.yorun.ai/vine v9.8.7") {
+	if !strings.Contains(string(goModContent), "go.yorun.ai/vine v1.8.7") {
 		t.Fatalf("unexpected go.mod content: %q", string(goModContent))
 	}
 }
@@ -93,13 +97,15 @@ func TestGeneratorRendersDefaultGoPubModulePrefix(t *testing.T) {
 		},
 	})
 
-	golang.Generate(pkg, golang.Option{
+	if err := generateFixture(pkg, golang.Option{
 		Out:          goOutDir,
 		AsModule:     true,
 		PubOut:       goPubOutDir,
 		ModulePrefix: "go.yorun.ai/app/vine/demo",
-		VineVersion:  "v9.8.7",
-	})
+		VineVersion:  "v1.8.7",
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	goModContent, err := os.ReadFile(filepath.Join(goPubOutDir, "go.mod"))
 	if err != nil {
@@ -145,13 +151,15 @@ func TestGeneratorRendersGoPubAndRegularModules(t *testing.T) {
 		},
 	})
 
-	golang.Generate(pkg, golang.Option{
+	if err := generateFixture(pkg, golang.Option{
 		Out:          goOutDir,
 		AsModule:     true,
 		PubOut:       goPubOutDir,
 		ModulePrefix: "github.com/acme/skel",
-		VineVersion:  "v9.8.7",
-	})
+		VineVersion:  "v1.8.7",
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	pubServiceContent := readFileForTest(t, filepath.Join(goPubOutDir, "service.go"))
 	if !strings.Contains(pubServiceContent, "rpc.ServiceSpecTypeClient") {

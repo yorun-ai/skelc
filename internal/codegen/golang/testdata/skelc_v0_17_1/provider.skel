@@ -1,0 +1,3 @@
+domain demo.current
+pub data Child { content: binary }
+pub data Page<TItem> { items: list<TItem> }

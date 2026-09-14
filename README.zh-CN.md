@@ -224,10 +224,11 @@ result, err := skelc.CompileGolang(
 		},
 	},
 	skelc.GolangOption{
-		Out:         "./generated/user-go",
-		AsModule:    true,
-		Module:      "example.com/generated/user",
-		VineVersion: skelc.DefaultGolangVineVersion,
+		CompilerVersion: "v0.19.2",
+		Out:             "./generated/user-go",
+		AsModule:        true,
+		Module:          "example.com/generated/user",
+		VineVersion:     skelc.DefaultGolangVineVersion,
 	},
 )
 if err != nil {
@@ -237,6 +238,8 @@ for _, diagnostic := range result.Diagnostics {
 	log.Printf("%s [%s] %s", diagnostic.Severity, diagnostic.Code, diagnostic.Message)
 }
 ```
+
+后端 Go 输出必须设置 `CompilerVersion`，并填写不低于 `v0.17.1` 的实际 skelc 依赖版本（请按锁定版本调整示例）。CLI 会自动填写；仅开发构建使用 `v0.0.0-dev`。
 
 API 同时提供 `CompileTypeScript` 和 `CompileSkeleton`。parser 与 loader warning 使用同一套结构化诊断，不再维护独立的字符串列表。根 package 与 `go.yorun.ai/skelc/diagnostic` 都会导出稳定的诊断 code 常量，集成方无需重复填写原始字符串。所有公开契约生成器共用一次经过校验的 `internal/codegen/common` 投影，避免 Go、Skel 和 TypeScript 的可见性规则漂移。生成过程在每个文件中标记所有权，以原子方式逐个替换输出；提交失败时回滚所有受影响的目标，删除带标记的过期生成文件，并保留共享输出目录中的无标记文件。
 

@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"go.yorun.ai/skelc/internal/codegen/common"
+	"go.yorun.ai/skelc/internal/optionvalidation"
 	"golang.org/x/mod/modfile"
+	gomodule "golang.org/x/mod/module"
 )
 
 const goModFilename = "go.mod"
@@ -28,7 +30,18 @@ type Option struct {
 	ExtraDependencies []string
 }
 
+// ValidateModulePath checks module identities before writing generated metadata.
+func ValidateModulePath(path string, field optionvalidation.Field) error {
+	if err := gomodule.CheckPath(path); err != nil {
+		return optionvalidation.NewValidationError(field, optionvalidation.RuleInvalid, err.Error())
+	}
+	return nil
+}
+
 func Generate(option Option) error {
+	if err := ValidateModulePath(option.Module, optionvalidation.FieldGoModule); err != nil {
+		return err
+	}
 	file := new(modfile.File)
 	if err := file.AddModuleStmt(option.Module); err != nil {
 		return fmt.Errorf("add Go module statement: %w", err)
@@ -37,17 +50,12 @@ func Generate(option Option) error {
 		return fmt.Errorf("add Go version statement: %w", err)
 	}
 
-	if err := file.AddRequire(decimalModule, decimalVersion); err != nil {
-		return fmt.Errorf("add Go requirement %s: %w", decimalModule, err)
-	}
 	runtimeModule, runtimeVersion := vineModule, option.VineVersion
 	if option.Api {
 		runtimeModule, runtimeVersion = "go.yorun.ai/vrpc", option.VrpcVersion
 	}
-	if err := file.AddRequire(runtimeModule, runtimeVersion); err != nil {
-		return fmt.Errorf("add Go requirement %s: %w", runtimeModule, err)
-	}
-	dependencies, err := goModDependencies(option.Imports, option.ExtraDependencies)
+	extra := append([]string{decimalModule + "@" + decimalVersion, runtimeModule + "@" + runtimeVersion}, option.ExtraDependencies...)
+	dependencies, err := goModDependencies(option.Imports, extra)
 	if err != nil {
 		return err
 	}

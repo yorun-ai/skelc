@@ -55,7 +55,6 @@ type VersionResult struct {
 
 // VersionGolangCodeGenResult reports Vine compatibility for generated Go code.
 type VersionGolangCodeGenResult struct {
-	MinimumVineVersion           string `json:"minimumVineVersion"`
-	DefaultVineVersion           string `json:"defaultVineVersion"`
-	MinimumApiServiceVineVersion string `json:"minimumApiServiceVineVersion,omitempty"`
+	MinimumVineVersion string `json:"minimumVineVersion"`
+	DefaultVineVersion string `json:"defaultVineVersion"`
 }

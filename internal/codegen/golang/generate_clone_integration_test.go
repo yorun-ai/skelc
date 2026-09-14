@@ -76,11 +76,11 @@ func TestGeneratedCloneModuleCompilesAndIsolatesValues(t *testing.T) {
 		Services: []*model.Service{service},
 	})
 
-	if err := golang.Generate(domain, golang.Option{
+	if err := generateFixture(domain, golang.Option{
 		Out:             generatedDir,
 		AsModule:        true,
 		Module:          "example.com/generated/clonefixture",
-		CompilerVersion: "v0.15.0",
+		CompilerVersion: "v0.0.0-dev",
 		VineVersion:     golang.DefaultVineVersion,
 	}); err != nil {
 		t.Fatalf("generate clone fixture module: %v", err)
@@ -223,6 +223,11 @@ func TestCloneValueIsolation(t *testing.T) {
 }
 
 func TestGeneratedCloneModuleUsesCurrentImportedCloneMethods(t *testing.T) {
+	t.Run("current", func(t *testing.T) { testImportedCloneMethods(t, false) })
+	t.Run("skelc_v0.17.1", func(t *testing.T) { testImportedCloneMethods(t, true) })
+}
+
+func testImportedCloneMethods(t *testing.T, historical bool) {
 	rootDir, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		t.Fatalf("resolve current clone fixture directory: %v", err)
@@ -258,16 +263,27 @@ func TestGeneratedCloneModuleUsesCurrentImportedCloneMethods(t *testing.T) {
 		Name: "demo.current",
 		Data: []*model.Data{child, page},
 	})
-	if err := golang.Generate(providerDomain, golang.Option{
-		Out:             providerRegularDir,
-		PubOut:          providerDir,
-		AsModule:        true,
-		Module:          "example.com/generated/current",
-		PubModule:       "example.com/generated/currentpub",
-		CompilerVersion: "v0.15.0",
-		VineVersion:     golang.DefaultVineVersion,
-	}); err != nil {
-		t.Fatalf("generate current clone provider modules: %v", err)
+	if historical {
+		if err := os.CopyFS(providerDir, os.DirFS("testdata/skelc_v0_17_1/providerpub")); err != nil {
+			t.Fatal(err)
+		}
+		schema := readFileForTest(t, filepath.Join(providerDir, "schema.go"))
+		if !strings.Contains(schema, `CompilerVersion: "v0.17.1"`) {
+			t.Fatal("historical fixture compiler version changed")
+		}
+	} else {
+		if err := generateFixture(providerDomain, golang.Option{
+			Out:             providerRegularDir,
+			PubOut:          providerDir,
+			AsModule:        true,
+			Module:          "example.com/generated/current",
+			PubModule:       "example.com/generated/currentpub",
+			CompilerVersion: "v0.0.0-dev",
+			VineVersion:     golang.DefaultVineVersion,
+		}); err != nil {
+			t.Fatalf("generate current clone provider modules: %v", err)
+		}
+
 	}
 	providerData := readFileForTest(t, filepath.Join(providerDir, "data.go"))
 	for _, fragment := range []string{
@@ -297,11 +313,11 @@ func TestGeneratedCloneModuleUsesCurrentImportedCloneMethods(t *testing.T) {
 		}},
 		Data: []*model.Data{envelope},
 	})
-	if err := golang.Generate(consumerDomain, golang.Option{
+	if err := generateFixture(consumerDomain, golang.Option{
 		Out:             consumerDir,
 		AsModule:        true,
 		Module:          "example.com/generated/currentconsumer",
-		CompilerVersion: "v0.15.0",
+		CompilerVersion: "v0.0.0-dev",
 		VineVersion:     golang.DefaultVineVersion,
 		Imports: map[string]string{
 			"demo.current": "example.com/generated/currentpub",

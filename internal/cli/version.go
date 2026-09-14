@@ -63,9 +63,8 @@ func versionInfo() (_VersionInfo, error) {
 		Platform:  buildInfo.Platform,
 		GoVersion: buildInfo.GoVersion,
 		GolangCodeGen: command.VersionGolangCodeGenResult{
-			MinimumVineVersion:           golang.MinimumVineVersion,
-			DefaultVineVersion:           golang.DefaultVineVersion,
-			MinimumApiServiceVineVersion: golang.MinimumApiServiceVineVersion,
+			MinimumVineVersion: golang.MinimumVineVersion,
+			DefaultVineVersion: golang.DefaultVineVersion,
 		},
 	}, nil
 }

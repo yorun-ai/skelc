@@ -33,29 +33,15 @@ func normalizeInput(input Input) (compiler.Option, error) {
 	return compiler.Option{SkelIn: skelIn, SkelImports: imports, Strict: input.Strict}, nil
 }
 
-func normalizeGolangOption(option GolangOption) (golang.Option, error) {
+func normalizeGolangOption(option GolangOption) (golang.ResolvedOption, error) {
 	if option.ApiOnly && option.PubOnly {
-		return golang.Option{}, fmt.Errorf("api and pub are mutually exclusive")
+		return golang.ResolvedOption{}, fmt.Errorf("api and pub are mutually exclusive")
 	}
 	if (option.ApiOnly || option.PubOnly) && (option.PubOut != "" || option.PubModule != "") {
-		return golang.Option{}, fmt.Errorf("api/pub mode cannot be combined with go-pub-out or go-pub-module")
-	}
-	if option.VrpcVersion != "" && !option.ApiOnly {
-		return golang.Option{}, fmt.Errorf("go-vrpc-version requires api")
-	}
-	if option.ApiOnly && option.VineVersion != "" {
-		return golang.Option{}, fmt.Errorf("go-vine-version is not used by api clients")
-	}
-	if option.ApiOnly {
-		if _, err := gomodule.ResolveVrpcVersion(option.VrpcVersion); err != nil {
-			return golang.Option{}, err
-		}
+		return golang.ResolvedOption{}, fmt.Errorf("api/pub mode cannot be combined with go-pub-out or go-pub-module")
 	}
 	if strings.TrimSpace(option.Out) == "" {
-		return golang.Option{}, optionvalidation.NewValidationError(optionvalidation.FieldGoOutput, optionvalidation.RuleRequired, "Go output is required")
-	}
-	if err := gomodule.ValidateVineVersion(option.VineVersion); err != nil {
-		return golang.Option{}, optionvalidation.NewValidationError(optionvalidation.FieldGoVineVersion, optionvalidation.RuleInvalid, err.Error())
+		return golang.ResolvedOption{}, optionvalidation.NewValidationError(optionvalidation.FieldGoOutput, optionvalidation.RuleRequired, "Go output is required")
 	}
 	modulePrefix := strings.TrimSpace(option.ModulePrefix)
 	module := strings.TrimSpace(option.Module)
@@ -63,7 +49,7 @@ func normalizeGolangOption(option GolangOption) (golang.Option, error) {
 	pubModule := strings.TrimSpace(option.PubModule)
 	if option.AsModule {
 		if module == "" && modulePrefix == "" {
-			return golang.Option{}, optionvalidation.NewValidationError(optionvalidation.FieldGoModuleIdentity, optionvalidation.RuleRequired, "Go module or module prefix is required")
+			return golang.ResolvedOption{}, optionvalidation.NewValidationError(optionvalidation.FieldGoModuleIdentity, optionvalidation.RuleRequired, "Go module or module prefix is required")
 		}
 	} else {
 		invalidFields := []struct {
@@ -78,12 +64,12 @@ func normalizeGolangOption(option GolangOption) (golang.Option, error) {
 		}
 		for _, field := range invalidFields {
 			if field.value != "" {
-				return golang.Option{}, optionvalidation.NewValidationError(field.field, optionvalidation.RuleRequiresModule, field.message)
+				return golang.ResolvedOption{}, optionvalidation.NewValidationError(field.field, optionvalidation.RuleRequiresModule, field.message)
 			}
 		}
 	}
 	if pubModule != "" && pubOutValue == "" {
-		return golang.Option{}, optionvalidation.NewValidationError(optionvalidation.FieldGoPublicModule, optionvalidation.RuleRequiresPublicOutput, "Go public module requires public output")
+		return golang.ResolvedOption{}, optionvalidation.NewValidationError(optionvalidation.FieldGoPublicModule, optionvalidation.RuleRequiresPublicOutput, "Go public module requires public output")
 	}
 
 	moduleFields := []struct {
@@ -97,35 +83,41 @@ func normalizeGolangOption(option GolangOption) (golang.Option, error) {
 	}
 	for _, field := range moduleFields {
 		if err := checkNoTrailingSlash(field.value, field.name, field.field); err != nil {
-			return golang.Option{}, err
+			return golang.ResolvedOption{}, err
+		}
+		if field.value != "" {
+			if err := gomodule.ValidateModulePath(field.value, field.field); err != nil {
+				return golang.ResolvedOption{}, err
+			}
 		}
 	}
 	out, err := absolutePath(option.Out)
 	if err != nil {
-		return golang.Option{}, err
+		return golang.ResolvedOption{}, err
 	}
 	if !option.AsModule {
 		name := filepath.Base(out)
 		if !nameutil.IsSnakeCase(name) || gotoken.Lookup(name).IsKeyword() {
-			return golang.Option{}, optionvalidation.NewValidationError(optionvalidation.FieldGoOutput, optionvalidation.RuleInvalid,
+			return golang.ResolvedOption{}, optionvalidation.NewValidationError(optionvalidation.FieldGoOutput, optionvalidation.RuleInvalid,
 				fmt.Sprintf("go output directory name %q is not a valid package name", name))
 		}
 	}
 	pubOut, err := optionalAbsolutePath(pubOutValue)
 	if err != nil {
-		return golang.Option{}, err
+		return golang.ResolvedOption{}, err
 	}
 	imports, err := normalizeImportMap(option.Imports)
 	if err != nil {
-		return golang.Option{}, err
+		return golang.ResolvedOption{}, err
 	}
-	for _, path := range imports {
-		if err := validateVersionedImport(path, "go"); err != nil {
-			return golang.Option{}, optionvalidation.NewValidationError(optionvalidation.FieldGoImport, optionvalidation.RuleInvalid, err.Error())
+	for _, domain := range sortedMapKeys(imports) {
+		path := imports[domain]
+		if _, err := gomodule.ImportPath(path); err != nil {
+			return golang.ResolvedOption{}, optionvalidation.NewValidationError(optionvalidation.FieldGoImport, optionvalidation.RuleInvalid, err.Error())
 		}
 	}
 
-	return golang.Option{
+	resolved, err := golang.ResolveOption(golang.Option{
 		PubOnly:         option.PubOnly,
 		ApiOnly:         option.ApiOnly,
 		VrpcVersion:     option.VrpcVersion,
@@ -138,7 +130,11 @@ func normalizeGolangOption(option GolangOption) (golang.Option, error) {
 		Imports:         imports,
 		ModulePrefix:    modulePrefix,
 		VineVersion:     strings.TrimSpace(option.VineVersion),
-	}, nil
+	})
+	if err != nil {
+		return golang.ResolvedOption{}, err
+	}
+	return resolved, nil
 }
 
 func validateGolangImports(domain *model.Domain, option golang.Option) error {
@@ -194,7 +190,8 @@ func normalizeTypeScriptOption(option TypeScriptOption) (typescript.Option, erro
 	if err != nil {
 		return typescript.Option{}, err
 	}
-	for _, path := range imports {
+	for _, domain := range sortedMapKeys(imports) {
+		path := imports[domain]
 		if err := validateVersionedImport(path, "TypeScript"); err != nil {
 			return typescript.Option{}, optionvalidation.NewValidationError(optionvalidation.FieldTypeScriptImport, optionvalidation.RuleInvalid, err.Error())
 		}

@@ -50,12 +50,14 @@ func TestGeneratorGoRendersSchemaFile(t *testing.T) {
 	})
 
 	pubOutDir := filepath.Join(t.TempDir(), "pub")
-	golang.Generate(pkg, golang.Option{
+	if err := generateFixture(pkg, golang.Option{
 		Out:          goOutDir,
 		AsModule:     true,
 		PubOut:       pubOutDir,
 		ModulePrefix: "github.com/acme/skel",
-	})
+	}); err != nil {
+		t.Fatal(err)
+	}
 
 	goSchemaContent, err := os.ReadFile(filepath.Join(pubOutDir, "schema.go"))
 	if err != nil {
@@ -147,7 +149,9 @@ func TestGeneratorGoSchemaHasNoBlankLineBeforeFields(t *testing.T) {
 		},
 	})
 
-	golang.Generate(pkg, golang.Option{Out: goOutDir})
+	if err := generateFixture(pkg, golang.Option{Out: goOutDir}); err != nil {
+		t.Fatal(err)
+	}
 
 	goSchemaContent := readFileForTest(t, filepath.Join(goOutDir, "schema.go"))
 	assertNoBlankLineBeforeSchemaField(t, goSchemaContent, "Hash:")

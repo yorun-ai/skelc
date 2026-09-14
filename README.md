@@ -15,7 +15,7 @@ When building a Vine application, skelc helps you:
 - Keep server and client types and service contracts in one source of truth
 - Catch syntax, naming, type, and cross-domain reference errors before generation
 - Generate a Go module and TypeScript clients ready to add to a project
-- Publish domain boundaries marked `pub`; skelc v0.19.0 also supports `open service` to export server contracts
+- Publish domain boundaries marked `pub`, or use `open service` to also export server contracts for other domains
 - Format and validate contracts
 - Generate vRPC transport metadata for Binary parameters so applications can transfer binary data efficiently with CBOR
 
@@ -95,9 +95,9 @@ generated/user-ts/
 After adding the generated directory to a TypeScript project, create the service with an already configured `VrpcClient`:
 
 ```ts
-import { createUserService } from './generated/user-ts';
+import { createUserApiService } from './generated/user-ts';
 
-const userService = createUserService(client);
+const userService = createUserApiService(client);
 const user = await userService.getUser({ userId: 1001 });
 ```
 
@@ -175,37 +175,39 @@ skelc format --check --skel-in ./skel
 ```
 
 All non-LSP commands emit one pretty-printed JSON result on stdout; help remains
-text and LSP uses JSON-RPC. `schema list` returns a JSON
-array of declaration summaries, while `schema get TYPE SKEL_NAME` returns one
-complete normalized declaration object or JSON `null` when that declaration
-does not exist; both are successful query results. All schema commands operate
-on the complete domain, and every declaration retains its `pub` marker.
-Snapshot JSON is deterministically ordered and carries a versioned
-schema-format identifier; `schema snapshot` always writes that JSON to stdout.
-Redirect it to persist a snapshot. Source positions are used for live diff diagnostics
-but are not persisted in the artifact. Imported declarations remain opaque
-fully qualified references in the current domain's snapshot and are checked
-separately in their owning domain.
+text, and LSP uses JSON-RPC. `schema list` returns a JSON array of declaration
+summaries, while `schema get TYPE SKEL_NAME` returns one complete normalized
+declaration object or JSON `null` when that declaration does not exist; both are
+successful query results. All schema commands operate on the complete domain,
+and every declaration retains its `pub` marker.
+
+Snapshot JSON is deterministically ordered and carries a versioned schema-format
+identifier. `schema snapshot` always writes that JSON to stdout, so redirect it
+to persist a snapshot. Source positions are used for live diff diagnostics but
+are not persisted in the artifact. Imported declarations remain opaque fully
+qualified references in the current domain's snapshot and are checked separately
+in their owning domain.
+
 `schema diff` returns a structured JSON report, classifies changes as
 `COMPATIBLE`, `DANGEROUS`, or `BREAKING`, and always includes every detected
 change. Each item also carries an independent `change` value of `ADDED`,
 `REMOVED`, or `MODIFIED`. A domain-name change represents replacement of the
 schema identity: diff emits one `domain.name.changed` `BREAKING` / `MODIFIED`
-item and does not expand declaration or member changes beneath it.
-A diff accepts only Skel source files or directories; snapshots are not diff
-inputs. `--skel-in` selects the candidate. When `--baseline-skel-in` is omitted,
-skelc finds the candidate's Git repository and reads the same path from `HEAD`,
-so the default diff is the latest committed version against the working tree.
-If the repository, commit history, or path at `HEAD` is unavailable, provide an
-explicit `--baseline-skel-in`.
-A satisfied result returns exit code `0`; `check` and `format --check` return
-`1` after completing with an unsatisfied result, and a command failure returns
-`2`. Failures write a JSON object containing stable `code` and human-readable
-`message` fields to stdout; stderr is reserved for zero or more logs and
-diagnostics, encoded as JSONL by default. Use `--log-format text` for
-human-readable stderr. A completed diff returns exit code `0` regardless of its
-compatibility result. Public result and error types are available from
-`go.yorun.ai/skelc/command`.
+item and does not expand declaration or member changes beneath it. A diff accepts
+only Skel source files or directories; snapshots are not diff inputs. `--skel-in`
+selects the candidate. When `--baseline-skel-in` is omitted, skelc finds the
+candidate's Git repository and reads the same path from `HEAD`, so the default
+diff compares the latest committed version against the working tree. If the
+repository, commit history, or path at `HEAD` is unavailable, provide an explicit
+`--baseline-skel-in`.
+
+A satisfied result returns exit code `0`; `check` and `format --check` return `1`
+after completing with an unsatisfied result, and a command failure returns `2`.
+A completed diff returns exit code `0` regardless of its compatibility result.
+Failures write a JSON object with stable `code` and human-readable `message`
+fields to stdout; stderr is reserved for zero or more logs and diagnostics,
+encoded as JSONL by default. Use `--log-format text` for human-readable stderr.
+Public result and error types are available from `go.yorun.ai/skelc/command`.
 
 `format` modifies files in place after validating all inputs and returns
 `{changed,files}`. Use `--check` to report unformatted files and exit `1`
@@ -223,7 +225,27 @@ and semantic diagnostics per domain in one run. Invalid declarations are
 isolated so dependent errors do not cascade. Diagnostics include a stable code,
 severity, exact range, related locations, and an optional fix suggestion.
 
-`skelc lsp` provides recoverable syntax and workspace-wide semantic diagnostics, diagnostic quick fixes, editor formatting, keyword and type completion, declaration hover details, hierarchical document and workspace symbols, definition and reference navigation, and safe top-level declaration rename. It also exposes schema compatibility diagnostics, a CodeLens entry point, and the `skel.schema.diff` execute command. Compatibility checks compare the current in-memory domain with the same source file or directory at Git `HEAD`, or with an explicitly configured baseline. `BREAKING`, `DANGEROUS`, and optionally `COMPATIBLE` changes map to warning, information, and hint diagnostics; the command always returns the complete structured report. Duplicate declarations include the first declaration as related information. Semantic analysis uses the current in-memory contents of every document and merges same-domain files within a source directory only when it contains `domain.skel`; otherwise each file is an independent input. Like `skelc check`, it leaves imports unresolved; full import-graph validation happens during generation with explicit import path mappings. Parsed syntax trees are cached, and superseded analysis is cancelled immediately.
+`skelc lsp` runs the language server over stdio and provides:
+
+- Recoverable syntax and workspace-wide semantic diagnostics, with quick fixes
+- Editor formatting, keyword and type completion, and declaration hover details
+- Hierarchical document and workspace symbols, and definition and reference navigation
+- Safe rename of top-level declarations
+- Schema compatibility diagnostics, a CodeLens entry point, and the `skel.schema.diff` execute command
+
+Compatibility checks compare the current in-memory domain with the same source
+file or directory at Git `HEAD`, or with an explicitly configured baseline.
+`BREAKING`, `DANGEROUS`, and optionally `COMPATIBLE` changes map to warning,
+information, and hint diagnostics, and the command always returns the complete
+structured report. Duplicate declarations include the first declaration as
+related information.
+
+Semantic analysis uses the current in-memory contents of every document, and
+merges same-domain files within a source directory only when it contains
+`domain.skel`; otherwise each file is an independent input. Like `skelc check`,
+it leaves imports unresolved, so full import-graph validation happens during
+generation with explicit import path mappings. Parsed syntax trees are cached,
+and superseded analysis is cancelled immediately.
 
 ## Programmatic API
 
@@ -255,7 +277,9 @@ for _, diagnostic := range result.Diagnostics {
 
 `CompilerVersion` is required for backend Go output and must identify the actual skelc dependency version, at least `v0.17.1` (adjust the example to your pinned version). The CLI fills it automatically. Use `v0.0.0-dev` only when running a development build.
 
-The API also provides `CompileTypeScript` and `CompileSkeleton`. Parser and loader warnings use the same structured diagnostic model instead of a separate string list. Stable diagnostic code constants are exported by the root package and by `go.yorun.ai/skelc/diagnostic`, so integrations do not need to repeat raw code strings. All public-contract generators consume one validated `internal/codegen/common` projection, preventing Go, Skel, and TypeScript visibility rules from drifting. Generation marks ownership in every generated file, atomically replaces individual outputs, rolls back every affected target when a commit fails, removes stale marked files, and preserves unmarked files in a shared output directory.
+The API also provides `CompileTypeScript` and `CompileSkeleton`. Parser and loader warnings use the same structured diagnostic model instead of a separate string list. Stable diagnostic code constants are exported by the root package and by `go.yorun.ai/skelc/diagnostic`, so integrations do not need to repeat raw code strings. All public-contract generators consume one validated `internal/codegen/common` projection, preventing Go, Skel, and TypeScript visibility rules from drifting.
+
+Generation marks ownership in every generated file, atomically replaces individual outputs, rolls back every affected target when a commit fails, removes stale marked files, and preserves unmarked files in a shared output directory.
 
 Go integrations consume schema command JSON through the public facade
 `go.yorun.ai/skelc/schema`. It provides the response and nested wire types,

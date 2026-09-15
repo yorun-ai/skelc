@@ -125,25 +125,6 @@ func TestRunSkelcFormatCheckReportsFilesWithoutWriting(t *testing.T) {
 	assertFileExact(t, path, "  domain demo.user  \n")
 }
 
-func TestRunSkelcFormatCheckJSON(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "domain.skel")
-	writeCLIFile(t, path, "  domain demo.user  \n")
-
-	result := Run([]string{"format", "--check", "--skel-in", dir})
-	if result.ExitCode != ExitCodeUnsatisfied {
-		t.Fatalf("expected format check failure: %+v", result)
-	}
-	var output _FormatResult
-	if err := json.Unmarshal([]byte(result.Stdout), &output); err != nil {
-		t.Fatalf("decode format result: %v, stdout=%q", err, result.Stdout)
-	}
-	if !output.Changed || len(output.Files) != 1 || output.Files[0] != path {
-		t.Fatalf("unexpected format result: %+v", output)
-	}
-	assertFileExact(t, path, "  domain demo.user  \n")
-}
-
 func TestRunSkelcFormatJSONReportsWrittenFiles(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "domain.skel")

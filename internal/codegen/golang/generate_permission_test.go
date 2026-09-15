@@ -1,15 +1,17 @@
 package golang_test
 
 import (
-	"go.yorun.ai/skelc"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"go.yorun.ai/skelc"
+	"go.yorun.ai/skelc/internal/testutil"
 )
 
 func TestPermissionGenerationUsesStrings(t *testing.T) {
+	testutil.RequireToolchain(t)
 	root := t.TempDir()
 	input := filepath.Join(root, "domain.skel")
 	contract := `domain demo
@@ -56,12 +58,7 @@ service UserService {
 	if _, err := skelc.CompileGolang(skelc.Input{SkelIn: public}, skelc.GolangOption{CompilerVersion: "v0.0.0-dev", Out: filepath.Join(root, "roundtrip")}); err != nil {
 		t.Fatal(err)
 	}
-	command := exec.Command("go", "test", "-mod=mod", "./...")
-	command.Dir = out
-	command.Env = append(os.Environ(), "GOWORK=off")
-	if output, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("generated module: %v\n%s", err, output)
-	}
+	testutil.Go(t, out, "test", "-mod=mod", "./...")
 }
 
 func TestPermissionCodeArgumentNameGeneration(t *testing.T) {

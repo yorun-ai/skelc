@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/model"
 )
 
@@ -61,14 +62,14 @@ func TestCastData(t *testing.T) {
 func TestCastDataBuildsCloneMethod(t *testing.T) {
 	child := &model.Data{
 		Name:    "Child",
-		Members: []*model.DataMember{{Name: "name", Type: stringTypeForTest()}},
+		Members: []*model.DataMember{{Name: "name", Type: codegentest.StringType()}},
 	}
 	data := castCloneableData(&model.Data{
 		Name: "Payload",
 		Members: []*model.DataMember{
-			{Name: "content", Type: scalarTypeForTest(model.ScalarBinary)},
-			{Name: "children", Type: listTypeForTest(dataTypeForTest(child))},
-			{Name: "labels", Type: mapTypeForTest(stringTypeForTest(), stringTypeForTest())},
+			{Name: "content", Type: codegentest.ScalarType(model.ScalarBinary)},
+			{Name: "children", Type: codegentest.ListType(codegentest.DataType(child))},
+			{Name: "labels", Type: codegentest.MapType(codegentest.StringType(), codegentest.StringType())},
 		},
 	})
 
@@ -94,12 +95,12 @@ func TestCastDataBuildsCloneMethod(t *testing.T) {
 }
 
 func TestCastGenericDataBuildsCloneByMethod(t *testing.T) {
-	tItem := typeParamForTest("TItem")
+	tItem := codegentest.TypeParam("TItem")
 	data := castCloneableData(&model.Data{
 		Name:           "Page",
 		TypeParameters: []*model.TypeParameter{tItem},
 		Members: []*model.DataMember{
-			{Name: "items", Type: listTypeForTest(typeParamTypeForTest(tItem))},
+			{Name: "items", Type: codegentest.ListType(codegentest.TypeParamType(tItem))},
 		},
 	})
 
@@ -117,19 +118,19 @@ func TestCastGenericDataBuildsCloneByMethod(t *testing.T) {
 }
 
 func TestCastDataCallsNestedGenericCloneBy(t *testing.T) {
-	tItem := typeParamForTest("TItem")
+	tItem := codegentest.TypeParam("TItem")
 	page := &model.Data{
 		Name:           "Page",
 		TypeParameters: []*model.TypeParameter{tItem},
 		Members: []*model.DataMember{
-			{Name: "items", Type: listTypeForTest(typeParamTypeForTest(tItem))},
+			{Name: "items", Type: codegentest.ListType(codegentest.TypeParamType(tItem))},
 		},
 	}
-	user := &model.Data{Name: "User", Members: []*model.DataMember{{Name: "name", Type: stringTypeForTest()}}}
+	user := &model.Data{Name: "User", Members: []*model.DataMember{{Name: "name", Type: codegentest.StringType()}}}
 	data := castCloneableData(&model.Data{
 		Name: "Users",
 		Members: []*model.DataMember{
-			{Name: "page", Type: dataTypeForTest(page, dataTypeForTest(user))},
+			{Name: "page", Type: codegentest.DataType(page, codegentest.DataType(user))},
 		},
 	})
 
@@ -142,7 +143,7 @@ func TestCastDataCallsNestedGenericCloneBy(t *testing.T) {
 
 func TestCastDataCallsCloneForImportedMember(t *testing.T) {
 	external := &model.Data{Name: "User", Domain: "identity.user"}
-	externalType := dataTypeForTest(external)
+	externalType := codegentest.DataType(external)
 	externalType.ExternalDomain = "identity.user"
 	externalType.ExternalImportPath = "example.com/identity"
 	externalType.ExternalAlias = "userpub"
@@ -164,7 +165,7 @@ func TestCastDataCallsCloneForImportedMember(t *testing.T) {
 
 func TestCastDataBuildsCloneForRecursiveData(t *testing.T) {
 	node := &model.Data{Name: "Node"}
-	node.Members = []*model.DataMember{{Name: "children", Type: listTypeForTest(dataTypeForTest(node))}}
+	node.Members = []*model.DataMember{{Name: "children", Type: codegentest.ListType(codegentest.DataType(node))}}
 	data := castCloneableData(node)
 	if !data.Clone {
 		t.Fatalf("recursive data must expose Clone: %+v", data)

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/codegen/golang"
 	"go.yorun.ai/skelc/internal/model"
 )
@@ -16,16 +17,16 @@ func TestGeneratorRendersNullableMapAndServiceHooks(t *testing.T) {
 	profile := &model.Data{
 		Name: "Profile",
 		Members: []*model.DataMember{
-			{Name: "aliases", Type: listTypeForTest(stringTypeForTest())},
+			{Name: "aliases", Type: codegentest.ListType(codegentest.StringType())},
 		},
 	}
 	user := &model.Data{
 		Name: "User",
 		Members: []*model.DataMember{
-			{Name: "profile", Type: dataTypeForTest(profile)},
-			{Name: "labels", Type: nullableTypeForTest(mapTypeForTest(stringTypeForTest(), stringTypeForTest()))},
-			{Name: "friends", Type: listTypeForTest(nullableTypeForTest(dataTypeForTest(profile)))},
-			{Name: "profilesByName", Type: mapTypeForTest(stringTypeForTest(), nullableTypeForTest(dataTypeForTest(profile)))},
+			{Name: "profile", Type: codegentest.DataType(profile)},
+			{Name: "labels", Type: codegentest.NullableType(codegentest.MapType(codegentest.StringType(), codegentest.StringType()))},
+			{Name: "friends", Type: codegentest.ListType(codegentest.NullableType(codegentest.DataType(profile)))},
+			{Name: "profilesByName", Type: codegentest.MapType(codegentest.StringType(), codegentest.NullableType(codegentest.DataType(profile)))},
 		},
 	}
 	pkg := newModelDomainForTest(t, model.DomainSpec{
@@ -37,12 +38,12 @@ func TestGeneratorRendersNullableMapAndServiceHooks(t *testing.T) {
 				Methods: []*model.Method{
 					methodForTest("UserService", &model.Method{
 						Name:       "listUsers",
-						ResultType: listTypeForTest(dataTypeForTest(user)),
+						ResultType: codegentest.ListType(codegentest.DataType(user)),
 						Arguments: []*model.Argument{
-							{Name: "friends", Type: listTypeForTest(nullableTypeForTest(dataTypeForTest(profile)))},
+							{Name: "friends", Type: codegentest.ListType(codegentest.NullableType(codegentest.DataType(profile)))},
 							{
 								Name: "profilesByName",
-								Type: mapTypeForTest(stringTypeForTest(), nullableTypeForTest(dataTypeForTest(profile))),
+								Type: codegentest.MapType(codegentest.StringType(), codegentest.NullableType(codegentest.DataType(profile))),
 							},
 						},
 					}),

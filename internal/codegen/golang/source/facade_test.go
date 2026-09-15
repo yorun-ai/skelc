@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/codegen/golang/view"
 	"go.yorun.ai/skelc/internal/model"
 )
@@ -14,13 +15,13 @@ func TestFacadeGoRendersActorAuthService(t *testing.T) {
 	credential := &model.Data{
 		Name: "PublicActorCredential",
 		Members: []*model.DataMember{
-			{Name: "token", Type: stringTypeForTest()},
+			{Name: "token", Type: codegentest.StringType()},
 		},
 	}
 	info := &model.Data{
 		Name: "PublicActorInfo",
 		Members: []*model.DataMember{
-			{Name: "userId", Type: stringTypeForTest()},
+			{Name: "userId", Type: codegentest.StringType()},
 		},
 	}
 	pkg := buildModelDomainForTest(t, model.DomainSpec{
@@ -29,7 +30,7 @@ func TestFacadeGoRendersActorAuthService(t *testing.T) {
 			{
 				Pub:            true,
 				Name:           "PublicActor",
-				Vias:           []*model.ActorVia{actorViaForTest(model.ActorViaClient)},
+				Vias:           []*model.ActorVia{codegentest.ActorVia(model.ActorViaClient)},
 				AuthEnabled:    true,
 				AuthCredential: credential,
 				AuthInfo:       info,

@@ -1,6 +1,7 @@
 package golang_test
 
 import (
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/codegen/golang"
 	"go.yorun.ai/skelc/internal/model"
 	"os"
@@ -29,12 +30,12 @@ func TestGeneratorRendersDescriptionComments(t *testing.T) {
 				Description: "Avatar URL",
 				Example:     `"https://xxx.com/a.png"`,
 				Sensitive:   true,
-				Type:        nullableTypeForTest(stringTypeForTest()),
+				Type:        codegentest.NullableType(codegentest.StringType()),
 			},
 			{
 				Name:        "status",
 				Description: "User status",
-				Type:        enumTypeForTest(userStatus),
+				Type:        codegentest.EnumType(userStatus),
 			},
 		},
 	}
@@ -44,9 +45,9 @@ func TestGeneratorRendersDescriptionComments(t *testing.T) {
 		Enums:       []*model.Enum{userStatus},
 		Data:        []*model.Data{userProfile},
 		Actors: []*model.Actor{
-			{Name: "ClientActor", Vias: []*model.ActorVia{actorViaForTest(model.ActorViaClient)}},
-			{Name: "PartnerActor", Vias: []*model.ActorVia{actorViaForTest(model.ActorViaAgent)}},
-			{Name: "OpenAPIActor", Vias: []*model.ActorVia{actorViaForTest(model.ActorViaOpenAPI)}},
+			{Name: "ClientActor", Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaClient)}},
+			{Name: "PartnerActor", Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaAgent)}},
+			{Name: "OpenAPIActor", Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaOpenAPI)}},
 		},
 		Services: []*model.Service{
 			{
@@ -62,14 +63,14 @@ func TestGeneratorRendersDescriptionComments(t *testing.T) {
 						OutputDescription:  "User information",
 						OutputExample:      `{ id:10001, avatarUrl:"https://xxx.com/a.png" }`,
 						ResultSensitive:    true,
-						ResultType:         dataTypeForTest(userProfile),
+						ResultType:         codegentest.DataType(userProfile),
 						Arguments: []*model.Argument{
 							{
 								Name:        "userId",
 								Description: "User ID",
 								Example:     `"10001"`,
 								Sensitive:   true,
-								Type:        stringTypeForTest(),
+								Type:        codegentest.StringType(),
 							},
 						},
 					}),
@@ -92,7 +93,7 @@ func TestGeneratorRendersDescriptionComments(t *testing.T) {
 								Description: "Start time",
 								Example:     `"2026-05-04T12:00:00"`,
 								Sensitive:   true,
-								Type:        localDateTimeTypeForTest(),
+								Type:        codegentest.LocalDateTimeType(),
 							},
 						},
 					}),
@@ -106,7 +107,7 @@ func TestGeneratorRendersDescriptionComments(t *testing.T) {
 				Lifecycle: model.ConfigLifecycleEternal,
 				Sensitive: true,
 				Members: []*model.DataMember{
-					{Name: "token", Type: stringTypeForTest()},
+					{Name: "token", Type: codegentest.StringType()},
 				},
 			},
 		},
@@ -116,7 +117,7 @@ func TestGeneratorRendersDescriptionComments(t *testing.T) {
 				Description: "User created event",
 				Sensitive:   true,
 				Members: []*model.DataMember{
-					{Name: "userId", Description: "User ID", Sensitive: true, Type: stringTypeForTest()},
+					{Name: "userId", Description: "User ID", Sensitive: true, Type: codegentest.StringType()},
 				},
 			},
 		},

@@ -7,20 +7,28 @@ output_root=${1:-"$script_dir/generated"}
 
 cd "$repo_root"
 
-GOWORK=off go run ./cmd/skelc check \
+# Build the CLI once; invoking it through `go run` would rebuild it every time.
+# -buildvcs=false keeps the reported compiler version at v0.0.0-dev, as `go run`
+# does, instead of the VCS pseudo-version that `go build` would otherwise stamp.
+build_dir=$(mktemp -d)
+trap 'rm -rf "$build_dir"' EXIT
+GOWORK=off go build -buildvcs=false -o "$build_dir/skelc" ./cmd/skelc
+skelc="$build_dir/skelc"
+
+"$skelc" check \
   --skel-in "$script_dir/skel"
 
-GOWORK=off go run ./cmd/skelc gen skel \
+"$skelc" gen skel \
   --pub \
   --skel-in "$script_dir/skel" \
   --skel-out "$output_root/skel"
 
-GOWORK=off go run ./cmd/skelc gen go-module \
+"$skelc" gen go-module \
   --skel-in "$script_dir/skel" \
   --go-out "$output_root/go" \
   --go-module example.com/yorun/quickstart
 
-GOWORK=off go run ./cmd/skelc gen ts --api \
+"$skelc" gen ts --api \
   --skel-in "$script_dir/skel" \
   --ts-out "$output_root/typescript" \
   --ts-as-module \

@@ -1,6 +1,7 @@
 package vineschema
 
 import (
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/codegen/golang/view"
 	"go.yorun.ai/skelc/internal/model"
 	contractschema "go.yorun.ai/skelc/internal/schema"
@@ -23,7 +24,7 @@ func TestVineSchemaAdaptsNormalizedSchemaProjection(t *testing.T) {
 			Audiences: []*model.ActorAudience{new(model.ActorAudience{Actor: "Client", Via: string(model.ActorViaClient)})},
 			Methods: []*model.Method{new(model.Method{
 				Name: "get", Description: "Gets a profile.", Auth: model.AuthModeNoAuth,
-				ResultType: dataTypeForTest(profile),
+				ResultType: codegentest.DataType(profile),
 			})},
 		})},
 	})
@@ -62,7 +63,7 @@ func TestBuildDomainSchemaCopiesHashes(t *testing.T) {
 	userProfile := &model.Data{
 		Name: "UserProfile",
 		Members: []*model.DataMember{
-			{Name: "userId", Type: stringTypeForTest()},
+			{Name: "userId", Type: codegentest.StringType()},
 		},
 	}
 	pkg := buildModelDomainForTest(t, model.DomainSpec{
@@ -71,14 +72,14 @@ func TestBuildDomainSchemaCopiesHashes(t *testing.T) {
 		Data:        []*model.Data{userProfile},
 		Actors: []*model.Actor{{
 			Name: "ClientActor",
-			Vias: []*model.ActorVia{actorViaForTest(model.ActorViaClient)},
+			Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaClient)},
 		}},
 		Services: []*model.Service{{
 			Name:      "UserService",
 			Audiences: []*model.ActorAudience{{Actor: "ClientActor", Via: string(model.ActorViaClient)}},
 			Methods: []*model.Method{{
 				Name:       "getUser",
-				ResultType: dataTypeForTest(userProfile),
+				ResultType: codegentest.DataType(userProfile),
 			}},
 		}},
 	})
@@ -136,7 +137,7 @@ func TestBuildDomainSchemaIncludesSensitiveMetadata(t *testing.T) {
 		Members: []*model.DataMember{{
 			Name:      "token",
 			Sensitive: true,
-			Type:      stringTypeForTest(),
+			Type:      codegentest.StringType(),
 		}},
 	}
 	pkg := buildModelDomainForTest(t, model.DomainSpec{
@@ -151,9 +152,9 @@ func TestBuildDomainSchemaIncludesSensitiveMetadata(t *testing.T) {
 				Arguments: []*model.Argument{{
 					Name:      "token",
 					Sensitive: true,
-					Type:      stringTypeForTest(),
+					Type:      codegentest.StringType(),
 				}},
-				ResultType: dataTypeForTest(sensitiveData),
+				ResultType: codegentest.DataType(sensitiveData),
 			}},
 		}},
 		Tasks: []*model.Task{{
@@ -164,7 +165,7 @@ func TestBuildDomainSchemaIncludesSensitiveMetadata(t *testing.T) {
 				Arguments: []*model.Argument{{
 					Name:      "token",
 					Sensitive: true,
-					Type:      stringTypeForTest(),
+					Type:      codegentest.StringType(),
 				}},
 			}},
 		}},
@@ -197,13 +198,13 @@ func TestBuildDomainSchemaSplitFullFlagAndContent(t *testing.T) {
 		Pub:  true,
 		Name: "PubData",
 		Members: []*model.DataMember{
-			{Name: "id", Type: stringTypeForTest()},
+			{Name: "id", Type: codegentest.StringType()},
 		},
 	}
 	regularData := &model.Data{
 		Name: "RegularData",
 		Members: []*model.DataMember{
-			{Name: "id", Type: stringTypeForTest()},
+			{Name: "id", Type: codegentest.StringType()},
 		},
 	}
 	pkg := buildModelDomainForTest(t, model.DomainSpec{
@@ -214,13 +215,13 @@ func TestBuildDomainSchemaSplitFullFlagAndContent(t *testing.T) {
 				Pub:  true,
 				Name: "PubService",
 				Methods: []*model.Method{
-					{Name: "getPub", ResultType: dataTypeForTest(pubData)},
+					{Name: "getPub", ResultType: codegentest.DataType(pubData)},
 				},
 			},
 			{
 				Name: "RegularService",
 				Methods: []*model.Method{
-					{Name: "getRegular", ResultType: dataTypeForTest(regularData)},
+					{Name: "getRegular", ResultType: codegentest.DataType(regularData)},
 				},
 			},
 		},
@@ -271,7 +272,7 @@ func TestBuildDomainSchemaConfigLifecycleUsesConfValue(t *testing.T) {
 			Name:      "UserConfig",
 			Lifecycle: model.ConfigLifecycleEternal,
 			Members: []*model.DataMember{
-				{Name: "pageSize", Type: intTypeForTest()},
+				{Name: "pageSize", Type: codegentest.IntType()},
 			},
 		}},
 	})
@@ -301,18 +302,18 @@ func TestBuildDomainSchemaIncludesActorAuthMethod(t *testing.T) {
 		Name: "demo.user",
 		Actors: []*model.Actor{{
 			Name:        "ClientActor",
-			Vias:        []*model.ActorVia{actorViaForTest(model.ActorViaClient)},
+			Vias:        []*model.ActorVia{codegentest.ActorVia(model.ActorViaClient)},
 			AuthEnabled: true,
 			AuthCredential: &model.Data{
 				Name: "ClientActorCredential",
 				Members: []*model.DataMember{
-					{Name: "token", Type: stringTypeForTest()},
+					{Name: "token", Type: codegentest.StringType()},
 				},
 			},
 			AuthInfo: &model.Data{
 				Name: "ClientActorInfo",
 				Members: []*model.DataMember{
-					{Name: "userId", Type: stringTypeForTest()},
+					{Name: "userId", Type: codegentest.StringType()},
 				},
 			},
 		}},

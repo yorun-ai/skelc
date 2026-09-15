@@ -3,7 +3,6 @@ package lsp
 import (
 	"encoding/json"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -13,18 +12,16 @@ import (
 	"go.lsp.dev/uri"
 	"go.yorun.ai/skelc/internal/lsp/features"
 	"go.yorun.ai/skelc/internal/schema"
+	"go.yorun.ai/skelc/internal/testutil"
 )
 
 func TestSchemaCompatibilityCodeLensAndCommandUseInMemoryDocument(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "contract.skel")
 	require.NoError(t, os.WriteFile(path, []byte("domain demo\ndata User { id: int }\n"), 0o600))
-	runCompatibilityGit(t, root, "init")
-	runCompatibilityGit(t, root, "config", "user.name", "Skel Test")
-	runCompatibilityGit(t, root, "config", "user.email", "skel@example.com")
 	require.NoError(t, os.WriteFile(filepath.Join(root, "other.skel"), []byte("domain demo\ndata User { id: bool }\n"), 0o600))
-	runCompatibilityGit(t, root, "add", "contract.skel", "other.skel")
-	runCompatibilityGit(t, root, "commit", "-m", "baseline")
+	testutil.InitRepository(t, root)
+	testutil.Commit(t, root, "baseline", "contract.skel", "other.skel")
 
 	server := newServer()
 	documentURI := uri.File(path)
@@ -63,11 +60,4 @@ func TestInitializeAdvertisesSchemaCompatibilityCapabilities(t *testing.T) {
 	assert.Equal(t, _SchemaCompatibilitySettings{
 		Diagnostics: true, IncludeCompatible: true, CodeLens: false, Baseline: "../baseline",
 	}, server.schemaCompatibility)
-}
-
-func runCompatibilityGit(t *testing.T, directory string, args ...string) {
-	t.Helper()
-	command := exec.Command("git", append([]string{"-C", directory}, args...)...)
-	content, err := command.CombinedOutput()
-	require.NoError(t, err, string(content))
 }

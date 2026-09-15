@@ -2,7 +2,6 @@ package analysis
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -13,18 +12,16 @@ import (
 	"go.yorun.ai/skelc/internal/compiler"
 	"go.yorun.ai/skelc/internal/lsp/index"
 	"go.yorun.ai/skelc/internal/schema"
+	"go.yorun.ai/skelc/internal/testutil"
 )
 
 func TestCompatibilityDiagnosticsUseInMemorySourceAndImpactSeverity(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "contract.skel")
 	require.NoError(t, os.WriteFile(path, []byte("domain demo\ndata User { id: int }\n"), 0o600))
-	runGit(t, root, "init")
-	runGit(t, root, "config", "user.name", "Skel Test")
-	runGit(t, root, "config", "user.email", "skel@example.com")
 	require.NoError(t, os.WriteFile(filepath.Join(root, "other.skel"), []byte("domain demo\ndata User { id: bool }\n"), 0o600))
-	runGit(t, root, "add", "contract.skel", "other.skel")
-	runGit(t, root, "commit", "-m", "baseline")
+	testutil.InitRepository(t, root)
+	testutil.Commit(t, root, "baseline", "contract.skel", "other.skel")
 
 	documentURI := uri.File(path)
 	document := index.Build(documentURI, path, "domain demo\ndata User { id: string }\n", 2)
@@ -47,11 +44,8 @@ func TestCompatibilityDiagnosticsPlaceRemovedDeclarationAtDomain(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "contract.skel")
 	require.NoError(t, os.WriteFile(path, []byte("domain demo\ndata User {}\n"), 0o600))
-	runGit(t, root, "init")
-	runGit(t, root, "config", "user.name", "Skel Test")
-	runGit(t, root, "config", "user.email", "skel@example.com")
-	runGit(t, root, "add", "contract.skel")
-	runGit(t, root, "commit", "-m", "baseline")
+	testutil.InitRepository(t, root)
+	testutil.Commit(t, root, "baseline", "contract.skel")
 
 	documentURI := uri.File(path)
 	document := index.Build(documentURI, path, "domain demo\n", 2)
@@ -85,11 +79,4 @@ func TestCompatibilityDiagnosticsReportExplicitBaselineFailure(t *testing.T) {
 	result := diagnostics[documentURI][0]
 	assert.Equal(t, protocol.String("schema.baseline"), result.Code)
 	assert.Contains(t, result.Message, baselinePath)
-}
-
-func runGit(t *testing.T, directory string, args ...string) {
-	t.Helper()
-	command := exec.Command("git", append([]string{"-C", directory}, args...)...)
-	content, err := command.CombinedOutput()
-	require.NoError(t, err, string(content))
 }

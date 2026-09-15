@@ -18,7 +18,7 @@ data User {
 }
 `, 1, true)
 
-	documentResult, err := server.DocumentSymbol(t.Context(), &protocol.DocumentSymbolParams{
+	documentResult, err := server.service().DocumentSymbol(t.Context(), &protocol.DocumentSymbolParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
 	})
 	require.NoError(t, err)
@@ -27,7 +27,7 @@ data User {
 	require.Len(t, documentSymbols[0].Children, 1)
 	assert.Equal(t, "id", documentSymbols[0].Children[0].Name)
 
-	workspaceResult, err := server.Symbols(t.Context(), &protocol.WorkspaceSymbolParams{Query: "id"})
+	workspaceResult, err := server.service().Symbols(t.Context(), &protocol.WorkspaceSymbolParams{Query: "id"})
 	require.NoError(t, err)
 	workspaceSymbols := workspaceResult.(protocol.SymbolInformationSlice)
 	require.Len(t, workspaceSymbols, 1)
@@ -52,7 +52,7 @@ resource User {
 }
 `, 1, true)
 
-	documentResult, err := server.DocumentSymbol(t.Context(), &protocol.DocumentSymbolParams{
+	documentResult, err := server.service().DocumentSymbol(t.Context(), &protocol.DocumentSymbolParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
 	})
 	require.NoError(t, err)

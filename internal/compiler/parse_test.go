@@ -1,7 +1,6 @@
 package compiler
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -11,8 +10,8 @@ import (
 
 func TestParseDirectory(t *testing.T) {
 	skelDir := t.TempDir()
-	writeParseFile(t, filepath.Join(skelDir, "domain.skel"), "@desc(\"User domain\")\ndomain demo.user\n")
-	writeParseFile(t, filepath.Join(skelDir, "user.skel"), `
+	writeFile(t, filepath.Join(skelDir, "domain.skel"), describedUserDomain)
+	writeFile(t, filepath.Join(skelDir, "user.skel"), `
 domain demo.user
 
 actor ClientActor { via client {} }
@@ -61,22 +60,18 @@ func TestParseRequiresTransitiveImports(t *testing.T) {
 	appDir := filepath.Join(root, "app")
 	userDir := filepath.Join(root, "user")
 	bookerDir := filepath.Join(root, "booker")
-	for _, dir := range []string{appDir, userDir, bookerDir} {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			t.Fatalf("create %s: %v", dir, err)
-		}
-	}
+	mustMkdirAll(t, appDir, userDir, bookerDir)
 
-	writeParseFile(t, filepath.Join(appDir, "domain.skel"), "domain app\n")
-	writeParseFile(t, filepath.Join(appDir, "actor.skel"), `
+	writeFile(t, filepath.Join(appDir, "domain.skel"), "domain app\n")
+	writeFile(t, filepath.Join(appDir, "actor.skel"), `
 domain app
 
 pub actor UserActor {
     via client {}
 }
 `)
-	writeParseFile(t, filepath.Join(userDir, "domain.skel"), "domain user\n")
-	writeParseFile(t, filepath.Join(userDir, "service.skel"), `
+	writeFile(t, filepath.Join(userDir, "domain.skel"), "domain user\n")
+	writeFile(t, filepath.Join(userDir, "service.skel"), `
 domain user
 
 import app
@@ -93,8 +88,8 @@ pub data UserSummary {
     id: string
 }
 `)
-	writeParseFile(t, filepath.Join(bookerDir, "domain.skel"), "domain booker\n")
-	writeParseFile(t, filepath.Join(bookerDir, "types.skel"), `
+	writeFile(t, filepath.Join(bookerDir, "domain.skel"), "domain booker\n")
+	writeFile(t, filepath.Join(bookerDir, "types.skel"), `
 domain booker
 
 import user
@@ -139,14 +134,10 @@ func TestParseNormalizesImportedDomainLocalTypeReferences(t *testing.T) {
 	root := t.TempDir()
 	baseDir := filepath.Join(root, "base")
 	appDir := filepath.Join(root, "app")
-	for _, dir := range []string{baseDir, appDir} {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			t.Fatalf("create %s: %v", dir, err)
-		}
-	}
+	mustMkdirAll(t, baseDir, appDir)
 
-	writeParseFile(t, filepath.Join(baseDir, "domain.skel"), "domain base\n")
-	writeParseFile(t, filepath.Join(baseDir, "types.skel"), `
+	writeFile(t, filepath.Join(baseDir, "domain.skel"), "domain base\n")
+	writeFile(t, filepath.Join(baseDir, "types.skel"), `
 domain base
 
 pub enum ItemType {
@@ -183,8 +174,8 @@ pub actor BaseActor {
     }
 }
 `)
-	writeParseFile(t, filepath.Join(appDir, "domain.skel"), "domain app\n")
-	writeParseFile(t, filepath.Join(appDir, "types.skel"), `
+	writeFile(t, filepath.Join(appDir, "domain.skel"), "domain app\n")
+	writeFile(t, filepath.Join(appDir, "types.skel"), `
 domain app
 
 import base
@@ -256,22 +247,18 @@ func TestParseNormalizesTransitiveImportedTypeReferences(t *testing.T) {
 	baseDir := filepath.Join(root, "base")
 	userDir := filepath.Join(root, "user")
 	appDir := filepath.Join(root, "app")
-	for _, dir := range []string{baseDir, userDir, appDir} {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			t.Fatalf("create %s: %v", dir, err)
-		}
-	}
+	mustMkdirAll(t, baseDir, userDir, appDir)
 
-	writeParseFile(t, filepath.Join(baseDir, "domain.skel"), "domain base\n")
-	writeParseFile(t, filepath.Join(baseDir, "types.skel"), `
+	writeFile(t, filepath.Join(baseDir, "domain.skel"), "domain base\n")
+	writeFile(t, filepath.Join(baseDir, "types.skel"), `
 domain base
 
 pub enum UserStatus {
     ACTIVE
 }
 `)
-	writeParseFile(t, filepath.Join(userDir, "domain.skel"), "domain user\n")
-	writeParseFile(t, filepath.Join(userDir, "types.skel"), `
+	writeFile(t, filepath.Join(userDir, "domain.skel"), "domain user\n")
+	writeFile(t, filepath.Join(userDir, "types.skel"), `
 domain user
 
 import base
@@ -280,8 +267,8 @@ pub data User {
     status: base.UserStatus
 }
 `)
-	writeParseFile(t, filepath.Join(appDir, "domain.skel"), "domain app\n")
-	writeParseFile(t, filepath.Join(appDir, "types.skel"), `
+	writeFile(t, filepath.Join(appDir, "domain.skel"), "domain app\n")
+	writeFile(t, filepath.Join(appDir, "types.skel"), `
 domain app
 
 import user
@@ -312,18 +299,14 @@ func TestParseRejectsCyclicTransitiveImports(t *testing.T) {
 	firstDir := filepath.Join(root, "first")
 	secondDir := filepath.Join(root, "second")
 	targetDir := filepath.Join(root, "target")
-	for _, dir := range []string{firstDir, secondDir, targetDir} {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			t.Fatalf("create %s: %v", dir, err)
-		}
-	}
+	mustMkdirAll(t, firstDir, secondDir, targetDir)
 
-	writeParseFile(t, filepath.Join(firstDir, "domain.skel"), "domain first\n")
-	writeParseFile(t, filepath.Join(firstDir, "types.skel"), "domain first\nimport second\n")
-	writeParseFile(t, filepath.Join(secondDir, "domain.skel"), "domain second\n")
-	writeParseFile(t, filepath.Join(secondDir, "types.skel"), "domain second\nimport first\n")
-	writeParseFile(t, filepath.Join(targetDir, "domain.skel"), "domain target\n")
-	writeParseFile(t, filepath.Join(targetDir, "types.skel"), "domain target\nimport first\n")
+	writeFile(t, filepath.Join(firstDir, "domain.skel"), "domain first\n")
+	writeFile(t, filepath.Join(firstDir, "types.skel"), "domain first\nimport second\n")
+	writeFile(t, filepath.Join(secondDir, "domain.skel"), "domain second\n")
+	writeFile(t, filepath.Join(secondDir, "types.skel"), "domain second\nimport first\n")
+	writeFile(t, filepath.Join(targetDir, "domain.skel"), "domain target\n")
+	writeFile(t, filepath.Join(targetDir, "types.skel"), "domain target\nimport first\n")
 
 	_, err := Compile(Option{
 		SkelIn: targetDir,
@@ -397,7 +380,7 @@ task DemoTask {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			skelFile := filepath.Join(t.TempDir(), "types.skel")
-			writeParseFile(t, skelFile, `
+			writeFile(t, skelFile, `
 domain demo.types
 
 data Wrapper<TItem> {
@@ -416,7 +399,7 @@ data Wrapper<TItem> {
 
 func TestParseRejectsConfigReferenceFromActorAuthInfo(t *testing.T) {
 	skelFile := filepath.Join(t.TempDir(), "types.skel")
-	writeParseFile(t, skelFile, `
+	writeFile(t, skelFile, `
 domain demo.types
 
 config SessionConfig eternal {
@@ -467,8 +450,8 @@ actor DemoActor {
 
 func TestParseImportDoesNotRequireImportedDomains(t *testing.T) {
 	skelDir := t.TempDir()
-	writeParseFile(t, filepath.Join(skelDir, "domain.skel"), "domain demo.booker\n")
-	writeParseFile(t, filepath.Join(skelDir, "types.skel"), `
+	writeFile(t, filepath.Join(skelDir, "domain.skel"), "domain demo.booker\n")
+	writeFile(t, filepath.Join(skelDir, "types.skel"), `
 domain demo.booker
 
 import demo.user as user
@@ -493,7 +476,7 @@ data Booking {
 
 func TestParseReturnsErrorWhenDomainFileMissing(t *testing.T) {
 	skelDir := t.TempDir()
-	writeParseFile(t, filepath.Join(skelDir, "user.skel"), "data User { id: string }\n")
+	writeFile(t, filepath.Join(skelDir, "user.skel"), "data User { id: string }\n")
 
 	_, err := Compile(Option{SkelIn: skelDir})
 	expectErrorContains(t, err, "domain.skel not found")
@@ -501,7 +484,7 @@ func TestParseReturnsErrorWhenDomainFileMissing(t *testing.T) {
 
 func TestParseSingleSkelFile(t *testing.T) {
 	skelFile := filepath.Join(t.TempDir(), "user.skel")
-	writeParseFile(t, skelFile, `@desc("User domain")
+	writeFile(t, skelFile, `@desc("User domain")
 domain demo.user
 
 data User {
@@ -519,9 +502,9 @@ data User {
 	}
 }
 
-func TestParsePanicsForInvalidSkel(t *testing.T) {
+func TestCompileReturnsSemanticErrorForMissingDefinition(t *testing.T) {
 	skelFile := filepath.Join(t.TempDir(), "user.skel")
-	writeParseFile(t, skelFile, `domain demo.user
+	writeFile(t, skelFile, `domain demo.user
 
 actor ClientActor { via client {} }
 
@@ -537,12 +520,5 @@ service UserService {
 	_, err := Compile(Option{SkelIn: skelFile})
 	if err == nil || !strings.Contains(err.Error(), "definition of MissingUser not found") {
 		t.Fatalf("expected semantic error, got %v", err)
-	}
-}
-
-func writeParseFile(t *testing.T, path string, content string) {
-	t.Helper()
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write %s: %v", path, err)
 	}
 }

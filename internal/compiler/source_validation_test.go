@@ -15,7 +15,7 @@ func TestParseReturnsErrorWhenDomainNameMissing(t *testing.T) {
 
 func TestParseReturnsErrorWhenSkelDomainMismatches(t *testing.T) {
 	files := validationFilesForTest(t,
-		"@desc(\"User domain\")\ndomain demo.user\n",
+		describedUserDomain,
 		"domain demo.account\ndata User { id: string }\n",
 	)
 	_, err := parseDomainFilesWithImports(findDomainFileForTest(t, files), files, nil)
@@ -24,7 +24,7 @@ func TestParseReturnsErrorWhenSkelDomainMismatches(t *testing.T) {
 
 func TestParseDirectorySkelFileWithoutDomainReturnsError(t *testing.T) {
 	files := validationFilesForTest(t,
-		"@desc(\"User domain\")\ndomain demo.user\n",
+		describedUserDomain,
 		"data User { id: string }\n",
 	)
 	_, err := parseDomainFilesWithImports(findDomainFileForTest(t, files), files, nil)
@@ -33,7 +33,7 @@ func TestParseDirectorySkelFileWithoutDomainReturnsError(t *testing.T) {
 
 func TestParseReturnsErrorWhenDirectorySkelFileDeclaresDomainDecorator(t *testing.T) {
 	files := validationFilesForTest(t,
-		"@desc(\"User domain\")\ndomain demo.user\n",
+		describedUserDomain,
 		"@desc(\"Not allowed\")\ndomain demo.user\ndata User { id: string }\n",
 	)
 	_, err := parseDomainFilesWithImports(findDomainFileForTest(t, files), files, nil)

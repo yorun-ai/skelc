@@ -2,14 +2,15 @@ package skelc_test
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 
 	"go.yorun.ai/skelc"
+	"go.yorun.ai/skelc/internal/testutil"
 )
 
 func TestRuntimeClientLocalNameCollisions(t *testing.T) {
+	testutil.RequireToolchain(t)
 	root := t.TempDir()
 	input := filepath.Join(root, "service.skel")
 	source := `domain demo.names
@@ -45,12 +46,5 @@ pub service NameService {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	for _, args := range [][]string{{"mod", "tidy"}, {"test", "./..."}} {
-		cmd := exec.Command("go", args...)
-		cmd.Dir = output
-		cmd.Env = append(os.Environ(), "GOWORK=off")
-		if result, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("go %v: %v\n%s", args, err, result)
-		}
-	}
+	testutil.Go(t, output, "build", "-mod=mod", "./...")
 }

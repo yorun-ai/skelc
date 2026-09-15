@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"go.yorun.ai/skelc/internal/command"
 )
 
 func TestRunSkelcGenTS(t *testing.T) {
@@ -149,11 +151,25 @@ pub service InternalService {
 func TestRunSkelcGenTSRequiresApiAndRejectsPub(t *testing.T) {
 	dir := t.TempDir()
 	writeCLIFile(t, filepath.Join(dir, "domain.skel"), "domain demo.order")
-	for _, flags := range [][]string{nil, {"--pub"}, {"--api", "--pub"}} {
-		args := append([]string{"gen", "ts", "--skel-in", dir, "--ts-out", t.TempDir()}, flags...)
-		if result := Run(args); result.ExitCode != ExitCodeError {
-			t.Fatalf("accepted TS flags %v: %+v", flags, result)
-		}
+	for _, test := range []struct {
+		name    string
+		flags   []string
+		code    command.ErrorCode
+		message string
+	}{
+		{name: "missing api", code: command.ErrorCodeCompilationFailed, message: "TypeScript generation requires api"},
+		{name: "rejects pub", flags: []string{"--pub"}, code: command.ErrorCodeInvalidArgument, message: "flag provided but not defined: -pub"},
+		{name: "rejects api with pub", flags: []string{"--api", "--pub"}, code: command.ErrorCodeInvalidArgument, message: "flag provided but not defined: -pub"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			args := append([]string{"gen", "ts", "--skel-in", dir, "--ts-out", t.TempDir()}, test.flags...)
+			result := Run(args)
+			commandError := decodeCommandError(t, result)
+			if result.ExitCode != ExitCodeError || result.Stderr != "" ||
+				commandError.Code != test.code || commandError.Message != test.message {
+				t.Fatalf("unexpected command error: %+v", result)
+			}
+		})
 	}
 	help := Run([]string{"gen", "ts", "--help"})
 	if help.ExitCode != ExitCodeSuccess || !strings.Contains(help.Stdout, "--api") || strings.Contains(help.Stdout, "--pub") {

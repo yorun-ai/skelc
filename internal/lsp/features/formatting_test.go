@@ -14,7 +14,7 @@ func TestServiceFormatsValidDocuments(t *testing.T) {
 	documentURI := uri.File("/workspace/user.skel")
 	server.putDocument(documentURI, "domain demo\ndata User {\nid: int\n}\n", 1, true)
 
-	edits, err := server.Formatting(t.Context(), &protocol.DocumentFormattingParams{
+	edits, err := server.service().Formatting(t.Context(), &protocol.DocumentFormattingParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
 	})
 	require.NoError(t, err)
@@ -27,7 +27,7 @@ func TestServiceDoesNotFormatInvalidDocuments(t *testing.T) {
 	documentURI := uri.File("/workspace/user.skel")
 	server.putDocument(documentURI, "domain demo\ndata User {", 1, true)
 
-	edits, err := server.Formatting(t.Context(), &protocol.DocumentFormattingParams{
+	edits, err := server.service().Formatting(t.Context(), &protocol.DocumentFormattingParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
 	})
 	require.NoError(t, err)

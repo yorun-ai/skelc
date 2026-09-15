@@ -6,13 +6,14 @@ import (
 	"reflect"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/util/sliceutil"
 )
 
 func TestNewGenDerivesPackageNameForApp(t *testing.T) {
-	pkg := buildModelDomainForTest(t, domainModelForTest("app"))
+	pkg := buildModelDomainForTest(t, codegentest.DomainModel("app"))
 
 	gen := newGen(pkg, filepath.Join(t.TempDir(), "ts"))
 
@@ -22,7 +23,7 @@ func TestNewGenDerivesPackageNameForApp(t *testing.T) {
 }
 
 func TestNewGenDerivesPackageNameForAppDomain(t *testing.T) {
-	pkg := buildModelDomainForTest(t, domainModelForTest("sales.order"))
+	pkg := buildModelDomainForTest(t, codegentest.DomainModel("sales.order"))
 
 	gen := newGen(pkg, filepath.Join(t.TempDir(), "ts"))
 
@@ -32,7 +33,7 @@ func TestNewGenDerivesPackageNameForAppDomain(t *testing.T) {
 }
 
 func TestNewGenUsesTypeScriptModule(t *testing.T) {
-	pkg := buildModelDomainForTest(t, domainModelForTest("sales.order"))
+	pkg := buildModelDomainForTest(t, codegentest.DomainModel("sales.order"))
 
 	gen := newGen(pkg, filepath.Join(t.TempDir(), "ts"), Option{
 		Module: "@acme/orders",
@@ -44,7 +45,7 @@ func TestNewGenUsesTypeScriptModule(t *testing.T) {
 }
 
 func TestNewGenDerivesPackageNameFromTypeScriptModuleScope(t *testing.T) {
-	pkg := buildModelDomainForTest(t, domainModelForTest("sales.order"))
+	pkg := buildModelDomainForTest(t, codegentest.DomainModel("sales.order"))
 
 	gen := newGen(pkg, filepath.Join(t.TempDir(), "ts"), Option{
 		ModuleScope: "@acme/skeled",
@@ -56,7 +57,7 @@ func TestNewGenDerivesPackageNameFromTypeScriptModuleScope(t *testing.T) {
 }
 
 func TestNewGenDerivesPackageNameFromNpmScope(t *testing.T) {
-	pkg := buildModelDomainForTest(t, domainModelForTest("sales.order"))
+	pkg := buildModelDomainForTest(t, codegentest.DomainModel("sales.order"))
 
 	gen := newGen(pkg, filepath.Join(t.TempDir(), "ts"), Option{
 		ModuleScope: "@acme",
@@ -89,7 +90,7 @@ func TestNewGenDerivesExternalTypeImportsFromTypeScriptModuleScope(t *testing.T)
 			ExplicitAlias: true,
 		}},
 		Data:     []*model.Data{order},
-		Services: []*model.Service{{Name: "OrderService", Api: true, Methods: []*model.Method{{Name: "get", ResultType: dataTypeForTest(order)}}}},
+		Services: []*model.Service{{Name: "OrderService", Api: true, Methods: []*model.Method{{Name: "get", ResultType: codegentest.DataType(order)}}}},
 	})
 
 	gen := newGen(pkg, filepath.Join(t.TempDir(), "ts"), Option{
@@ -182,7 +183,7 @@ func TestNewGenIgnoresUnusedBackendTypeImports(t *testing.T) {
 
 func TestRenderTsTrimsTrailingWhitespace(t *testing.T) {
 	outDir := filepath.Join(t.TempDir(), "ts")
-	pkg := buildModelDomainForTest(t, domainModelForTest("demo.user"))
+	pkg := buildModelDomainForTest(t, codegentest.DomainModel("demo.user"))
 	gen := newGen(pkg, outDir)
 
 	gen.renderTs("sample.ts", "const value = 1;  \n\t\nconst next = 2;\t", nil)
@@ -200,9 +201,9 @@ func TestApiViewIncludesLegacyAdmissionRulesAcrossTransports(t *testing.T) {
 	pkg := buildModelDomainForTest(t, model.DomainSpec{
 		Name: "demo.user",
 		Actors: []*model.Actor{
-			{Name: "ClientActor", Vias: []*model.ActorVia{actorViaForTest(model.ActorViaClient)}},
-			{Name: "AgentActor", Vias: []*model.ActorVia{actorViaForTest(model.ActorViaAgent)}},
-			{Name: "OpenAPIActor", Vias: []*model.ActorVia{actorViaForTest(model.ActorViaOpenAPI)}},
+			{Name: "ClientActor", Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaClient)}},
+			{Name: "AgentActor", Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaAgent)}},
+			{Name: "OpenAPIActor", Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaOpenAPI)}},
 		},
 		Services: []*model.Service{
 			{Name: "ClientOnlyService", Audiences: []*model.ActorAudience{{Actor: "ClientActor"}}, Methods: []*model.Method{{Name: "ping"}}},
@@ -226,7 +227,7 @@ func TestApiViewIncludesLegacyAdmissionRulesAcrossTransports(t *testing.T) {
 func TestClientServicesIncludesImportedClientActors(t *testing.T) {
 	appDomain := buildModelDomainForTest(t, model.DomainSpec{
 		Name:   "app",
-		Actors: []*model.Actor{{Name: "UserActor", Vias: []*model.ActorVia{actorViaForTest(model.ActorViaClient)}}},
+		Actors: []*model.Actor{{Name: "UserActor", Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaClient)}}},
 	})
 	pkg := buildModelDomainForTest(t, model.DomainSpec{
 		Name: "demo.user",
@@ -254,7 +255,7 @@ func TestGenRendersTypesWithoutClientServices(t *testing.T) {
 		Name: "demo.user",
 		Actors: []*model.Actor{{
 			Name: "AgentActor",
-			Vias: []*model.ActorVia{actorViaForTest(model.ActorViaAgent)},
+			Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaAgent)},
 		}},
 		Services: []*model.Service{{
 			Name: "AgentService", Audiences: []*model.ActorAudience{{Actor: "AgentActor"}}, Methods: []*model.Method{{Name: "ping"}},

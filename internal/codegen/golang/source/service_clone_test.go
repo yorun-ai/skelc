@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/model"
 )
 
@@ -11,25 +12,25 @@ func TestCastServiceMethodBuildsTypedDeepCloneHooks(t *testing.T) {
 	payloadType := &model.Type{Kind: model.TypeKindScalar, Scalar: model.ScalarBinary, Nullable: true}
 	child := &model.Data{
 		Name:    "Child",
-		Members: []*model.DataMember{{Name: "name", Type: stringTypeForTest()}},
+		Members: []*model.DataMember{{Name: "name", Type: codegentest.StringType()}},
 	}
 	node := &model.Data{Name: "Node", Members: []*model.DataMember{
 		{Name: "payload", Type: payloadType},
-		{Name: "children", Type: listTypeForTest(dataTypeForTest(child))},
-		{Name: "labels", Type: mapTypeForTest(stringTypeForTest(), stringTypeForTest())},
+		{Name: "children", Type: codegentest.ListType(codegentest.DataType(child))},
+		{Name: "labels", Type: codegentest.MapType(codegentest.StringType(), codegentest.StringType())},
 	}}
 	parsed := &model.Method{
 		Name: "clone",
 		Arguments: []*model.Argument{
-			{Name: "node", Type: nullableTypeForTest(dataTypeForTest(node))},
+			{Name: "node", Type: codegentest.NullableType(codegentest.DataType(node))},
 		},
 		ArgumentsData: &model.Data{
 			Name: "CloneServiceCloneArguments",
 			Members: []*model.DataMember{
-				{Name: "node", Type: nullableTypeForTest(dataTypeForTest(node))},
+				{Name: "node", Type: codegentest.NullableType(codegentest.DataType(node))},
 			},
 		},
-		ResultType: dataTypeForTest(node),
+		ResultType: codegentest.DataType(node),
 	}
 
 	method := castServiceMethod(&model.Service{Name: "CloneService"}, parsed)
@@ -56,7 +57,7 @@ func TestCastServiceMethodBuildsTypedDeepCloneHooks(t *testing.T) {
 
 func TestCastServiceMethodCallsCloneForImportedData(t *testing.T) {
 	external := &model.Data{Name: "User", Domain: "identity.user"}
-	externalType := dataTypeForTest(external)
+	externalType := codegentest.DataType(external)
 	externalType.ExternalDomain = "identity.user"
 	externalType.ExternalImportPath = "example.com/identity"
 	externalType.ExternalAlias = "userpub"
@@ -89,10 +90,10 @@ func TestCastServiceMethodCallsCloneForImportedData(t *testing.T) {
 
 func TestCastServiceMethodBuildsCloneForRecursiveData(t *testing.T) {
 	node := &model.Data{Name: "Node"}
-	node.Members = []*model.DataMember{{Name: "children", Type: listTypeForTest(dataTypeForTest(node))}}
+	node.Members = []*model.DataMember{{Name: "children", Type: codegentest.ListType(codegentest.DataType(node))}}
 	parsed := &model.Method{
 		Name:       "get",
-		ResultType: dataTypeForTest(node),
+		ResultType: codegentest.DataType(node),
 	}
 
 	method := castServiceMethod(&model.Service{Name: "NodeService"}, parsed)
@@ -112,10 +113,10 @@ func TestCastServiceMethodCallsCloneByForImportedGenericData(t *testing.T) {
 		Domain:         "identity.user",
 		TypeParameters: []*model.TypeParameter{tItem},
 		Members: []*model.DataMember{
-			{Name: "items", Type: listTypeForTest(typeParamTypeForTest(tItem))},
+			{Name: "items", Type: codegentest.ListType(codegentest.TypeParamType(tItem))},
 		},
 	}
-	externalType := dataTypeForTest(externalPage, stringTypeForTest())
+	externalType := codegentest.DataType(externalPage, codegentest.StringType())
 	externalType.ExternalDomain = "identity.user"
 	externalType.ExternalImportPath = "example.com/identity"
 	externalType.ExternalAlias = "userpub"
@@ -137,18 +138,18 @@ func TestCastServiceMethodCallsCloneByForImportedGenericData(t *testing.T) {
 func TestCastServiceMethodCallsCloneByForImportedGenericDataWithUnresolvedTransitiveType(t *testing.T) {
 	tItem := &model.TypeParameter{Name: "TItem"}
 	transitive := &model.Data{Name: "Meta", Domain: "shared.meta"}
-	transitiveType := dataTypeForTest(transitive)
+	transitiveType := codegentest.DataType(transitive)
 	transitiveType.ExternalDomain = "shared.meta"
 	externalPage := &model.Data{
 		Name:           "Page",
 		Domain:         "identity.user",
 		TypeParameters: []*model.TypeParameter{tItem},
 		Members: []*model.DataMember{
-			{Name: "items", Type: listTypeForTest(typeParamTypeForTest(tItem))},
-			{Name: "metadata", Type: listTypeForTest(transitiveType)},
+			{Name: "items", Type: codegentest.ListType(codegentest.TypeParamType(tItem))},
+			{Name: "metadata", Type: codegentest.ListType(transitiveType)},
 		},
 	}
-	externalType := dataTypeForTest(externalPage, stringTypeForTest())
+	externalType := codegentest.DataType(externalPage, codegentest.StringType())
 	externalType.ExternalDomain = "identity.user"
 	externalType.ExternalImportPath = "example.com/identity"
 	externalType.ExternalAlias = "userpub"
@@ -169,10 +170,10 @@ func TestCastServiceMethodBuildsGenericDataClone(t *testing.T) {
 		Name:           "Page",
 		TypeParameters: []*model.TypeParameter{tItem},
 		Members: []*model.DataMember{
-			{Name: "items", Type: listTypeForTest(&model.Type{Kind: model.TypeKindTypeParameter, TypeParameter: tItem})},
+			{Name: "items", Type: codegentest.ListType(&model.Type{Kind: model.TypeKindTypeParameter, TypeParameter: tItem})},
 		},
 	}
-	resultType := dataTypeForTest(page, stringTypeForTest())
+	resultType := codegentest.DataType(page, codegentest.StringType())
 	method := castServiceMethod(&model.Service{Name: "PageService"}, &model.Method{Name: "list", ResultType: resultType})
 
 	if method.CloneResult == nil {
@@ -192,15 +193,15 @@ func TestCastServiceMethodClonesNullableCollections(t *testing.T) {
 	parsed := &model.Method{
 		Name: "clone",
 		Arguments: []*model.Argument{
-			{Name: "items", Type: nullableTypeForTest(listTypeForTest(stringTypeForTest()))},
+			{Name: "items", Type: codegentest.NullableType(codegentest.ListType(codegentest.StringType()))},
 		},
 		ArgumentsData: &model.Data{
 			Name: "CloneServiceCloneArguments",
 			Members: []*model.DataMember{
-				{Name: "items", Type: nullableTypeForTest(listTypeForTest(stringTypeForTest()))},
+				{Name: "items", Type: codegentest.NullableType(codegentest.ListType(codegentest.StringType()))},
 			},
 		},
-		ResultType: nullableTypeForTest(mapTypeForTest(stringTypeForTest(), stringTypeForTest())),
+		ResultType: codegentest.NullableType(codegentest.MapType(codegentest.StringType(), codegentest.StringType())),
 	}
 
 	method := castServiceMethod(&model.Service{Name: "CloneService"}, parsed)

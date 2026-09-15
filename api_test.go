@@ -67,17 +67,39 @@ func TestParseExposesSemanticModel(t *testing.T) {
 }
 
 func TestDiagnosticAliasesMatchPublicDiagnosticPackage(t *testing.T) {
-	if skelc.DiagnosticCodeSyntaxUnexpected != diagnostic.CodeSyntaxUnexpected {
-		t.Fatalf("syntax diagnostic code alias = %q, want %q", skelc.DiagnosticCodeSyntaxUnexpected, diagnostic.CodeSyntaxUnexpected)
+	tests := []struct {
+		name    string
+		alias   string
+		defined string
+	}{
+		{"severity error", string(skelc.DiagnosticSeverityError), string(diagnostic.SeverityError)},
+		{"severity warning", string(skelc.DiagnosticSeverityWarning), string(diagnostic.SeverityWarning)},
+		{"syntax unexpected", skelc.DiagnosticCodeSyntaxUnexpected, diagnostic.CodeSyntaxUnexpected},
+		{"syntax eof", skelc.DiagnosticCodeSyntaxEOF, diagnostic.CodeSyntaxEOF},
+		{"syntax finalize", skelc.DiagnosticCodeSyntaxFinalize, diagnostic.CodeSyntaxFinalize},
+		{"semantic validation", skelc.DiagnosticCodeSemanticValidation, diagnostic.CodeSemanticValidation},
+		{"semantic duplicate", skelc.DiagnosticCodeSemanticDuplicate, diagnostic.CodeSemanticDuplicate},
+		{"semantic naming", skelc.DiagnosticCodeSemanticNaming, diagnostic.CodeSemanticNaming},
+		{"semantic reference", skelc.DiagnosticCodeSemanticReference, diagnostic.CodeSemanticReference},
+		{"semantic warning", skelc.DiagnosticCodeSemanticWarning, diagnostic.CodeSemanticWarning},
+		{"service modifier", skelc.DiagnosticCodeServiceModifier, diagnostic.CodeServiceModifier},
+		{"service client rules", skelc.DiagnosticCodeServiceClientRules, diagnostic.CodeServiceClientRules},
+		{"import missing", skelc.DiagnosticCodeImportMissing, diagnostic.CodeImportMissing},
+		{"import cycle", skelc.DiagnosticCodeImportCycle, diagnostic.CodeImportCycle},
+		{"domain missing", skelc.DiagnosticCodeDomainMissing, diagnostic.CodeDomainMissing},
+		{"domain mismatch", skelc.DiagnosticCodeDomainMismatch, diagnostic.CodeDomainMismatch},
+		{"domain file content", skelc.DiagnosticCodeDomainFileContent, diagnostic.CodeDomainFileContent},
+		{"domain decorator", skelc.DiagnosticCodeDomainDecorator, diagnostic.CodeDomainDecorator},
+		{"loader directory", skelc.DiagnosticCodeLoaderDirectory, diagnostic.CodeLoaderDirectory},
+		{"loader hidden file", skelc.DiagnosticCodeLoaderHiddenFile, diagnostic.CodeLoaderHiddenFile},
+		{"loader unsupported", skelc.DiagnosticCodeLoaderUnsupported, diagnostic.CodeLoaderUnsupported},
 	}
-	if skelc.DiagnosticCodeSemanticDuplicate != diagnostic.CodeSemanticDuplicate {
-		t.Fatalf("semantic diagnostic code alias = %q, want %q", skelc.DiagnosticCodeSemanticDuplicate, diagnostic.CodeSemanticDuplicate)
-	}
-	if skelc.DiagnosticCodeLoaderUnsupported != diagnostic.CodeLoaderUnsupported {
-		t.Fatalf("loader diagnostic code alias = %q, want %q", skelc.DiagnosticCodeLoaderUnsupported, diagnostic.CodeLoaderUnsupported)
-	}
-	if skelc.DiagnosticSeverityWarning != diagnostic.SeverityWarning {
-		t.Fatalf("warning severity alias = %q, want %q", skelc.DiagnosticSeverityWarning, diagnostic.SeverityWarning)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if test.alias != test.defined {
+				t.Fatalf("alias = %q, want %q", test.alias, test.defined)
+			}
+		})
 	}
 }
 
@@ -319,52 +341,73 @@ domain app
 
 import base
 
-data AppItem {
+pub data AppItem {
     item: base.Item
+    kind: base.ItemType
 }
 `)
 
 	input := skelc.Input{SkelIn: appDir, SkelImports: map[string]string{"base": baseDir}}
 	tests := []struct {
-		name    string
-		compile func() error
+		name     string
+		file     string
+		compile  func(out string) error
+		expected []string
 	}{
 		{
 			name: "Go",
-			compile: func() error {
+			file: "data.go",
+			compile: func(out string) error {
 				_, err := skelc.CompileGolang(input, skelc.GolangOption{
 					CompilerVersion: "v0.0.0-dev",
-					Out:             filepath.Join(t.TempDir(), "golang"),
+					Out:             out,
 					Imports:         map[string]string{"base": "example.com/basepub"},
 				})
 				return err
 			},
+			expected: []string{"Item basepub.Item", "Kind basepub.ItemType"},
 		},
 		{
 			name: "TypeScript",
-			compile: func() error {
+			file: "data.ts",
+			compile: func(out string) error {
 				_, err := skelc.CompileTypeScript(input, skelc.TypeScriptOption{ApiOnly: true,
-					Out:     filepath.Join(t.TempDir(), "typescript"),
+					Out:     out,
 					Imports: map[string]string{"base": "@example/base"},
 				})
 				return err
 			},
+			expected: []string{"item: baseapi.Item;", "kind: baseapi.ItemType;"},
 		},
 		{
 			name: "Skel",
-			compile: func() error {
+			file: "types.skel",
+			compile: func(out string) error {
 				_, err := skelc.CompileSkeleton(input, skelc.SkeletonOption{
-					Out:     filepath.Join(t.TempDir(), "skeleton"),
+					Out:     out,
 					PubOnly: true,
 				})
 				return err
 			},
+			expected: []string{"item: base.Item", "kind: base.ItemType"},
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			if err := test.compile(); err != nil {
+			// The Go generator derives the package name from the output
+			// directory, so it must be a valid identifier.
+			out := filepath.Join(t.TempDir(), "generated")
+			if err := test.compile(out); err != nil {
 				t.Fatalf("compile %s with imported named type references: %v", test.name, err)
+			}
+			content, err := os.ReadFile(filepath.Join(out, test.file))
+			if err != nil {
+				t.Fatalf("read generated %s: %v", test.file, err)
+			}
+			for _, fragment := range test.expected {
+				if !strings.Contains(string(content), fragment) {
+					t.Fatalf("generated %s missing %q:\n%s", test.file, fragment, content)
+				}
 			}
 		})
 	}

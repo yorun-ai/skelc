@@ -16,8 +16,12 @@ func TestNormalizeCheckOption(t *testing.T) {
 	if err := normalizeCompilerOption(&compilerOption); err != nil {
 		t.Fatal(err)
 	}
-	if !filepath.IsAbs(compilerOption.SkelIn) {
-		t.Fatalf("expected absolute skel-in, got %q", compilerOption.SkelIn)
+	want, err := filepath.Abs("./demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if compilerOption.SkelIn != want {
+		t.Fatalf("skel-in = %q, want %q", compilerOption.SkelIn, want)
 	}
 }
 

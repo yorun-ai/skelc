@@ -5,12 +5,13 @@ import (
 	"strings"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/codegen/golang/view"
 	"go.yorun.ai/skelc/internal/model"
 )
 
 func TestNewGenDerivesModuleAndPackageName(t *testing.T) {
-	pkg := buildModelDomainForTest(t, domainModelForTest("demo.user.profile"))
+	pkg := buildModelDomainForTest(t, codegentest.DomainModel("demo.user.profile"))
 
 	gen, err := newGen(_GenOption{
 		VineVersion: "v0.15.7",
@@ -31,7 +32,7 @@ func TestNewGenDerivesModuleAndPackageName(t *testing.T) {
 }
 
 func TestNewGenKeepsDomainDerivedPackageNameForModuleOutput(t *testing.T) {
-	pkg := buildModelDomainForTest(t, domainModelForTest("demo.user.profile"))
+	pkg := buildModelDomainForTest(t, codegentest.DomainModel("demo.user.profile"))
 
 	gen, err := newGen(_GenOption{
 		ModulePrefix: "github.com/acme/skel",
@@ -54,7 +55,7 @@ func TestNewGenKeepsDomainDerivedPackageNameForModuleOutput(t *testing.T) {
 }
 
 func TestNewGenDerivesPubModuleAndPackageName(t *testing.T) {
-	pkg := buildModelDomainForTest(t, domainModelForTest("demo.user.profile"))
+	pkg := buildModelDomainForTest(t, codegentest.DomainModel("demo.user.profile"))
 
 	gen, err := newGen(_GenOption{
 		ModulePrefix: "github.com/acme/skel",
@@ -77,7 +78,7 @@ func TestNewGenDerivesPubModuleAndPackageName(t *testing.T) {
 }
 
 func TestNewGenRejectsInvalidLocalPackageNameFromOutputDir(t *testing.T) {
-	pkg := buildModelDomainForTest(t, domainModelForTest("demo.user.profile"))
+	pkg := buildModelDomainForTest(t, codegentest.DomainModel("demo.user.profile"))
 
 	_, err := newGen(_GenOption{
 		VineVersion: "v0.15.7",
@@ -91,7 +92,7 @@ func TestNewGenRejectsInvalidLocalPackageNameFromOutputDir(t *testing.T) {
 }
 
 func TestNewGenRejectsKeywordLocalPackageNameFromOutputDir(t *testing.T) {
-	pkg := buildModelDomainForTest(t, domainModelForTest("demo.user.profile"))
+	pkg := buildModelDomainForTest(t, codegentest.DomainModel("demo.user.profile"))
 
 	_, err := newGen(_GenOption{
 		VineVersion: "v0.15.7",
@@ -107,8 +108,4 @@ func TestNewGenRejectsKeywordLocalPackageNameFromOutputDir(t *testing.T) {
 func buildModelDomainForTest(t *testing.T, spec model.DomainSpec) *model.Domain {
 	t.Helper()
 	return model.NewDomainFromSpec(spec)
-}
-
-func domainModelForTest(name string) model.DomainSpec {
-	return model.DomainSpec{Name: name}
 }

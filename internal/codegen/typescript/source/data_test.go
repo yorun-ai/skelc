@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/model"
 )
 
@@ -61,7 +62,7 @@ func TestCastDataRendersDeprecatedDocs(t *testing.T) {
 		DeprecatedReason: "Use Profile instead",
 		Members: []*model.DataMember{{
 			Name:             "legacyId",
-			Type:             intTypeForTest(),
+			Type:             codegentest.IntType(),
 			Deprecated:       true,
 			DeprecatedReason: "Use id instead",
 		}},
@@ -125,26 +126,26 @@ func TestBuildDataTsPayloadKeepsLegacyServiceDependencies(t *testing.T) {
 	user := &model.Data{
 		Name: "User",
 		Members: []*model.DataMember{
-			{Name: "id", Type: intTypeForTest()},
-			{Name: "profile", Type: dataTypeForTest(userProfile)},
+			{Name: "id", Type: codegentest.IntType()},
+			{Name: "profile", Type: codegentest.DataType(userProfile)},
 		},
 	}
-	userProfile.Members = []*model.DataMember{{Name: "status", Type: enumTypeForTest(userStatus)}}
+	userProfile.Members = []*model.DataMember{{Name: "status", Type: codegentest.EnumType(userStatus)}}
 	internalOnly := &model.Data{
 		Name:    "InternalOnly",
-		Members: []*model.DataMember{{Name: "status", Type: enumTypeForTest(unusedStatus)}},
+		Members: []*model.DataMember{{Name: "status", Type: codegentest.EnumType(unusedStatus)}},
 	}
 	pkg := buildModelDomainForTest(t, model.DomainSpec{
 		Name:  "demo.user",
 		Enums: []*model.Enum{userStatus, unusedStatus},
 		Actors: []*model.Actor{
-			{Name: "ClientActor", Vias: []*model.ActorVia{actorViaForTest(model.ActorViaClient)}},
-			{Name: "AgentActor", Vias: []*model.ActorVia{actorViaForTest(model.ActorViaAgent)}},
+			{Name: "ClientActor", Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaClient)}},
+			{Name: "AgentActor", Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaAgent)}},
 		},
 		Data: []*model.Data{user, userProfile, internalOnly},
 		Services: []*model.Service{
-			{Name: "ClientService", Audiences: []*model.ActorAudience{{Actor: "ClientActor"}}, Methods: []*model.Method{{Name: "getUser", ResultType: dataTypeForTest(user)}}},
-			{Name: "AgentService", Audiences: []*model.ActorAudience{{Actor: "AgentActor"}}, Methods: []*model.Method{{Name: "getInternal", ResultType: dataTypeForTest(internalOnly)}}},
+			{Name: "ClientService", Audiences: []*model.ActorAudience{{Actor: "ClientActor"}}, Methods: []*model.Method{{Name: "getUser", ResultType: codegentest.DataType(user)}}},
+			{Name: "AgentService", Audiences: []*model.ActorAudience{{Actor: "AgentActor"}}, Methods: []*model.Method{{Name: "getInternal", ResultType: codegentest.DataType(internalOnly)}}},
 		},
 	})
 
@@ -173,16 +174,16 @@ func TestBuildDataTsPayloadKeepsExplicitPubTypes(t *testing.T) {
 	user := &model.Data{
 		Pub:     true,
 		Name:    "User",
-		Members: []*model.DataMember{{Name: "status", Type: enumTypeForTest(userStatus)}},
+		Members: []*model.DataMember{{Name: "status", Type: codegentest.EnumType(userStatus)}},
 	}
 	unusedPublic := &model.Data{
 		Pub:     true,
 		Name:    "UnusedPublic",
-		Members: []*model.DataMember{{Name: "id", Type: intTypeForTest()}},
+		Members: []*model.DataMember{{Name: "id", Type: codegentest.IntType()}},
 	}
 	internalOnly := &model.Data{
 		Name:    "InternalOnly",
-		Members: []*model.DataMember{{Name: "status", Type: enumTypeForTest(internalStatus)}},
+		Members: []*model.DataMember{{Name: "status", Type: codegentest.EnumType(internalStatus)}},
 	}
 	pkg := buildModelDomainForTest(t, model.DomainSpec{
 		Name:  "demo.user",
@@ -210,24 +211,24 @@ func TestBuildDataTsPayloadKeepsExplicitPubTypes(t *testing.T) {
 }
 
 func TestBuildDataTsPayloadKeepsGenericTypeArguments(t *testing.T) {
-	tItem := typeParamForTest("TItem")
+	tItem := codegentest.TypeParam("TItem")
 	page := &model.Data{
 		Name:           "Page",
 		TypeParameters: []*model.TypeParameter{tItem},
 		Members: []*model.DataMember{{
 			Name: "items",
-			Type: listTypeForTest(typeParamTypeForTest(tItem)),
+			Type: codegentest.ListType(codegentest.TypeParamType(tItem)),
 		}},
 	}
 	user := &model.Data{
 		Name:    "User",
-		Members: []*model.DataMember{{Name: "id", Type: intTypeForTest()}},
+		Members: []*model.DataMember{{Name: "id", Type: codegentest.IntType()}},
 	}
 	pkg := buildModelDomainForTest(t, model.DomainSpec{
 		Name: "demo.user",
 		Actors: []*model.Actor{{
 			Name: "ClientActor",
-			Vias: []*model.ActorVia{actorViaForTest(model.ActorViaClient)},
+			Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaClient)},
 		}},
 		Data: []*model.Data{page, user},
 		Services: []*model.Service{{
@@ -235,7 +236,7 @@ func TestBuildDataTsPayloadKeepsGenericTypeArguments(t *testing.T) {
 			Audiences: []*model.ActorAudience{{Actor: "ClientActor"}},
 			Methods: []*model.Method{{
 				Name:       "listUsers",
-				ResultType: dataTypeForTest(page, dataTypeForTest(user)),
+				ResultType: codegentest.DataType(page, codegentest.DataType(user)),
 			}},
 		}},
 	})

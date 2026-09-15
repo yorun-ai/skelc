@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/model"
 )
 
@@ -41,7 +42,7 @@ func TestSpecTemplateKeepsModuleSemanticsWhenEmpty(t *testing.T) {
 func TestBuildSpecTsPayloadUsesFinalClientServiceSet(t *testing.T) {
 	userActorDomain := buildModelDomainForTest(t, model.DomainSpec{
 		Name:   "app",
-		Actors: []*model.Actor{{Name: "UserActor", Vias: []*model.ActorVia{actorViaForTest(model.ActorViaClient)}}},
+		Actors: []*model.Actor{{Name: "UserActor", Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaClient)}}},
 	})
 	pkg := buildModelDomainForTest(t, model.DomainSpec{
 		Name: "demo.user",
@@ -50,7 +51,7 @@ func TestBuildSpecTsPayloadUsesFinalClientServiceSet(t *testing.T) {
 			Name:   "app",
 			Alias:  "app",
 		}},
-		Actors: []*model.Actor{{Name: "AgentActor", Vias: []*model.ActorVia{actorViaForTest(model.ActorViaAgent)}}},
+		Actors: []*model.Actor{{Name: "AgentActor", Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaAgent)}}},
 		Services: []*model.Service{
 			{Name: "ExternalClientService", Audiences: []*model.ActorAudience{{Actor: "app.UserActor"}}, Methods: []*model.Method{{Name: "ping"}}},
 			{Name: "BackendService", Pub: true, Methods: []*model.Method{{Name: "ping"}}},
@@ -72,7 +73,7 @@ func TestBuildSpecTsPayloadRendersSparseWireForBinaryMethods(t *testing.T) {
 		Name: "Chunk",
 		Members: []*model.DataMember{{
 			Name: "content",
-			Type: binaryTypeForTest(),
+			Type: codegentest.BinaryType(),
 		}},
 	}
 	fileResult := &model.Data{
@@ -80,15 +81,15 @@ func TestBuildSpecTsPayloadRendersSparseWireForBinaryMethods(t *testing.T) {
 		Members: []*model.DataMember{
 			{
 				Name: "content",
-				Type: nullableTypeForTest(binaryTypeForTest()),
+				Type: codegentest.NullableType(codegentest.BinaryType()),
 			},
 			{
 				Name: "chunks",
-				Type: mapTypeForTest(intTypeForTest(), dataTypeForTest(chunk)),
+				Type: codegentest.MapType(codegentest.IntType(), codegentest.DataType(chunk)),
 			},
 			{
 				Name: "chunksById",
-				Type: mapTypeForTest(uuidTypeForTest(), dataTypeForTest(chunk)),
+				Type: codegentest.MapType(codegentest.UUIDType(), codegentest.DataType(chunk)),
 			},
 		},
 	}
@@ -104,12 +105,12 @@ func TestBuildSpecTsPayloadRendersSparseWireForBinaryMethods(t *testing.T) {
 					Name: "upload",
 					Arguments: []*model.Argument{{
 						Name: "content",
-						Type: binaryTypeForTest(),
+						Type: codegentest.BinaryType(),
 					}},
 				},
 				{
 					Name:       "download",
-					ResultType: dataTypeForTest(fileResult),
+					ResultType: codegentest.DataType(fileResult),
 				},
 			},
 		}},
@@ -139,14 +140,14 @@ func TestBuildSpecTsPayloadRendersSparseWireForBinaryMethods(t *testing.T) {
 }
 
 func TestWireSchemaSupportsGenericAndRecursiveData(t *testing.T) {
-	tItem := typeParamForTest("TItem")
+	tItem := codegentest.TypeParam("TItem")
 	wrapper := &model.Data{
 		Name:           "Wrapper",
 		SkelName:       "demo.file.Wrapper",
 		TypeParameters: []*model.TypeParameter{tItem},
 		Members: []*model.DataMember{{
 			Name: "value",
-			Type: typeParamTypeForTest(tItem),
+			Type: codegentest.TypeParamType(tItem),
 		}},
 	}
 	node := &model.Data{
@@ -154,15 +155,15 @@ func TestWireSchemaSupportsGenericAndRecursiveData(t *testing.T) {
 		SkelName: "demo.file.Node",
 	}
 	node.Members = []*model.DataMember{
-		{Name: "content", Type: binaryTypeForTest()},
-		{Name: "next", Type: nullableTypeForTest(dataTypeForTest(node))},
+		{Name: "content", Type: codegentest.BinaryType()},
+		{Name: "next", Type: codegentest.NullableType(codegentest.DataType(node))},
 	}
 
 	method := &model.Method{
 		Name: "store",
 		Arguments: []*model.Argument{
-			{Name: "wrapped", Type: dataTypeForTest(wrapper, binaryTypeForTest())},
-			{Name: "node", Type: dataTypeForTest(node)},
+			{Name: "wrapped", Type: codegentest.DataType(wrapper, codegentest.BinaryType())},
+			{Name: "node", Type: codegentest.DataType(node)},
 		},
 	}
 	if !methodArgumentsContainBinary(method) {

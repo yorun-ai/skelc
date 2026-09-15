@@ -19,7 +19,7 @@ func TestCodeActionBuildsQuickFixFromSuggestion(t *testing.T) {
 		Data:    lspdiagnostic.SuggestionData(&compiler.DiagnosticSuggestion{Message: "replace with userId", Replacement: "userId", Replace: true}),
 	}
 	documentURI := uri.File("/workspace/user.skel")
-	actions, err := newFixture().CodeAction(t.Context(), &protocol.CodeActionParams{
+	actions, err := newFixture().service().CodeAction(t.Context(), &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
 		Context:      protocol.CodeActionContext{Diagnostics: []protocol.Diagnostic{diagnostic}},
 	})
@@ -34,7 +34,7 @@ func TestCodeActionBuildsQuickFixFromSuggestion(t *testing.T) {
 func TestCodeActionOpensSchemaCompatibilityReport(t *testing.T) {
 	diagnostic := protocol.Diagnostic{Data: protocol.LSPAny(json.RawMessage(`{"impact":"BREAKING","change":"MODIFIED","symbol":"demo.User"}`))}
 	documentURI := uri.File("/workspace/user.skel")
-	actions, err := newFixture().CodeAction(t.Context(), &protocol.CodeActionParams{
+	actions, err := newFixture().service().CodeAction(t.Context(), &protocol.CodeActionParams{
 		TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
 		Context:      protocol.CodeActionContext{Diagnostics: []protocol.Diagnostic{diagnostic}},
 	})

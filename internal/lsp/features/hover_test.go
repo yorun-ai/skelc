@@ -16,7 +16,7 @@ func TestServiceHoverShowsQualifiedDeclaration(t *testing.T) {
 	server.putDocument(userURI, "domain demo.user\n@desc(\"Account data\")\ndata User {}\n", 1, true)
 	server.putDocument(orderURI, "domain demo.order\nimport demo.user\ndata Order { owner: user.User }\n", 1, true)
 
-	hover, err := server.Hover(t.Context(), &protocol.HoverParams{
+	hover, err := server.service().Hover(t.Context(), &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: orderURI},
 			Position:     protocol.Position{Line: 2, Character: 27},
@@ -36,7 +36,7 @@ func TestServiceHoverShowsDeprecation(t *testing.T) {
 	server.putDocument(userURI, "domain demo.user\n@deprecated(\"Use Profile instead\")\ndata User {}\n", 1, true)
 	server.putDocument(orderURI, "domain demo.order\nimport demo.user\ndata Order { owner: user.User }\n", 1, true)
 
-	hover, err := server.Hover(t.Context(), &protocol.HoverParams{
+	hover, err := server.service().Hover(t.Context(), &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: orderURI},
 			Position:     protocol.Position{Line: 2, Character: 27},
@@ -52,7 +52,7 @@ func TestServiceSuppressesCompletionInCommentsAndHoversBuiltInTypes(t *testing.T
 	documentURI := uri.File("/workspace/user.skel")
 	server.putDocument(documentURI, "domain demo\n// string\ndata User { id: int }\n", 1, true)
 
-	result, err := server.Completion(t.Context(), &protocol.CompletionParams{
+	result, err := server.service().Completion(t.Context(), &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
 			Position:     protocol.Position{Line: 1, Character: 5},
@@ -61,7 +61,7 @@ func TestServiceSuppressesCompletionInCommentsAndHoversBuiltInTypes(t *testing.T
 	require.NoError(t, err)
 	assert.Empty(t, result.(protocol.CompletionItemSlice))
 
-	hover, err := server.Hover(t.Context(), &protocol.HoverParams{
+	hover, err := server.service().Hover(t.Context(), &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
 			Position:     protocol.Position{Line: 2, Character: 17},

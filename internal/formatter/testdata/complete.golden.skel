@@ -57,7 +57,7 @@ pub resource User {
     }
 }
 
-pub service UserService {
+api service UserApiService {
     for ClientActor via client
     auth
 

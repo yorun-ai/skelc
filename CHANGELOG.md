@@ -6,6 +6,21 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+### Changed
+
+- Raise the default and minimum Vine dependency for generated Go code to v0.19.0.
+
+### Added
+
+- Support optional `mount /path` declarations inside Web objects, including
+  path validation, formatting, LSP completion, schema snapshots and compatibility
+  diffs. Generated Web specs and runtime schemas both carry `MountPath`.
+  Use it when a frontend build needs a stable, immutable public URL prefix for
+  its entry point and static assets. Omitting `mount` leaves the Web unrestricted;
+  `mount /` explicitly limits it to the root path.
+  Mounted Go output requires Vine source with these fields; the generated Go
+  dependency now targets Vine v0.19.0.
+
 ## [0.19.3] - 2026-09-14
 
 ### Removed

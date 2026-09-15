@@ -90,3 +90,34 @@ func TestCheckDoesNotCascadeDomainMismatchWhenDomainFileIsInvalid(t *testing.T) 
 		assert.NotEqual(t, DiagnosticCodeDomainMismatch, item.Code)
 	}
 }
+
+func TestCheckWebMountDiagnostics(t *testing.T) {
+	for _, test := range []struct {
+		body, message string
+		line, column  int
+	}{
+		{"mount /a\n    mount /b", "at most once", 5, 5},
+		{"mount /a/../b", "path segments", 4, 11},
+		{"mount /a//b", "empty path segments", 4, 11},
+		{"mount /a?q=x", "literal path", 4, 11},
+		{"mount /a#anchor", "literal path", 4, 11},
+		{"mount /:name", "literal path", 4, 11},
+		{"mount /a/*", "literal path", 4, 11},
+		{"mount /a%2Fb", "literal path", 4, 11},
+		{"mount relative", "unexpected", 4, 11},
+		{`mount "/a"`, "unexpected", 4, 11},
+	} {
+		t.Run(test.body, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "mount.skel")
+			writeFile(t, path, "domain demo\nactor ClientActor { via client {} }\nweb PortalWeb {\n    "+test.body+"\n    for ClientActor\n}\ndata Later { id: string }\n")
+			result, err := Check(Option{SkelIn: path, Strict: true})
+			require.NoError(t, err)
+			require.Len(t, result.Diagnostics, 1)
+			diagnostic := result.Diagnostics[0]
+			assert.Contains(t, diagnostic.Message, test.message)
+			assert.Equal(t, path, diagnostic.Position.File)
+			assert.Equal(t, test.line, diagnostic.Position.Line)
+			assert.Equal(t, test.column, diagnostic.Position.Column)
+		})
+	}
+}

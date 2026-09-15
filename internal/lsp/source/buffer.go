@@ -91,7 +91,7 @@ func (b Buffer) IdentifierRange(line, column int, name string) protocol.Range {
 	return protocol.Range{Start: start, End: protocol.Position{Line: start.Line, Character: start.Character + uint32(UTF16Length(name))}}
 }
 
-// InNonCode reports whether the position is inside a comment or string.
+// InNonCode reports whether the position is inside a comment, string, or path literal.
 func (b Buffer) InNonCode(position protocol.Position) bool {
 	offset := b.Offset(position)
 	const (
@@ -100,6 +100,7 @@ func (b Buffer) InNonCode(position protocol.Position) bool {
 		stateBlockComment
 		stateString
 		stateTripleString
+		statePath
 	)
 	state := stateCode
 	for index := 0; index < offset; {
@@ -112,6 +113,9 @@ func (b Buffer) InNonCode(position protocol.Position) bool {
 			case strings.HasPrefix(b.content[index:], "/*"):
 				state = stateBlockComment
 				index += 2
+			case b.content[index] == '/':
+				state = statePath
+				index++
 			case strings.HasPrefix(b.content[index:], `"""`):
 				state = stateTripleString
 				index += 3
@@ -149,13 +153,20 @@ func (b Buffer) InNonCode(position protocol.Position) bool {
 			} else {
 				index++
 			}
+		case statePath:
+			r, size := utf8.DecodeRuneInString(b.content[index:])
+			if unicode.IsSpace(r) || r == '{' || r == '}' {
+				state = stateCode
+			} else {
+				index += size
+			}
 		}
 	}
 	return state != stateCode
 }
 
 // IdentifierTokens scans identifiers and the punctuation needed by the
-// fallback index while ignoring comments and strings.
+// fallback index while ignoring comments, strings, and path literals.
 func (b Buffer) IdentifierTokens() []Token {
 	tokens := make([]Token, 0)
 	for offset := 0; offset < len(b.content); {
@@ -171,6 +182,14 @@ func (b Buffer) IdentifierTokens() []Token {
 				offset += end + 4
 			} else {
 				return tokens
+			}
+		case b.content[offset] == '/':
+			for offset < len(b.content) {
+				r, size := utf8.DecodeRuneInString(b.content[offset:])
+				if unicode.IsSpace(r) || r == '{' || r == '}' {
+					break
+				}
+				offset += size
 			}
 		case strings.HasPrefix(b.content[offset:], `"""`):
 			if end := strings.Index(b.content[offset+3:], `"""`); end >= 0 {

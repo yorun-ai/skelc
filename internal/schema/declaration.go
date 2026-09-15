@@ -137,6 +137,7 @@ type RequirementCheckArgument struct {
 
 type WebSchema struct {
 	Audiences []*Audience `json:"audiences"`
+	MountPath string      `json:"mountPath,omitempty"`
 }
 
 type TaskSchema struct {

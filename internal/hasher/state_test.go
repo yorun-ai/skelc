@@ -25,3 +25,18 @@ func TestActorIdentifierChangesHash(t *testing.T) {
 		t.Fatal("identifier change did not affect hashes")
 	}
 }
+
+func TestWebMountChangesWebAndDomainHashes(t *testing.T) {
+	hashes := map[string]bool{}
+	domainHashes := map[string]bool{}
+	for _, path := range []string{"", "/", "/portal", "/portal/", "/other"} {
+		domain := newHashAllowViaTestDomain(t, "client")
+		domain.Webs()[0].MountPath = path
+		fillHashes(t, domain)
+		hash := domain.Webs()[0].Hash
+		if hashes[hash] || domainHashes[domain.Hash()] {
+			t.Fatalf("mount %q did not affect compatibility hashes", path)
+		}
+		hashes[hash], domainHashes[domain.Hash()] = true, true
+	}
+}

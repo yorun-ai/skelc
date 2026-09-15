@@ -10,6 +10,9 @@
 			{{- end }}
 			{{- template "deprecatedFields" $web }}
 			Hash: {{ quote $web.Hash }},
+			{{- if $web.MountPath }}
+			MountPath: {{ quote $web.MountPath }},
+			{{- end }}
 			{{- if $web.Audiences }}
 			Audiences: []*skel.ActorAudienceSchema{
 				{{- range $actor := $web.Audiences }}

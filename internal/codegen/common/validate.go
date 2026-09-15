@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"go.yorun.ai/skelc/internal/model"
+	"go.yorun.ai/skelc/internal/util/webpath"
 )
 
 // ValidateDomain rejects malformed programmatically constructed models before
@@ -74,6 +75,11 @@ func validateDomain(domain *model.Domain, seen map[*model.Domain]bool) error {
 	for _, web := range domain.Webs() {
 		if web == nil {
 			return fmt.Errorf("generated model contains nil web")
+		}
+		if web.MountPath != "" {
+			if err := webpath.Validate(web.MountPath); err != nil {
+				return fmt.Errorf("web %s has invalid mount path: %w", web.Name, err)
+			}
 		}
 		if err := validateAudiences("web "+web.Name, web.Audiences); err != nil {
 			return err

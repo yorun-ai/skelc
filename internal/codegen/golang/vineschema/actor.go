@@ -32,6 +32,7 @@ func (g *_Gen) buildWebSchema(value *model.Web, projected *contractschema.Declar
 		Description: projected.Description, Deprecated: projected.Deprecated,
 		DeprecatedReason: projected.DeprecatedReason,
 		Audiences:        g.buildActorAudienceSchemas(projected.Web.Audiences),
+		MountPath:        projected.Web.MountPath,
 	}
 }
 

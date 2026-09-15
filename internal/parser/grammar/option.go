@@ -12,6 +12,7 @@ var skelLexerRules = []lexer.SimpleRule{
 	{Name: "Newline", Pattern: `[\n\r]+`},
 	{Name: "TripleString", Pattern: `(?s)""".*?"""`},
 	{Name: "String", Pattern: `(?s)"([^"\\]|\\.)*"`},
+	{Name: "Path", Pattern: `/[^\s{}]*`},
 	{Name: "Number", Pattern: `[0-9]+(\.[0-9]+)?`},
 	{Name: "Identifier", Pattern: `[_a-zA-Z][_a-zA-Z0-9]*`},
 	{Name: "Punctuation", Pattern: `[@\(\)\{\}\<\>\[\].,*:;=?"]`},

@@ -385,3 +385,22 @@ func methodInputForTest(method *Method) *MethodInput {
 func methodOutputForTest(method *Method) *MethodOutput {
 	return method.Output
 }
+
+func TestWebMountSyntax(t *testing.T) {
+	for _, body := range []string{
+		"for ClientActor\nmount /portal/v1-assets/",
+		"for ClientActor\nmount /* prefix */ /portal/v1-assets/ // trailing comment",
+		"for ClientActor mount /portal/v1-assets/",
+	} {
+		content := parseSkelForTest(t, "domain demo\nweb PortalWeb {\n"+body+"\n}")
+		web := content.Entries[0].Web
+		if len(web.Mounts) != 1 || web.Mounts[0].Path.Value != "/portal/v1-assets/" || len(web.Audiences) != 1 {
+			t.Fatalf("unexpected web: %+v", web)
+		}
+	}
+	content := parseSkelForTest(t, "domain demo\nweb PortalWeb {\n    mount /\n    for ClientActor\n}")
+	path := content.Entries[0].Web.Mounts[0].Path
+	if path.Value != "/" || path.Pos.Filename != "test.skel" || path.Pos.Line != 3 || path.Pos.Column != 11 {
+		t.Fatalf("unexpected path or position: %+v", path)
+	}
+}

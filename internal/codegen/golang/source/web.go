@@ -27,6 +27,7 @@ type Web struct {
 	Name              string
 	SkelName          string
 	Hash              string
+	MountPath         string
 	CommentLines      []string
 	SpecName          string
 	ServerName        string
@@ -63,6 +64,7 @@ func (g *_Gen) castWeb(p *model.Web) *Web {
 		Name:              name,
 		SkelName:          p.SkelName,
 		Hash:              p.Hash,
+		MountPath:         p.MountPath,
 		CommentLines:      deprecatedGoDocLines(goDocLines(serverName, p.Description), serverName, p.DeprecatedReason),
 		SpecName:          fmt.Sprintf("_%sSpec", name),
 		ServerName:        serverName,

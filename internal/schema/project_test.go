@@ -283,3 +283,26 @@ func TestActorIdentifierProjectionAndDiff(t *testing.T) {
 		}
 	}
 }
+
+func TestWebMountProjectionRoundTrip(t *testing.T) {
+	for _, path := range []string{"", "/", "/portal/v1-assets/"} {
+		domain := model.NewDomainFromSpec(model.DomainSpec{Name: "demo", Webs: []*model.Web{
+			{Name: "PortalWeb", SkelName: "demo.PortalWeb", MountPath: path, Audiences: []*model.ActorAudience{}},
+		}})
+		document, err := Project(domain, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var output bytes.Buffer
+		if err := Encode(&output, document); err != nil {
+			t.Fatal(err)
+		}
+		decoded, err := Decode(&output)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if decoded.Declarations[0].Web.MountPath != path {
+			t.Fatalf("mount path lost: %+v", decoded)
+		}
+	}
+}

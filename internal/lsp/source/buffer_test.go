@@ -30,3 +30,15 @@ func TestBufferScansIdentifiersOutsideCommentsAndStrings(t *testing.T) {
 	assert.True(t, buffer.InNonCode(protocol.Position{Line: 1, Character: 22}))
 	assert.False(t, buffer.InNonCode(protocol.Position{Line: 1, Character: 2}))
 }
+
+func TestMountPathsAreNotSymbolReferences(t *testing.T) {
+	text := "mount /ClientActor/other.User\nfor ClientActor"
+	buffer := New(text)
+	tokens := buffer.IdentifierTokens()
+	if len(tokens) != 3 || tokens[0].Value != "mount" || tokens[1].Value != "for" || tokens[2].Value != "ClientActor" {
+		t.Fatalf("path leaked into symbol tokens: %+v", tokens)
+	}
+	if !buffer.InNonCode(buffer.Position(12)) || buffer.InNonCode(buffer.Position(len(text))) {
+		t.Fatal("incorrect code classification around mount path")
+	}
+}

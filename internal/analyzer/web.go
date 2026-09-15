@@ -3,6 +3,7 @@ package analyzer
 import (
 	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/parser/grammar"
+	"go.yorun.ai/skelc/internal/util/webpath"
 )
 
 func parseWeb(reporter *_DiagnosticReporter, gw *grammar.Web, pub bool) (*model.Web, bool) {
@@ -17,6 +18,14 @@ func parseWeb(reporter *_DiagnosticReporter, gw *grammar.Web, pub bool) (*model.
 	audiences, audiencesValid := parseWebAudiences(reporter, gw.Audiences)
 	valid = audiencesValid && valid
 	valid = reporter.check(len(audiences) > 0, "%s web %s must declare at least one actor", gw.Name.Pos, gw.Name.Value) && valid
+	mountPath := ""
+	for index, mount := range gw.Mounts {
+		valid = reporter.check(index == 0, "%s web %s must declare mount at most once", mount.Pos, gw.Name.Value) && valid
+		if err := webpath.Validate(mount.Path.Value); err != nil {
+			valid = reporter.check(false, "%s invalid web mount path: %s", mount.Path.Pos, err) && valid
+		}
+		mountPath = mount.Path.Value
+	}
 	return &model.Web{
 		Pos:              position(gw.Name.Pos),
 		Name:             gw.Name.Value,
@@ -25,6 +34,7 @@ func parseWeb(reporter *_DiagnosticReporter, gw *grammar.Web, pub bool) (*model.
 		Deprecated:       meta.Deprecated,
 		DeprecatedReason: meta.DeprecatedReason,
 		Audiences:        audiences,
+		MountPath:        mountPath,
 	}, valid
 }
 

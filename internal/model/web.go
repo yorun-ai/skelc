@@ -18,4 +18,6 @@ type Web struct {
 	DeprecatedReason string
 	// Audiences lists actors allowed to access the entry point.
 	Audiences []*ActorAudience
+	// MountPath is the optional absolute HTTP mount path; empty means unspecified.
+	MountPath string
 }

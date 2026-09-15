@@ -16,12 +16,12 @@ func TestResolveOptionSelectsRuntime(t *testing.T) {
 	if err != nil || client.Options().VrpcVersion != "v0.12.0" || client.Options().VineVersion != "" {
 		t.Fatalf("client: %+v, %v", client, err)
 	}
-	for _, option := range []Option{{VrpcVersion: "v0.12.0"}, {ApiOnly: true, VineVersion: "v0.15.7"}} {
+	for _, option := range []Option{{VrpcVersion: "v0.12.0"}, {ApiOnly: true, VineVersion: "v0.19.0"}} {
 		if _, err := ResolveOption(option); err == nil {
 			t.Fatalf("accepted unused version: %+v", option)
 		}
 	}
-	_, err = ResolveOption(Option{VineVersion: "v0.15.6"})
+	_, err = ResolveOption(Option{VineVersion: "v0.18.9"})
 	var validation *optionvalidation.ValidationError
 	if !errors.As(err, &validation) || validation.Field != optionvalidation.FieldGoVineVersion {
 		t.Fatalf("lost structured error: %v", err)

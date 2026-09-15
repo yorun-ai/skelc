@@ -124,6 +124,23 @@ permission、web 和 task：
 
 使用 `skelc --strict check --skel-in ./skel` 拒绝仅为兼容而保留的旧写法。严格模式默认关闭，也适用于生成和 schema 命令。Go 集成设置 `Input.Strict`；LSP 客户端可使用 `skelc --strict lsp` 或初始化、配置中的 `strict` 选项。作用范围和诊断规则见 [CLI 参考](https://skel.yorun.ai/zh-CN/docs/cli#strict-mode)。
 
+### 为 Web 指定稳定的前端挂载路径
+
+当 Web 提供的前端构建产物需要在不同构建和部署之间保持稳定的公开 URL
+前缀时，使用 `mount /path`：
+
+```skel
+web ConsoleWeb {
+    for ClientActor via client
+    mount /console
+}
+```
+
+挂载路径是前端入口及其静态资源使用的固定、不可变路径前缀。如果客户端、
+书签、CDN 规则或反向代理配置依赖该前缀，就应保持它不变。省略 `mount` 表示
+Web 不受声明的挂载路径限制；`mount /` 则明确声明根路径。修改该值会构成
+Web 契约的 breaking change。
+
 ### 使用目录管理一个 domain
 
 契约变多后，可以把同一 domain 拆成多个文件：

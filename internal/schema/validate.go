@@ -1,6 +1,10 @@
 package schema
 
-import "fmt"
+import (
+	"fmt"
+
+	"go.yorun.ai/skelc/internal/util/webpath"
+)
 
 // Validate checks a schema snapshot's format version and normalized structure.
 func Validate(document *Document) error {
@@ -97,6 +101,11 @@ func validateDeclarationBody(declaration *Declaration) error {
 	case DeclarationTypeWeb:
 		if declaration.Web.Audiences == nil {
 			return fmt.Errorf("web audiences are required")
+		}
+		if declaration.Web.MountPath != "" {
+			if err := webpath.Validate(declaration.Web.MountPath); err != nil {
+				return fmt.Errorf("invalid web mount path: %w", err)
+			}
 		}
 		return validateAudiences(declaration.Web.Audiences)
 	case DeclarationTypeTask:

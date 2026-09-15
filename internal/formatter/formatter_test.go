@@ -306,3 +306,16 @@ func TestOpenServiceRoundTrip(t *testing.T) {
 		t.Fatalf("unstable format: %s", formatted)
 	}
 }
+
+func TestWebMountFormattingRoundTrip(t *testing.T) {
+	source := []byte("domain demo\nactor ClientActor { via client {} }\nweb PortalWeb{\nmount\t/* base */\t/portal/v1-assets/ // keep\nfor ClientActor\n}\n")
+	want := "domain demo\n\nactor ClientActor {\n    via client {}\n}\n\nweb PortalWeb {\n    mount /* base */ /portal/v1-assets/ // keep\n    for ClientActor\n}\n"
+	got := formatTestSource(t, source)
+	if string(got) != want {
+		t.Fatalf("formatted source:\n%s", got)
+	}
+	checkTestSource(t, "mount.skel", got)
+	if second := formatTestSource(t, got); string(second) != string(got) {
+		t.Fatal("format is not idempotent")
+	}
+}

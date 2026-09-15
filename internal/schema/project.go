@@ -272,7 +272,7 @@ func projectWeb(domainName string, importAliases map[string]string, value *model
 	return &Declaration{
 		Metadata: metadata(value.Description, value.Deprecated, value.DeprecatedReason),
 		Name:     value.Name, Kind: DeclarationTypeWeb, SkelName: value.SkelName, Pos: value.Pos,
-		Web: &WebSchema{Audiences: projectAudiences(domainName, importAliases, value.Audiences)},
+		Web: &WebSchema{Audiences: projectAudiences(domainName, importAliases, value.Audiences), MountPath: value.MountPath},
 	}
 }
 

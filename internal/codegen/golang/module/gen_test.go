@@ -59,7 +59,7 @@ func readGoModForTest(t *testing.T, outputDir string) string {
 
 func TestGenerateRejectsRuntimeDependencyOverride(t *testing.T) {
 	out := t.TempDir()
-	err := Generate(Option{Out: out, Module: "example.com/generated", VineVersion: DefaultVineVersion, Imports: map[string]string{"runtime": "go.yorun.ai/vine@v0.15.6"}})
+	err := Generate(Option{Out: out, Module: "example.com/generated", VineVersion: DefaultVineVersion, Imports: map[string]string{"runtime": "go.yorun.ai/vine@v0.18.9"}})
 	if err == nil || !strings.Contains(err.Error(), "conflicting Go dependency versions") {
 		t.Fatalf("runtime override accepted: %v", err)
 	}

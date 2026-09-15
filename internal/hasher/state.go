@@ -73,6 +73,7 @@ func (s *_hashState) dataHash(data *model.Data) string {
 func (s *_hashState) webHash(web *model.Web) string {
 	return s.memoHash("web", web.SkelName, func() string {
 		return s.hashValue(_WebHashValue{
+			MountPath:        web.MountPath,
 			Name:             web.Name,
 			SkelName:         web.SkelName,
 			Description:      web.Description,

@@ -92,8 +92,38 @@ type ServiceAudience struct {
 type Web struct {
 	Pos        lexer.Position
 	Decorators []*Decorator
-	Name       *Identifier    `parser:"@@"`
-	Audiences  []*WebAudience `parser:"\"{\" (Newline)* (@@ (Newline)*)* \"}\""`
+	Name       *Identifier   `parser:"@@"`
+	Sections   []*WebSection `parser:"\"{\" (Newline)* (@@ (Newline)*)* \"}\""`
+	Audiences  []*WebAudience
+	Mounts     []*WebMount
+}
+
+type WebSection struct {
+	Audience *WebAudience `parser:"  (?= \"for\") @@"`
+	Mount    *WebMount    `parser:"| @@"`
+}
+
+type WebMount struct {
+	Pos  lexer.Position
+	Path *MountPath `parser:"\"mount\" @@"`
+}
+
+type MountPath struct {
+	Pos   lexer.Position
+	Value string `parser:"@Path"`
+}
+
+func (web *Web) Finalize() {
+	web.Audiences = nil
+	web.Mounts = nil
+	for _, section := range web.Sections {
+		if section.Audience != nil {
+			web.Audiences = append(web.Audiences, section.Audience)
+		}
+		if section.Mount != nil {
+			web.Mounts = append(web.Mounts, section.Mount)
+		}
+	}
 }
 
 type WebAudience struct {

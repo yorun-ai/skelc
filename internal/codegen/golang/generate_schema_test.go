@@ -175,3 +175,34 @@ func assertNoBlankLineBeforeSchemaField(t *testing.T, content string, fieldPrefi
 		}
 	}
 }
+
+func TestGeneratorGoRendersWebMountInSpecAndSchema(t *testing.T) {
+	for _, path := range []string{"", "/", "/portal/v1-assets/"} {
+		pkg := newModelDomainForTest(t, model.DomainSpec{
+			Name:   "demo.web",
+			Actors: []*model.Actor{{Name: "ClientActor", Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaClient)}}},
+			Webs:   []*model.Web{{Name: "PortalWeb", MountPath: path, Audiences: []*model.ActorAudience{{Actor: "ClientActor"}}}},
+		})
+		out := filepath.Join(t.TempDir(), "skeled")
+		if err := generateFixture(pkg, golang.Option{Out: out}); err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range []string{"web.go", "schema.go"} {
+			first := readFileForTest(t, filepath.Join(out, name))
+			normalized := strings.Join(strings.Fields(first), " ")
+			if path == "" {
+				if strings.Contains(normalized, "MountPath:") {
+					t.Fatalf("unspecified mount emitted in %s", name)
+				}
+			} else if !strings.Contains(normalized, `MountPath: "`+path+`",`) {
+				t.Fatalf("mount path missing from %s:\n%s", name, first)
+			}
+			if err := generateFixture(pkg, golang.Option{Out: out}); err != nil {
+				t.Fatal(err)
+			}
+			if second := readFileForTest(t, filepath.Join(out, name)); first != second {
+				t.Fatal("non-deterministic generation")
+			}
+		}
+	}
+}

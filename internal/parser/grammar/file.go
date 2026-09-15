@@ -66,6 +66,7 @@ func (content *SkelContent) Finalize() error {
 			entry.Service.Open = entry.Open
 		case entry.Web != nil:
 			entry.Web.Decorators = entry.Decorators
+			entry.Web.Finalize()
 		case entry.Event != nil:
 			entry.Event.Decorators = entry.Decorators
 			entry.Event.Pub = entry.Pub

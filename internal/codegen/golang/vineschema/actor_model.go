@@ -34,6 +34,7 @@ const (
 )
 
 type _WebSchema struct {
+	MountPath        string
 	Name             string
 	SkelName         string
 	Description      string

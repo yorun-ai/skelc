@@ -10,6 +10,9 @@ var {{ $web.SpecName }} = &web.WebSpec{
 	Name: "{{ $web.Name }}",
 	SkelName: "{{ $web.SkelName }}",
 	Hash: "{{ $web.Hash }}",
+	{{- if $web.MountPath }}
+	MountPath: {{ printf "%q" $web.MountPath }},
+	{{- end }}
 	ServerType: reflect.TypeFor[{{ $web.ServerName }}](),
 	DefaultServerType: reflect.TypeFor[*{{ $web.DefaultServerName }}](),
 }

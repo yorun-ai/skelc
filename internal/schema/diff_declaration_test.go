@@ -210,3 +210,14 @@ func visibilityDocument(public bool) *Document {
 	declaration.Pub = public
 	return newTestDocument(declaration)
 }
+
+func TestWebMountDiff(t *testing.T) {
+	for _, paths := range [][2]string{{"", "/"}, {"", "/portal"}, {"/portal", ""}, {"/portal", "/other"}} {
+		baseline := &Declaration{Kind: DeclarationTypeWeb, SkelName: "demo.PortalWeb", Web: &WebSchema{MountPath: paths[0]}}
+		candidate := &Declaration{Kind: DeclarationTypeWeb, SkelName: "demo.PortalWeb", Web: &WebSchema{MountPath: paths[1]}}
+		changes := diffChanges(func(diff *_Diff) { diff.compareDeclaration(baseline, candidate) })
+		if len(changes) != 1 || changes[0].Code != "web.mount-path.changed" || changes[0].Impact != ImpactBreaking || changes[0].Change != ChangeModified {
+			t.Fatalf("mount diff %q: %+v", paths, changes)
+		}
+	}
+}

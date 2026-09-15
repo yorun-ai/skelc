@@ -150,17 +150,16 @@ func TestSemanticDiagnosticsKeepStandaloneFormatterFixturesIndependent(t *testin
 		documents[documentURI] = index.Build(documentURI, path, string(content), 1)
 	}
 	sources, paths := SemanticSources(documents)
-	diagnostics, domains, err := SemanticWorkspace(t.Context(), compiler.NewWorkspaceAnalyzer(), sources, paths, false)
+	diagnostics, domains, err := SemanticWorkspace(t.Context(), compiler.NewWorkspaceAnalyzer(), sources, paths, true)
 	require.NoError(t, err)
-	require.Len(t, diagnostics, 2)
-	for _, values := range diagnostics {
-		require.Len(t, values, 1)
-		assert.Equal(t, protocol.String("service.legacy-client-rules"), values[0].Code)
-	}
+	// Both fixtures declare the same demo.user declarations, so analyzing them
+	// as one workspace group would report duplicates instead of staying quiet.
+	require.Empty(t, diagnostics)
 	require.Len(t, domains, 2)
 	for _, domain := range domains {
 		require.Len(t, domain.Sources, 1)
 		assert.Equal(t, domain.Sources[0].Path, domain.Root)
+		assert.Equal(t, "demo.user", domain.Name)
 	}
 }
 

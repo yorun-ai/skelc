@@ -57,7 +57,7 @@ id:uuid
 }
 }
 
-pub service UserService{
+api service UserApiService{
 for ClientActor via client
 auth
 

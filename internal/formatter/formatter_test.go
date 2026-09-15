@@ -38,8 +38,9 @@ func checkTestSource(t *testing.T, name string, source []byte) {
 	if err := os.WriteFile(path, source, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	// Like skelc check, validate local semantics while allowing unresolved imports.
-	result, err := compiler.Check(compiler.Option{SkelIn: path})
+	// Like skelc --strict check, validate local semantics while allowing
+	// unresolved imports, so fixtures cannot rely on migration-only syntax.
+	result, err := compiler.Check(compiler.Option{SkelIn: path, Strict: true})
 	if err != nil {
 		t.Fatalf("check %s: %v", name, err)
 	}

@@ -8,9 +8,11 @@ output_root=${1:-"$script_dir/generated"}
 cd "$repo_root"
 
 # Build the CLI once; invoking it through `go run` would rebuild it every time.
+# -buildvcs=false keeps the reported compiler version at v0.0.0-dev, as `go run`
+# does, instead of the VCS pseudo-version that `go build` would otherwise stamp.
 build_dir=$(mktemp -d)
 trap 'rm -rf "$build_dir"' EXIT
-GOWORK=off go build -o "$build_dir/skelc" ./cmd/skelc
+GOWORK=off go build -buildvcs=false -o "$build_dir/skelc" ./cmd/skelc
 skelc="$build_dir/skelc"
 
 "$skelc" check \

@@ -6,6 +6,8 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-09-16
+
 ### Changed
 
 - Raise the default and minimum Vine dependency for generated Go code to v0.19.0.

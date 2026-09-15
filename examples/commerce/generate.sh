@@ -11,44 +11,50 @@ identity_go_public="$output_root/go/identitypub"
 
 cd "$repo_root"
 
-GOWORK=off go run ./cmd/skelc check \
+# Build the CLI once; invoking it through `go run` would rebuild it every time.
+build_dir=$(mktemp -d)
+trap 'rm -rf "$build_dir"' EXIT
+GOWORK=off go build -o "$build_dir/skelc" ./cmd/skelc
+skelc="$build_dir/skelc"
+
+"$skelc" check \
   --skel-in "$identity_skel"
 
-GOWORK=off go run ./cmd/skelc gen skel \
+"$skelc" gen skel \
   --pub \
   --skel-in "$identity_skel" \
   --skel-out "$identity_public"
 
-GOWORK=off go run ./cmd/skelc gen go-module \
+"$skelc" gen go-module \
   --skel-in "$identity_skel" \
   --go-out "$output_root/go/identity" \
   --go-module example.com/yorun/commerce/identity \
   --go-pub-out "$identity_go_public" \
   --go-pub-module example.com/yorun/commerce/identitypub
 
-GOWORK=off go run ./cmd/skelc gen ts --api \
+"$skelc" gen ts --api \
   --skel-in "$identity_skel" \
   --ts-out "$output_root/typescript/identity" \
   --ts-as-module \
   --ts-module @yorun-example/commerce-identity
 
-GOWORK=off go run ./cmd/skelc check \
+"$skelc" check \
   --skel-in "$order_skel"
 
-GOWORK=off go run ./cmd/skelc gen skel \
+"$skelc" gen skel \
   --pub \
   --skel-in "$order_skel" \
   --skel-import "identity.user=$identity_skel" \
   --skel-out "$output_root/public/order"
 
-GOWORK=off go run ./cmd/skelc gen go-module \
+"$skelc" gen go-module \
   --skel-in "$order_skel" \
   --skel-import "identity.user=$identity_skel" \
   --go-import identity.user=example.com/yorun/commerce/identitypub \
   --go-out "$output_root/go/order" \
   --go-module example.com/yorun/commerce/order
 
-GOWORK=off go run ./cmd/skelc gen ts --api \
+"$skelc" gen ts --api \
   --skel-in "$order_skel" \
   --skel-import "identity.user=$identity_skel" \
   --ts-import identity.user=@yorun-example/commerce-identity \

@@ -16,7 +16,7 @@ func TestServiceRenamesDeclarationsAndReferences(t *testing.T) {
 	server.putDocument(userURI, "domain demo.user\ndata User {}\n", 1, true)
 	server.putDocument(orderURI, "domain demo.order\nimport demo.user\ndata Order { owner: user.User }\n", 1, true)
 
-	edit, err := server.Rename(t.Context(), &protocol.RenameParams{
+	edit, err := server.service().Rename(t.Context(), &protocol.RenameParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: userURI},
 			Position:     protocol.Position{Line: 1, Character: 6},
@@ -35,7 +35,7 @@ func TestServiceRejectsInvalidRename(t *testing.T) {
 	documentURI := uri.File("/workspace/user.skel")
 	server.putDocument(documentURI, "domain demo\ndata User {}\n", 1, true)
 
-	_, err := server.Rename(t.Context(), &protocol.RenameParams{
+	_, err := server.service().Rename(t.Context(), &protocol.RenameParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
 			Position:     protocol.Position{Line: 1, Character: 6},
@@ -50,7 +50,7 @@ func TestServiceDoesNotRenameUnresolvedReferences(t *testing.T) {
 	documentURI := uri.File("/workspace/user.skel")
 	server.putDocument(documentURI, "domain demo\ndata User { missing: Missing }\n", 1, true)
 
-	prepared, err := server.PrepareRename(t.Context(), &protocol.PrepareRenameParams{
+	prepared, err := server.service().PrepareRename(t.Context(), &protocol.PrepareRenameParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
 			Position:     protocol.Position{Line: 1, Character: 23},

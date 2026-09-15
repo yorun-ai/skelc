@@ -1,6 +1,7 @@
 package golang_test
 
 import (
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/codegen/golang"
 	"os"
 	"path/filepath"
@@ -11,7 +12,7 @@ import (
 func TestGeneratorAlwaysRendersGoDocFile(t *testing.T) {
 	goOutDir := filepath.Join(t.TempDir(), "skeled")
 
-	pkg := newModelDomainForTest(t, domainModelForTest("demo.user"))
+	pkg := newModelDomainForTest(t, codegentest.DomainModel("demo.user"))
 
 	if err := generateFixture(pkg, golang.Option{Out: goOutDir}); err != nil {
 		t.Fatal(err)

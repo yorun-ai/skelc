@@ -5,11 +5,12 @@ import (
 	"reflect"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/codegen/golang/view"
 )
 
 func TestBuildDocGoPayloadUsesDomainDescription(t *testing.T) {
-	pkg := buildModelDomainForTest(t, domainModelWithDescriptionForTest("demo.user", "User domain"))
+	pkg := buildModelDomainForTest(t, codegentest.DomainModelWithDescription("demo.user", "User domain"))
 	gen := newGen(Option{
 		Domain:      pkg,
 		View:        mustView(t, view.ModeFull, pkg),
@@ -42,7 +43,7 @@ func TestDeprecatedGoDocLinesSupportsMultilineReason(t *testing.T) {
 }
 
 func TestBuildDocGoPayloadFallsBackToPackageName(t *testing.T) {
-	pkg := buildModelDomainForTest(t, domainModelForTest("demo.user"))
+	pkg := buildModelDomainForTest(t, codegentest.DomainModel("demo.user"))
 	gen := newGen(Option{
 		Domain:      pkg,
 		View:        mustView(t, view.ModeFull, pkg),

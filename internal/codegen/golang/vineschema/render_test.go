@@ -1,6 +1,7 @@
 package vineschema
 
 import (
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/codegen/golang/view"
 	"go.yorun.ai/skelc/internal/model"
 	"os"
@@ -15,25 +16,25 @@ func TestGenSchemaGoRendersActorAuthEnabled(t *testing.T) {
 		Actors: []*model.Actor{
 			{
 				Name:            "ClientActor",
-				Vias:            []*model.ActorVia{actorViaForTest(model.ActorViaClient)},
+				Vias:            []*model.ActorVia{codegentest.ActorVia(model.ActorViaClient)},
 				AuthEnabled:     true,
 				IdentifierField: "userId",
 				AuthCredential: &model.Data{
 					Name: "ClientActorCredential",
 					Members: []*model.DataMember{
-						{Name: "token", Type: stringTypeForTest()},
+						{Name: "token", Type: codegentest.StringType()},
 					},
 				},
 				AuthInfo: &model.Data{
 					Name: "ClientActorInfo",
 					Members: []*model.DataMember{
-						{Name: "userId", Type: intTypeForTest()},
+						{Name: "userId", Type: codegentest.IntType()},
 					},
 				},
 			},
 			{
 				Name: "AnonymousActor",
-				Vias: []*model.ActorVia{actorViaForTest(model.ActorViaClient)},
+				Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaClient)},
 			},
 		},
 	})
@@ -75,7 +76,7 @@ func TestGenSchemaGoRendersDeprecatedFields(t *testing.T) {
 			DeprecatedReason: "Use Profile instead",
 			Members: []*model.DataMember{{
 				Name:             "legacyId",
-				Type:             stringTypeForTest(),
+				Type:             codegentest.StringType(),
 				Deprecated:       true,
 				DeprecatedReason: "Use id instead",
 			}},

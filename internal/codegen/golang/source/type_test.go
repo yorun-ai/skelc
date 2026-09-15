@@ -3,6 +3,7 @@ package source
 import (
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/model"
 )
 
@@ -89,10 +90,10 @@ func TestCastCollectionTypesUsePointersOnlyWhenNullable(t *testing.T) {
 		wantPlain   string
 		wantDefault string
 	}{
-		{name: "list", type_: listTypeForTest(stringTypeForTest()), wantPlain: "[]string", wantDefault: "[]string{}"},
-		{name: "nullable list", type_: nullableTypeForTest(listTypeForTest(stringTypeForTest())), wantPlain: "*[]string", wantDefault: "nil"},
-		{name: "map", type_: mapTypeForTest(stringTypeForTest(), stringTypeForTest()), wantPlain: "map[string]string", wantDefault: "map[string]string{}"},
-		{name: "nullable map", type_: nullableTypeForTest(mapTypeForTest(stringTypeForTest(), stringTypeForTest())), wantPlain: "*map[string]string", wantDefault: "nil"},
+		{name: "list", type_: codegentest.ListType(codegentest.StringType()), wantPlain: "[]string", wantDefault: "[]string{}"},
+		{name: "nullable list", type_: codegentest.NullableType(codegentest.ListType(codegentest.StringType())), wantPlain: "*[]string", wantDefault: "nil"},
+		{name: "map", type_: codegentest.MapType(codegentest.StringType(), codegentest.StringType()), wantPlain: "map[string]string", wantDefault: "map[string]string{}"},
+		{name: "nullable map", type_: codegentest.NullableType(codegentest.MapType(codegentest.StringType(), codegentest.StringType())), wantPlain: "*map[string]string", wantDefault: "nil"},
 	}
 
 	for _, test := range tests {

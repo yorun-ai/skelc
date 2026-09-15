@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/codegen/golang/view"
 	"go.yorun.ai/skelc/internal/model"
 )
@@ -19,13 +20,13 @@ func TestResourceCheckServiceUsesResourceGoPayload(t *testing.T) {
 			SkelName: "checkById",
 			Arguments: []*model.Argument{{
 				Name: "id",
-				Type: intTypeForTest(),
+				Type: codegentest.IntType(),
 			}},
 			ArgumentsData: &model.Data{
 				Name: "UserCheckServiceCheckByIdArguments",
 				Members: []*model.DataMember{{
 					Name: "id",
-					Type: intTypeForTest(),
+					Type: codegentest.IntType(),
 				}},
 			},
 		}},
@@ -60,14 +61,14 @@ func TestResourceGoRegistersCheckServices(t *testing.T) {
 			SkelName: "checkById",
 			Arguments: []*model.Argument{{
 				Name: "id",
-				Type: intTypeForTest(),
+				Type: codegentest.IntType(),
 			}},
 			ArgumentsData: &model.Data{
 				Name: "UserCheckServiceCheckByIdArguments",
 				Members: []*model.DataMember{{
 					Name:      "id",
 					Sensitive: true,
-					Type:      intTypeForTest(),
+					Type:      codegentest.IntType(),
 				}},
 			},
 		}},

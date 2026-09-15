@@ -77,7 +77,7 @@ service UserService {
 	result := Run([]string{"check", "--skel-in", dir})
 	checked := decodeCheckResult(t, result)
 	if result.ExitCode != ExitCodeUnsatisfied || checked.Valid ||
-		!checkDiagnosticsContain(checked, `unexpected token "allow"`) || result.Stderr != "" {
+		!checkDiagnosticsContain(checked, diagnostic.CodeSyntaxUnexpected, `unexpected token "allow"`) || result.Stderr != "" {
 		t.Fatalf("unexpected check result: %+v", result)
 	}
 }
@@ -163,8 +163,9 @@ data invalidName {
 
 	result := Run([]string{"check", "--skel-in", dir})
 	checked := decodeCheckResult(t, result)
-	if result.ExitCode != ExitCodeUnsatisfied || !checkDiagnosticsContain(checked, "Data") ||
-		checkDiagnosticsContain(checked, "skel import") {
+	if result.ExitCode != ExitCodeUnsatisfied ||
+		!checkDiagnosticsContain(checked, diagnostic.CodeSemanticNaming, "Data") ||
+		checkDiagnosticsContainCode(checked, diagnostic.CodeImportMissing) {
 		t.Fatalf("unexpected result: %+v", result)
 	}
 }
@@ -180,8 +181,8 @@ data Order { missing: MissingOrder }
 	result := Run([]string{"check", "--skel-in", dir})
 	checked := decodeCheckResult(t, result)
 	if result.ExitCode != ExitCodeUnsatisfied || len(checked.Diagnostics) != 2 ||
-		!checkDiagnosticsContain(checked, "definition of MissingUser not found") ||
-		!checkDiagnosticsContain(checked, "definition of MissingOrder not found") {
+		!checkDiagnosticsContain(checked, diagnostic.CodeSemanticReference, "definition of MissingUser not found") ||
+		!checkDiagnosticsContain(checked, diagnostic.CodeSemanticReference, "definition of MissingOrder not found") {
 		t.Fatalf("unexpected result: %+v", result)
 	}
 }
@@ -207,7 +208,7 @@ func TestRunSkelcCheckPreservesDomainFileRestrictions(t *testing.T) {
 
 	result := Run([]string{"check", "--skel-in", dir})
 	checked := decodeCheckResult(t, result)
-	if result.ExitCode != ExitCodeUnsatisfied || !checkDiagnosticsContain(checked, "can only contain domain declaration and @desc") {
+	if result.ExitCode != ExitCodeUnsatisfied || !checkDiagnosticsContain(checked, diagnostic.CodeDomainFileContent, "can only contain domain declaration and @desc") {
 		t.Fatalf("unexpected result: %+v", result)
 	}
 }
@@ -221,9 +222,21 @@ func decodeCheckResult(t *testing.T, result Result) *command.CheckResult {
 	return checked
 }
 
-func checkDiagnosticsContain(result *command.CheckResult, substring string) bool {
+// checkDiagnosticsContain reports whether a diagnostic carries the stable
+// public code and a message containing substring.
+func checkDiagnosticsContain(result *command.CheckResult, code string, substring string) bool {
 	for _, item := range result.Diagnostics {
-		if strings.Contains(item.Message, substring) {
+		if item.Code == code && strings.Contains(item.Message, substring) {
+			return true
+		}
+	}
+	return false
+}
+
+// checkDiagnosticsContainCode reports whether any diagnostic carries code.
+func checkDiagnosticsContainCode(result *command.CheckResult, code string) bool {
+	for _, item := range result.Diagnostics {
+		if item.Code == code {
 			return true
 		}
 	}

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/codegen/golang/view"
 	"go.yorun.ai/skelc/internal/model"
 )
@@ -20,7 +21,7 @@ func TestActorInfoIdentifierTag(t *testing.T) {
 				IdentifierField: "userId",
 				AuthCredential:  &model.Data{Name: "UserActorCredential"},
 				AuthInfo: &model.Data{Name: "UserActorInfo", Members: []*model.DataMember{
-					{Name: "userId", Type: stringTypeForTest(), Sensitive: sensitive},
+					{Name: "userId", Type: codegentest.StringType(), Sensitive: sensitive},
 				}},
 			}},
 		})

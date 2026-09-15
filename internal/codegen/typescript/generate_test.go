@@ -24,7 +24,9 @@ func TestGenerateModule(t *testing.T) {
 		}},
 	})
 
-	Generate(domain, Option{Out: outDir, AsModule: true, Module: "@yorun-ai/skeled-demo-user"})
+	if err := Generate(domain, Option{Out: outDir, AsModule: true, Module: "@yorun-ai/skeled-demo-user"}); err != nil {
+		t.Fatalf("generate typescript: %v", err)
+	}
 
 	packageJSON, err := os.ReadFile(filepath.Join(outDir, "package.json"))
 	if err != nil {

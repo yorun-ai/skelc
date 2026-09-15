@@ -64,18 +64,14 @@ func TestRunSkelcStrictGenerationPreservesOutputs(t *testing.T) {
 }
 
 func TestRunSkelcGenGo(t *testing.T) {
-	dir := t.TempDir()
-	goOut := filepath.Join(t.TempDir(), "skeled")
-	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
+	dir, goOut := newGenFixture(t)
 
 	result := Run([]string{"gen", "go", "--skel-in", dir, "--go-out", goOut})
 	assertGenerationResult(t, result)
 }
 
 func TestRunSkelcGenGoWritesWarningsToDefaultJSONLLogs(t *testing.T) {
-	dir := t.TempDir()
-	goOut := filepath.Join(t.TempDir(), "skeled")
-	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
+	dir, goOut := newGenFixture(t)
 	writeCLIFile(t, dir+"/.hidden.skel", `domain demo.user`)
 
 	result := Run([]string{"gen", "go", "--skel-in", dir, "--go-out", goOut})
@@ -98,9 +94,7 @@ func TestRunSkelcGenGoWritesWarningsToDefaultJSONLLogs(t *testing.T) {
 }
 
 func TestRunSkelcGenGoSupportsTextLogs(t *testing.T) {
-	dir := t.TempDir()
-	goOut := filepath.Join(t.TempDir(), "skeled")
-	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
+	dir, goOut := newGenFixture(t)
 	writeCLIFile(t, dir+"/.hidden.skel", `domain demo.user`)
 
 	result := Run([]string{"--log-format", "text", "gen", "go", "--skel-in", dir, "--go-out", goOut})
@@ -124,9 +118,7 @@ func TestRunSkelcGenGoClassifiesOutputFailures(t *testing.T) {
 }
 
 func TestRunSkelcGenGoRendersDataCloneMethodsAndGenericCallbacks(t *testing.T) {
-	dir := t.TempDir()
-	goOut := filepath.Join(t.TempDir(), "skeled")
-	writeCLIFile(t, filepath.Join(dir, "domain.skel"), `domain demo.user`)
+	dir, goOut := newGenFixture(t)
 	writeCLIFile(t, filepath.Join(dir, "types.skel"), `domain demo.user
 
 data User {
@@ -165,9 +157,7 @@ service UserService {
 }
 
 func TestRunSkelcGenGoPreservesUnmanagedOutput(t *testing.T) {
-	dir := t.TempDir()
-	goOut := filepath.Join(t.TempDir(), "skeled")
-	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
+	dir, goOut := newGenFixture(t)
 	writeCLIFile(t, filepath.Join(goOut, ".hidden"), "hidden")
 	writeCLIFile(t, filepath.Join(goOut, ".hidden-dir", "old.go"), "old")
 	writeCLIFile(t, filepath.Join(goOut, "old.go"), "old")
@@ -193,16 +183,15 @@ func TestRunSkelcGenGoDoesNotChangeOutputWhenCompilationFails(t *testing.T) {
 
 	result := Run([]string{"gen", "go", "--skel-in", dir, "--go-out", goOut})
 
-	if result.ExitCode == ExitCodeSuccess {
-		t.Fatal("expected generation failure")
+	commandError := decodeCommandError(t, result)
+	if result.ExitCode != ExitCodeError || commandError.Code != command.ErrorCodeCompilationFailed {
+		t.Fatalf("expected compilation failure: %+v", result)
 	}
 	assertFileContains(t, filepath.Join(goOut, "old.go"), "old")
 }
 
 func TestRunSkelcGenGoModule(t *testing.T) {
-	dir := t.TempDir()
-	goOut := filepath.Join(t.TempDir(), "skeled")
-	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
+	dir, goOut := newGenFixture(t)
 
 	result := Run([]string{"gen", "go-module", "--skel-in", dir, "--go-out", goOut, "--go-module-prefix", "github.com/acme/skel"})
 	assertGenerationResult(t, result)
@@ -210,9 +199,7 @@ func TestRunSkelcGenGoModule(t *testing.T) {
 }
 
 func TestRunSkelcGenGoModuleWithGoVineVersion(t *testing.T) {
-	dir := t.TempDir()
-	goOut := filepath.Join(t.TempDir(), "skeled")
-	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
+	dir, goOut := newGenFixture(t)
 
 	result := Run([]string{"gen", "go-module", "--skel-in", dir, "--go-out", goOut, "--go-module-prefix", "github.com/acme/skel", "--go-vine-version", "v1.2.3"})
 
@@ -223,9 +210,7 @@ func TestRunSkelcGenGoModuleWithGoVineVersion(t *testing.T) {
 }
 
 func TestRunSkelcGenGoModuleRejectsLowGoVineVersion(t *testing.T) {
-	dir := t.TempDir()
-	goOut := filepath.Join(t.TempDir(), "skeled")
-	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
+	dir, goOut := newGenFixture(t)
 
 	result := Run([]string{"gen", "go-module", "--skel-in", dir, "--go-out", goOut, "--go-module-prefix", "github.com/acme/skel", "--go-vine-version", "v0.8.0"})
 
@@ -233,9 +218,7 @@ func TestRunSkelcGenGoModuleRejectsLowGoVineVersion(t *testing.T) {
 }
 
 func TestRunSkelcGenGoModuleRejectsGoVineVersionWithoutVPrefix(t *testing.T) {
-	dir := t.TempDir()
-	goOut := filepath.Join(t.TempDir(), "skeled")
-	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
+	dir, goOut := newGenFixture(t)
 
 	result := Run([]string{"gen", "go-module", "--skel-in", dir, "--go-out", goOut, "--go-module-prefix", "github.com/acme/skel", "--go-vine-version", "1.2.3"})
 
@@ -243,9 +226,7 @@ func TestRunSkelcGenGoModuleRejectsGoVineVersionWithoutVPrefix(t *testing.T) {
 }
 
 func TestRunSkelcGenGoModuleAcceptsPubFlag(t *testing.T) {
-	dir := t.TempDir()
-	goOut := filepath.Join(t.TempDir(), "skeled")
-	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
+	dir, goOut := newGenFixture(t)
 
 	result := Run([]string{"gen", "go-module", "--pub", "--skel-in", dir, "--go-out", goOut, "--go-module-prefix", "github.com/acme/skel"})
 
@@ -255,9 +236,7 @@ func TestRunSkelcGenGoModuleAcceptsPubFlag(t *testing.T) {
 }
 
 func TestRunSkelcGenGoRendersSchema(t *testing.T) {
-	dir := t.TempDir()
-	goOut := filepath.Join(t.TempDir(), "skeled")
-	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
+	dir, goOut := newGenFixture(t)
 	writeCLIFile(t, dir+"/types.skel", `domain demo.user
 
 pub data User {
@@ -270,31 +249,28 @@ pub data User {
 	if result.ExitCode != ExitCodeSuccess {
 		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
 	}
-	version, err := compilerVersion()
-	if err != nil {
-		t.Fatal(err)
+	original := ldModuleVersion
+	t.Cleanup(func() { ldModuleVersion = original })
+	ldModuleVersion = "v9.9.9"
+	result = Run([]string{"gen", "go", "--skel-in", dir, "--go-out", goOut})
+	if result.ExitCode != ExitCodeSuccess {
+		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
 	}
 	assertFileContains(t, filepath.Join(goOut, "schema.go"),
 		`Domain: "demo.user"`,
-		`CompilerVersion: "`+version+`"`)
+		`CompilerVersion: "v9.9.9"`)
 }
 
 func TestRunSkelcGenGoRejectsModuleFlags(t *testing.T) {
-	dir := t.TempDir()
-	goOut := filepath.Join(t.TempDir(), "skeled")
-	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
+	dir, goOut := newGenFixture(t)
 
 	result := Run([]string{"gen", "go", "--go-module", "example.com/invalid", "--skel-in", dir, "--go-out", goOut})
 
-	if result.ExitCode != ExitCodeError {
-		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
-	}
+	assertCommandErrorMessage(t, result, "flag provided but not defined: -go-module")
 }
 
 func TestRunSkelcGenGoModuleRejectsMissingModulePrefix(t *testing.T) {
-	dir := t.TempDir()
-	goOut := filepath.Join(t.TempDir(), "skeled")
-	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
+	dir, goOut := newGenFixture(t)
 
 	result := Run([]string{"gen", "go-module", "--skel-in", dir, "--go-out", goOut})
 
@@ -302,9 +278,7 @@ func TestRunSkelcGenGoModuleRejectsMissingModulePrefix(t *testing.T) {
 }
 
 func TestRunSkelcGenGoModuleUsesFlagNameForSharedValidationError(t *testing.T) {
-	dir := t.TempDir()
-	goOut := filepath.Join(t.TempDir(), "skeled")
-	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
+	dir, goOut := newGenFixture(t)
 
 	result := Run([]string{
 		"gen", "go-module", "--skel-in", dir, "--go-out", goOut,
@@ -312,21 +286,6 @@ func TestRunSkelcGenGoModuleUsesFlagNameForSharedValidationError(t *testing.T) {
 	})
 
 	assertCommandErrorMessage(t, result, "flag go-module-prefix must not end with /")
-}
-
-func TestRunSkelcGenGoModuleWithModulePrefix(t *testing.T) {
-	dir := t.TempDir()
-	goOut := filepath.Join(t.TempDir(), "skeled")
-	writeCLIFile(t, dir+"/domain.skel", `domain demo.user`)
-
-	result := Run([]string{"gen", "go-module", "--skel-in", dir, "--go-out", goOut, "--go-module-prefix", "github.com/acme/skel"})
-
-	if result.ExitCode != ExitCodeSuccess {
-		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
-	}
-	if result.Stderr != "" {
-		t.Fatalf("unexpected stderr: %q", result.Stderr)
-	}
 }
 
 func TestRunSkelcGenGoModuleWithSkelImportAndGoImport(t *testing.T) {

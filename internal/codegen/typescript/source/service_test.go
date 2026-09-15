@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/model"
 )
 
@@ -107,7 +108,7 @@ func TestServiceTemplateRendersDeprecatedDocs(t *testing.T) {
 			DeprecatedReason: "Use getProfile instead",
 			Arguments: []*model.Argument{{
 				Name:             "legacyId",
-				Type:             intTypeForTest(),
+				Type:             codegentest.IntType(),
 				Deprecated:       true,
 				DeprecatedReason: "Use id instead\nLegacy IDs will be removed",
 			}},
@@ -210,24 +211,24 @@ func TestBuildServiceTsPayloadIncludesLegacyAdmissionRules(t *testing.T) {
 		Name: "User",
 		Members: []*model.DataMember{{
 			Name: "id",
-			Type: intTypeForTest(),
+			Type: codegentest.IntType(),
 		}},
 	}
 	pkg := buildModelDomainForTest(t, model.DomainSpec{
 		Name: "demo.user",
 		Actors: []*model.Actor{
-			{Name: "ClientActor", Vias: []*model.ActorVia{actorViaForTest(model.ActorViaClient)}},
-			{Name: "AgentActor", Vias: []*model.ActorVia{actorViaForTest(model.ActorViaAgent)}},
+			{Name: "ClientActor", Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaClient)}},
+			{Name: "AgentActor", Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaAgent)}},
 		},
 		Data: []*model.Data{user},
 		Services: []*model.Service{
 			{Name: "ClientService", Audiences: []*model.ActorAudience{{Actor: "ClientActor"}}, Methods: []*model.Method{{
 				Name:       "getUser",
-				ResultType: dataTypeForTest(user),
+				ResultType: codegentest.DataType(user),
 			}}},
 			{Name: "AgentService", Audiences: []*model.ActorAudience{{Actor: "AgentActor"}}, Methods: []*model.Method{{
 				Name:       "getUser",
-				ResultType: dataTypeForTest(user),
+				ResultType: codegentest.DataType(user),
 			}}},
 		},
 	})
@@ -251,7 +252,7 @@ func TestBuildServiceTsPayloadExcludesBackendServices(t *testing.T) {
 		Name: "User",
 		Members: []*model.DataMember{{
 			Name: "id",
-			Type: intTypeForTest(),
+			Type: codegentest.IntType(),
 		}},
 	}
 	pkg := buildModelDomainForTest(t, model.DomainSpec{
@@ -259,17 +260,17 @@ func TestBuildServiceTsPayloadExcludesBackendServices(t *testing.T) {
 		Actors: []*model.Actor{{
 			Pub:  true,
 			Name: "ClientActor",
-			Vias: []*model.ActorVia{actorViaForTest(model.ActorViaClient)},
+			Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaClient)},
 		}},
 		Data: []*model.Data{user},
 		Services: []*model.Service{
 			{Name: "PublicClientService", Api: true, Audiences: []*model.ActorAudience{{Actor: "ClientActor"}}, Methods: []*model.Method{{
 				Name:       "getUser",
-				ResultType: dataTypeForTest(user),
+				ResultType: codegentest.DataType(user),
 			}}},
 			{Name: "InternalClientService", Pub: true, Methods: []*model.Method{{
 				Name:       "getUser",
-				ResultType: dataTypeForTest(user),
+				ResultType: codegentest.DataType(user),
 			}}},
 		},
 	})

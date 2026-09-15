@@ -16,7 +16,7 @@ func TestServiceDefinitionAndReferencesAcrossDomains(t *testing.T) {
 	server.putDocument(userURI, "domain demo.user\ndata User {}\n", 1, true)
 	server.putDocument(orderURI, "domain demo.order\nimport demo.user\ndata Order { owner: user.User }\n", 1, true)
 
-	definition, err := server.Definition(t.Context(), &protocol.DefinitionParams{
+	definition, err := server.service().Definition(t.Context(), &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: orderURI},
 			Position:     protocol.Position{Line: 2, Character: 25},
@@ -31,7 +31,7 @@ func TestServiceDefinitionAndReferencesAcrossDomains(t *testing.T) {
 		},
 	}}, definition)
 
-	references, err := server.References(t.Context(), &protocol.ReferenceParams{
+	references, err := server.service().References(t.Context(), &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: userURI},
 			Position:     protocol.Position{Line: 1, Character: 6},
@@ -43,7 +43,7 @@ func TestServiceDefinitionAndReferencesAcrossDomains(t *testing.T) {
 	assert.Equal(t, orderURI, references[0].URI)
 	assert.Equal(t, userURI, references[1].URI)
 
-	references, err = server.References(t.Context(), &protocol.ReferenceParams{
+	references, err = server.service().References(t.Context(), &protocol.ReferenceParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: userURI},
 			Position:     protocol.Position{Line: 1, Character: 6},

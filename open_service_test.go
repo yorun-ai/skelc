@@ -2,15 +2,16 @@ package skelc_test
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"go.yorun.ai/skelc"
+	"go.yorun.ai/skelc/internal/testutil"
 )
 
 func TestOpenServicePublicServer(t *testing.T) {
+	testutil.RequireToolchain(t)
 	root := t.TempDir()
 	input := filepath.Join(root, "service.skel")
 	source := `domain demo.storage
@@ -71,15 +72,6 @@ func TestPublicServer(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(regular, "open_test.go"), []byte(testSource), 0600); err != nil {
 		t.Fatal(err)
 	}
-	run := func(dir string, args ...string) {
-		t.Helper()
-		cmd := exec.Command("go", args...)
-		cmd.Dir = dir
-		cmd.Env = append(os.Environ(), "GOWORK=off")
-		if output, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("go %v: %v\n%s", args, err, output)
-		}
-	}
 
 	for _, pubOnly := range []bool{false, true} {
 		out := filepath.Join(root, "full")
@@ -89,12 +81,9 @@ func TestPublicServer(t *testing.T) {
 		if _, err := skelc.CompileGolang(skelc.Input{SkelIn: skelOut, Strict: true}, skelc.GolangOption{CompilerVersion: "v0.19.0", Out: out, Module: "example.com/standalone", AsModule: true, PubOnly: pubOnly}); err != nil {
 			t.Fatal(err)
 		}
-		run(out, "mod", "tidy")
-		run(out, "test", "./...")
+		testutil.Go(t, out, "build", "-mod=mod", "./...")
 	}
-	run(pub, "mod", "tidy")
-	run(pub, "test", "./...")
-	run(regular, "mod", "edit", "-replace=example.com/storagepub="+pub)
-	run(regular, "mod", "tidy")
-	run(regular, "test", "./...")
+	testutil.Go(t, pub, "build", "-mod=mod", "./...")
+	testutil.Go(t, regular, "mod", "edit", "-replace=example.com/storagepub="+pub)
+	testutil.Go(t, regular, "test", "-mod=mod", "./...")
 }

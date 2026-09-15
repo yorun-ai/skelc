@@ -19,7 +19,7 @@ func TestServiceCompletesKeywordsTypesAndImportedSymbols(t *testing.T) {
 	server.putDocument(orderURI, "domain demo.order\nimport demo.user\ndata Order { owner: user. }\n", 1, true)
 	server.putDocument(statusURI, "domain demo.order\nenum Status { ACTIVE }\n", 1, true)
 
-	result, err := server.Completion(t.Context(), &protocol.CompletionParams{
+	result, err := server.service().Completion(t.Context(), &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: orderURI},
 			Position:     protocol.Position{Line: 2, Character: 25},
@@ -30,7 +30,7 @@ func TestServiceCompletesKeywordsTypesAndImportedSymbols(t *testing.T) {
 	require.Len(t, items, 1)
 	assert.Equal(t, "User", items[0].Label)
 
-	result, err = server.Completion(t.Context(), &protocol.CompletionParams{
+	result, err = server.service().Completion(t.Context(), &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: orderURI},
 			Position:     protocol.Position{Line: 2, Character: 13},
@@ -53,7 +53,7 @@ func TestServiceCompletesDecoratorPrefixForField(t *testing.T) {
 	source := "domain demo\nconfig FeatureFlagConfig instant {\n    @desc(\"Enabled\")\n    @e\n    enabled: bool\n}\n"
 	server.putDocument(documentURI, source, 1, true)
 
-	result, err := server.Completion(t.Context(), &protocol.CompletionParams{
+	result, err := server.service().Completion(t.Context(), &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
 			Position:     protocol.Position{Line: 3, Character: 6},
@@ -84,7 +84,7 @@ func TestServiceCompletesDeprecatedDecoratorWithReasonSnippet(t *testing.T) {
 	source := "domain demo\ndata User {\n    @dep\n    legacyId: string\n}\n"
 	server.putDocument(documentURI, source, 1, true)
 
-	result, err := server.Completion(t.Context(), &protocol.CompletionParams{
+	result, err := server.service().Completion(t.Context(), &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
 			Position:     protocol.Position{Line: 2, Character: 8},
@@ -271,7 +271,7 @@ func TestServiceFiltersDecoratorCompletionByTarget(t *testing.T) {
 			server := newFixture()
 			documentURI := uri.File("/workspace/test.skel")
 			server.putDocument(documentURI, test.source, 1, true)
-			result, err := server.Completion(t.Context(), &protocol.CompletionParams{
+			result, err := server.service().Completion(t.Context(), &protocol.CompletionParams{
 				TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 					TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
 					Position: protocol.Position{
@@ -296,7 +296,7 @@ func TestServiceMarksDeprecatedCompletion(t *testing.T) {
 	documentURI := uri.File("/workspace/user.skel")
 	server.putDocument(documentURI, "domain demo\n@deprecated(\"Use Profile instead\")\ndata User {}\ndata Order { user: Us }\n", 1, true)
 
-	result, err := server.Completion(t.Context(), &protocol.CompletionParams{
+	result, err := server.service().Completion(t.Context(), &protocol.CompletionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
 			Position:     protocol.Position{Line: 3, Character: 21},
@@ -329,7 +329,7 @@ func TestServiceCompletesContextualLanguageValues(t *testing.T) {
 		{position: protocol.Position{Line: 6, Character: 26}, want: []string{"agent", "client", "openapi"}},
 	}
 	for _, test := range tests {
-		result, err := server.Completion(t.Context(), &protocol.CompletionParams{
+		result, err := server.service().Completion(t.Context(), &protocol.CompletionParams{
 			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 				TextDocument: protocol.TextDocumentIdentifier{URI: documentURI},
 				Position:     test.position,

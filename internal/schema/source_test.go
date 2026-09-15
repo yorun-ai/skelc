@@ -2,7 +2,6 @@ package schema
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -10,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.yorun.ai/skelc/internal/compiler"
+	"go.yorun.ai/skelc/internal/testutil"
 )
 
 func TestDiffWorkspaceDomainUsesInMemoryCandidateAndGitHeadBaseline(t *testing.T) {
@@ -18,11 +18,8 @@ func TestDiffWorkspaceDomainUsesInMemoryCandidateAndGitHeadBaseline(t *testing.T
 	path := filepath.Join(root, "contract.skel")
 	baseline := "domain demo\ndata User { id: int }\n"
 	require.NoError(t, os.WriteFile(path, []byte(baseline), 0o600))
-	git(t, root, "init")
-	git(t, root, "config", "user.name", "Skel Test")
-	git(t, root, "config", "user.email", "skel@example.com")
-	git(t, root, "add", "contract.skel")
-	git(t, root, "commit", "-m", "baseline")
+	testutil.InitRepository(t, root)
+	testutil.Commit(t, root, "baseline", "contract.skel")
 
 	candidate := workspaceDomain(t, root, path, "domain demo\ndata User { id: string }\n")
 	differ := NewSourceDiffer()
@@ -37,8 +34,7 @@ func TestDiffWorkspaceDomainUsesInMemoryCandidateAndGitHeadBaseline(t *testing.T
 	assert.Equal(t, path, report.Changes[0].Candidate.File)
 
 	require.NoError(t, os.WriteFile(path, []byte("domain demo\ndata User { id: string }\n"), 0o600))
-	git(t, root, "add", "contract.skel")
-	git(t, root, "commit", "-m", "new baseline")
+	testutil.Commit(t, root, "new baseline", "contract.skel")
 	nextCandidate := workspaceDomain(t, root, path, "domain demo\ndata User { id: bool }\n")
 	nextReport, err := differ.DiffWorkspaceDomain(t.Context(), nextCandidate, SourceDiffOption{})
 	require.NoError(t, err)
@@ -69,11 +65,8 @@ func TestDiffWorkspaceDomainCachesUnavailableGitHistoryTemporarily(t *testing.T)
 	assert.Len(t, differ.gitFailures, 1)
 
 	require.NoError(t, os.WriteFile(path, []byte("domain demo\ndata User { id: int }\n"), 0o600))
-	git(t, root, "init")
-	git(t, root, "config", "user.name", "Skel Test")
-	git(t, root, "config", "user.email", "skel@example.com")
-	git(t, root, "add", "contract.skel")
-	git(t, root, "commit", "-m", "baseline")
+	testutil.InitRepository(t, root)
+	testutil.Commit(t, root, "baseline", "contract.skel")
 	_, err = differ.DiffWorkspaceDomain(t.Context(), candidate, SourceDiffOption{})
 	require.ErrorIs(t, err, ErrGitHistoryUnavailable)
 
@@ -88,11 +81,8 @@ func TestDiffWorkspaceDomainInvalidatesCachedFailureWhenHeadChanges(t *testing.T
 	root := t.TempDir()
 	path := filepath.Join(root, "contract.skel")
 	require.NoError(t, os.WriteFile(path, []byte("domain demo\ndata User { id: int id: string }\n"), 0o600))
-	git(t, root, "init")
-	git(t, root, "config", "user.name", "Skel Test")
-	git(t, root, "config", "user.email", "skel@example.com")
-	git(t, root, "add", "contract.skel")
-	git(t, root, "commit", "-m", "invalid baseline")
+	testutil.InitRepository(t, root)
+	testutil.Commit(t, root, "invalid baseline", "contract.skel")
 	candidate := workspaceDomain(t, root, path, "domain demo\ndata User { id: string }\n")
 	differ := NewSourceDiffer()
 
@@ -102,8 +92,7 @@ func TestDiffWorkspaceDomainInvalidatesCachedFailureWhenHeadChanges(t *testing.T
 	assert.Len(t, differ.baselines, 1)
 
 	require.NoError(t, os.WriteFile(path, []byte("domain demo\ndata User { id: int }\n"), 0o600))
-	git(t, root, "add", "contract.skel")
-	git(t, root, "commit", "-m", "valid baseline")
+	testutil.Commit(t, root, "valid baseline", "contract.skel")
 	report, err := differ.DiffWorkspaceDomain(t.Context(), candidate, SourceDiffOption{})
 	require.NoError(t, err)
 	require.Len(t, report.Changes, 1)
@@ -120,11 +109,8 @@ func TestDiffWorkspaceDomainSelectsDomainAcrossMultipleFiles(t *testing.T) {
 	for name, content := range files {
 		require.NoError(t, os.WriteFile(filepath.Join(root, name), []byte(content), 0o600))
 	}
-	git(t, root, "init")
-	git(t, root, "config", "user.name", "Skel Test")
-	git(t, root, "config", "user.email", "skel@example.com")
-	git(t, root, "add", ".")
-	git(t, root, "commit", "-m", "baseline")
+	testutil.InitRepository(t, root)
+	testutil.Commit(t, root, "baseline")
 
 	sources := []compiler.Source{}
 	for name, content := range files {
@@ -195,11 +181,4 @@ func workspaceDomains(t *testing.T, sources []compiler.Source) []compiler.Worksp
 	require.Empty(t, diagnostics)
 	require.NotEmpty(t, domains)
 	return domains
-}
-
-func git(t *testing.T, directory string, args ...string) {
-	t.Helper()
-	command := exec.Command("git", append([]string{"-C", directory}, args...)...)
-	content, err := command.CombinedOutput()
-	require.NoError(t, err, string(content))
 }

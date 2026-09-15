@@ -2,16 +2,18 @@ package golang_test
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/codegen/golang"
 	"go.yorun.ai/skelc/internal/model"
+	"go.yorun.ai/skelc/internal/testutil"
 )
 
 func TestGeneratedCloneModuleCompilesAndIsolatesValues(t *testing.T) {
+	testutil.RequireToolchain(t)
 	generatedDir := filepath.Join(t.TempDir(), "generated")
 	consumerDir := filepath.Join(filepath.Dir(generatedDir), "consumer")
 
@@ -19,8 +21,8 @@ func TestGeneratedCloneModuleCompilesAndIsolatesValues(t *testing.T) {
 	child := &model.Data{
 		Name: "Child",
 		Members: []*model.DataMember{
-			{Name: "name", Type: stringTypeForTest()},
-			{Name: "content", Type: scalarTypeForTest(model.ScalarBinary)},
+			{Name: "name", Type: codegentest.StringType()},
+			{Name: "content", Type: codegentest.ScalarType(model.ScalarBinary)},
 		},
 	}
 	page := &model.Data{
@@ -29,7 +31,7 @@ func TestGeneratedCloneModuleCompilesAndIsolatesValues(t *testing.T) {
 		Members: []*model.DataMember{
 			{
 				Name: "items",
-				Type: listTypeForTest(&model.Type{
+				Type: codegentest.ListType(&model.Type{
 					Kind:          model.TypeKindTypeParameter,
 					TypeParameter: tItem,
 				}),
@@ -39,23 +41,23 @@ func TestGeneratedCloneModuleCompilesAndIsolatesValues(t *testing.T) {
 	payload := &model.Data{
 		Name: "Payload",
 		Members: []*model.DataMember{
-			{Name: "content", Type: scalarTypeForTest(model.ScalarBinary)},
-			{Name: "children", Type: listTypeForTest(dataTypeForTest(child))},
-			{Name: "childrenByName", Type: mapTypeForTest(stringTypeForTest(), dataTypeForTest(child))},
-			{Name: "optionalChildren", Type: nullableTypeForTest(listTypeForTest(dataTypeForTest(child)))},
-			{Name: "optionalChildrenByName", Type: nullableTypeForTest(mapTypeForTest(stringTypeForTest(), dataTypeForTest(child)))},
-			{Name: "optional", Type: nullableTypeForTest(dataTypeForTest(child))},
-			{Name: "empty", Type: scalarTypeForTest(model.ScalarBinary)},
+			{Name: "content", Type: codegentest.ScalarType(model.ScalarBinary)},
+			{Name: "children", Type: codegentest.ListType(codegentest.DataType(child))},
+			{Name: "childrenByName", Type: codegentest.MapType(codegentest.StringType(), codegentest.DataType(child))},
+			{Name: "optionalChildren", Type: codegentest.NullableType(codegentest.ListType(codegentest.DataType(child)))},
+			{Name: "optionalChildrenByName", Type: codegentest.NullableType(codegentest.MapType(codegentest.StringType(), codegentest.DataType(child)))},
+			{Name: "optional", Type: codegentest.NullableType(codegentest.DataType(child))},
+			{Name: "empty", Type: codegentest.ScalarType(model.ScalarBinary)},
 		},
 	}
 	node := &model.Data{Name: "Node"}
 	node.Members = []*model.DataMember{
-		{Name: "children", Type: listTypeForTest(dataTypeForTest(node))},
+		{Name: "children", Type: codegentest.ListType(codegentest.DataType(node))},
 	}
 	envelope := &model.Data{
 		Name: "Envelope",
 		Members: []*model.DataMember{
-			{Name: "page", Type: dataTypeForTest(page, dataTypeForTest(child))},
+			{Name: "page", Type: codegentest.DataType(page, codegentest.DataType(child))},
 		},
 	}
 	service := &model.Service{
@@ -64,9 +66,9 @@ func TestGeneratedCloneModuleCompilesAndIsolatesValues(t *testing.T) {
 			methodForTest("CloneService", &model.Method{
 				Name: "clone",
 				Arguments: []*model.Argument{
-					{Name: "payload", Type: dataTypeForTest(payload)},
+					{Name: "payload", Type: codegentest.DataType(payload)},
 				},
-				ResultType: dataTypeForTest(envelope),
+				ResultType: codegentest.DataType(envelope),
 			}),
 		},
 	}
@@ -213,13 +215,7 @@ func TestCloneValueIsolation(t *testing.T) {
 }
 `)
 
-	command := exec.Command("go", "test", "-mod=mod", "./...")
-	command.Dir = consumerDir
-	command.Env = append(os.Environ(), "GOWORK=off")
-	output, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("compile and test generated clone module: %v\n%s", err, output)
-	}
+	testutil.Go(t, consumerDir, "test", "-mod=mod", "./...")
 }
 
 func TestGeneratedCloneModuleUsesCurrentImportedCloneMethods(t *testing.T) {
@@ -228,6 +224,7 @@ func TestGeneratedCloneModuleUsesCurrentImportedCloneMethods(t *testing.T) {
 }
 
 func testImportedCloneMethods(t *testing.T, historical bool) {
+	testutil.RequireToolchain(t)
 	rootDir, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		t.Fatalf("resolve current clone fixture directory: %v", err)
@@ -245,7 +242,7 @@ func testImportedCloneMethods(t *testing.T, historical bool) {
 		Pub:  true,
 		Name: "Child",
 		Members: []*model.DataMember{
-			{Name: "content", Type: scalarTypeForTest(model.ScalarBinary)},
+			{Name: "content", Type: codegentest.ScalarType(model.ScalarBinary)},
 		},
 	}
 	page := &model.Data{
@@ -253,7 +250,7 @@ func testImportedCloneMethods(t *testing.T, historical bool) {
 		Name:           "Page",
 		TypeParameters: []*model.TypeParameter{tItem},
 		Members: []*model.DataMember{
-			{Name: "items", Type: listTypeForTest(&model.Type{
+			{Name: "items", Type: codegentest.ListType(&model.Type{
 				Kind:          model.TypeKindTypeParameter,
 				TypeParameter: tItem,
 			})},
@@ -377,17 +374,11 @@ func TestCurrentImportedValueIsolation(t *testing.T) {
 }
 `)
 
-	command := exec.Command("go", "test", "-mod=mod", "./...")
-	command.Dir = runnerDir
-	command.Env = append(os.Environ(), "GOWORK=off")
-	output, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("compile and test current imported clone methods: %v\n%s", err, output)
-	}
+	testutil.Go(t, runnerDir, "test", "-mod=mod", "./...")
 }
 
 func externalDataTypeForTest(data *model.Data, domain string, typeArgs ...*model.Type) *model.Type {
-	type_ := dataTypeForTest(data, typeArgs...)
+	type_ := codegentest.DataType(data, typeArgs...)
 	type_.ExternalDomain = domain
 	return type_
 }

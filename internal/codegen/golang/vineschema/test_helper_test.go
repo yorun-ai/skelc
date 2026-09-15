@@ -3,6 +3,8 @@ package vineschema
 import (
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
+	"go.yorun.ai/skelc/internal/codegen/golang/view"
 	"go.yorun.ai/skelc/internal/model"
 )
 
@@ -49,9 +51,9 @@ func buildModelDomainForTest(t *testing.T, spec model.DomainSpec) *model.Domain 
 				Name:       "auth",
 				SkelName:   "auth",
 				Auth:       model.AuthModeNoAuth,
-				ResultType: dataTypeForTest(actor.AuthInfo),
+				ResultType: codegentest.DataType(actor.AuthInfo),
 				Arguments: []*model.Argument{
-					{Name: "credential", Type: dataTypeForTest(actor.AuthCredential)},
+					{Name: "credential", Type: codegentest.DataType(actor.AuthCredential)},
 				},
 			}
 			actor.AuthMethod = method
@@ -66,18 +68,20 @@ func buildModelDomainForTest(t *testing.T, spec model.DomainSpec) *model.Domain 
 	return model.NewDomainFromSpec(spec)
 }
 
-func stringTypeForTest() *model.Type {
-	return &model.Type{Kind: model.TypeKindScalar, Scalar: model.ScalarString}
+func mustView(t *testing.T, mode view.Mode, domain *model.Domain) *view.Domain {
+	t.Helper()
+	result, err := view.New(mode, domain)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return result
 }
 
-func intTypeForTest() *model.Type {
-	return &model.Type{Kind: model.TypeKindScalar, Scalar: model.ScalarInt}
-}
-
-func dataTypeForTest(data *model.Data) *model.Type {
-	return &model.Type{Kind: model.TypeKindData, Data: data, SkelName: data.SkelName}
-}
-
-func actorViaForTest(kind model.ActorViaKind) *model.ActorVia {
-	return &model.ActorVia{Name: string(kind)}
+func mustBuildDomainSchema(t *testing.T, gen *_Gen) *_DomainSchema {
+	t.Helper()
+	result, err := gen.buildDomainSchema()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return result
 }

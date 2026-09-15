@@ -32,7 +32,7 @@ pub data Loan {
 `, map[string]string{"user": userDir})
 	outputDir := t.TempDir()
 
-	Generate(bookerDomain, Option{Out: outputDir, PubOnly: true})
+	mustGenerateForTest(t, bookerDomain, Option{Out: outputDir, PubOnly: true})
 
 	domainContent := readGeneratedFileForTest(t, filepath.Join(outputDir, "domain.skel"))
 	if strings.Contains(domainContent, "import user") {
@@ -145,7 +145,7 @@ email:"a@b.com",
 `, nil)
 	outputDir := t.TempDir()
 
-	Generate(domain, Option{Out: outputDir, PubOnly: true})
+	mustGenerateForTest(t, domain, Option{Out: outputDir, PubOnly: true})
 	assertGeneratedSkelParses(t, outputDir)
 
 	typesContent := readGeneratedFileForTest(t, filepath.Join(outputDir, "types.skel"))
@@ -271,7 +271,7 @@ pub resource User {
 `, nil)
 	outputDir := t.TempDir()
 
-	Generate(domain, Option{Out: outputDir, PubOnly: true})
+	mustGenerateForTest(t, domain, Option{Out: outputDir, PubOnly: true})
 
 	typesContent := readGeneratedFileForTest(t, filepath.Join(outputDir, "types.skel"))
 	if strings.Contains(typesContent, "code:") {
@@ -310,7 +310,7 @@ func TestGenDoesNotRenderBlankLineAfterServiceAudienceWithoutFollowingContent(t 
 	})
 	outputDir := t.TempDir()
 
-	Generate(domain, Option{Out: outputDir, PubOnly: true})
+	mustGenerateForTest(t, domain, Option{Out: outputDir, PubOnly: true})
 
 	serviceContent := readGeneratedFileForTest(t, filepath.Join(outputDir, "service.skel"))
 	if !strings.Contains(serviceContent, "pub service EmptyService {\n    for ClientActor\n}") {
@@ -332,6 +332,13 @@ func parseDomainForTest(t *testing.T, domainPath string, domainContent string, i
 		t.Fatalf("parse test domain: %v", err)
 	}
 	return parsed.Domain, dir
+}
+
+func mustGenerateForTest(t *testing.T, domain *model.Domain, option Option) {
+	t.Helper()
+	if err := Generate(domain, option); err != nil {
+		t.Fatalf("generate skeleton: %v", err)
+	}
 }
 
 func readGeneratedFileForTest(t *testing.T, path string) string {
@@ -391,7 +398,7 @@ pub service UserService {
 `, nil)
 	outputDir := t.TempDir()
 
-	Generate(domain, Option{Out: outputDir, PubOnly: true})
+	mustGenerateForTest(t, domain, Option{Out: outputDir, PubOnly: true})
 	assertGeneratedSkelParses(t, outputDir)
 
 	typesContent := readGeneratedFileForTest(t, filepath.Join(outputDir, "types.skel"))
@@ -447,7 +454,7 @@ pub actor UserActor {
  }
 }`, nil)
 	output := t.TempDir()
-	Generate(domain, Option{Out: output, PubOnly: true})
+	mustGenerateForTest(t, domain, Option{Out: output, PubOnly: true})
 	result, err := compiler.Compile(compiler.Option{SkelIn: output})
 	if err != nil {
 		t.Fatal(err)

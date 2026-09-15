@@ -9,7 +9,7 @@ import (
 
 func TestParseServiceWithoutActor(t *testing.T) {
 	domain := parseDomain(t, map[string]string{
-		"domain.skel": "@desc(\"User domain\")\ndomain demo.user\n",
+		"domain.skel": describedUserDomain,
 		"service.skel": `
 service UserService {
     method ping {
@@ -33,7 +33,7 @@ service UserService {
 
 func TestParseEvent(t *testing.T) {
 	domain := parseDomain(t, map[string]string{
-		"domain.skel": "@desc(\"User domain\")\ndomain demo.user\n",
+		"domain.skel": describedUserDomain,
 		"event.skel": `
 actor PartnerActor { via client {} }
 actor OpenAPIActor { via openapi {} }
@@ -68,7 +68,7 @@ event UserCreatedEvent {
 
 func TestParseTask(t *testing.T) {
 	domain := parseDomain(t, map[string]string{
-		"domain.skel": "@desc(\"User domain\")\ndomain demo.user\n",
+		"domain.skel": describedUserDomain,
 		"task.skel": `
 @desc("Rebuild the user index")
 task RebuildUserIndexTask {

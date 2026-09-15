@@ -2,13 +2,13 @@ package cli
 
 import (
 	"encoding/json"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"go.yorun.ai/skelc/internal/command"
 	schemas "go.yorun.ai/skelc/internal/schema"
+	"go.yorun.ai/skelc/internal/testutil"
 )
 
 func TestRunSkelcStrictSchemaCommands(t *testing.T) {
@@ -369,9 +369,7 @@ pub enum UserStatus {
 }
 
 func TestRunSkelcSchemaDiffUsesGitHeadBaseline(t *testing.T) {
-	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git is not installed")
-	}
+	testutil.RequireGit(t)
 	for _, test := range []struct {
 		name             string
 		directoryInput   bool
@@ -397,12 +395,8 @@ pub data User {
 				writeCLIFile(t, filepath.Join(skelIn, "domain.skel"), "domain demo.user")
 			}
 			writeCLIFile(t, sourceFile, baselineSource)
-			runSchemaGitCommand(t, repository, "init", "--quiet")
-			runSchemaGitCommand(t, repository, "add", "--all")
-			runSchemaGitCommand(t, repository,
-				"-c", "user.name=Skelc Test", "-c", "user.email=skelc@example.invalid",
-				"-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "baseline",
-			)
+			testutil.InitRepository(t, repository)
+			testutil.Commit(t, repository, "baseline")
 			writeCLIFile(t, sourceFile, candidateSource)
 
 			result := Run([]string{"schema", "diff", "--skel-in", skelIn})
@@ -438,9 +432,7 @@ func TestRunSkelcSchemaDiffRequiresBaselineWithoutGitHistory(t *testing.T) {
 }
 
 func TestRunSkelcSchemaDiffRemapsInvalidGitBaselinePath(t *testing.T) {
-	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git is not installed")
-	}
+	testutil.RequireGit(t)
 	repository := t.TempDir()
 	skelDir := filepath.Join(repository, "skel")
 	writeCLIFile(t, filepath.Join(skelDir, "domain.skel"), "domain demo.user")
@@ -451,12 +443,8 @@ pub data User {
     id string
 }
 `)
-	runSchemaGitCommand(t, repository, "init", "--quiet")
-	runSchemaGitCommand(t, repository, "add", "--all")
-	runSchemaGitCommand(t, repository,
-		"-c", "user.name=Skelc Test", "-c", "user.email=skelc@example.invalid",
-		"-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "invalid baseline",
-	)
+	testutil.InitRepository(t, repository)
+	testutil.Commit(t, repository, "invalid baseline")
 	writeCLIFile(t, dataPath, `domain demo.user
 
 pub data User {
@@ -470,13 +458,5 @@ pub data User {
 		!strings.Contains(commandError.Message, "HEAD:skel/data.skel") ||
 		strings.Contains(commandError.Message, "skelc-schema-baseline-") {
 		t.Fatalf("expected stable Git baseline error path: %+v", result)
-	}
-}
-
-func runSchemaGitCommand(t *testing.T, directory string, args ...string) {
-	t.Helper()
-	command := exec.Command("git", append([]string{"-C", directory}, args...)...)
-	if output, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, output)
 	}
 }

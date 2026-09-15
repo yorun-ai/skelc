@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/codegen/golang"
 	"go.yorun.ai/skelc/internal/model"
 )
@@ -19,7 +20,7 @@ func TestGeneratorSkipsGoModuleFilesByDefault(t *testing.T) {
 			{
 				Name: "User",
 				Members: []*model.DataMember{
-					{Name: "id", Type: stringTypeForTest()},
+					{Name: "id", Type: codegentest.StringType()},
 				},
 			},
 		},
@@ -49,7 +50,7 @@ func TestGeneratorRendersGoModuleFiles(t *testing.T) {
 			{
 				Name: "User",
 				Members: []*model.DataMember{
-					{Name: "id", Type: stringTypeForTest()},
+					{Name: "id", Type: codegentest.StringType()},
 				},
 			},
 		},
@@ -91,7 +92,7 @@ func TestGeneratorRendersDefaultGoPubModulePrefix(t *testing.T) {
 				Pub:  true,
 				Name: "User",
 				Members: []*model.DataMember{
-					{Name: "id", Type: stringTypeForTest()},
+					{Name: "id", Type: codegentest.StringType()},
 				},
 			},
 		},
@@ -125,7 +126,7 @@ func TestGeneratorRendersGoPubAndRegularModules(t *testing.T) {
 		Pub:  true,
 		Name: "User",
 		Members: []*model.DataMember{
-			{Name: "id", Type: stringTypeForTest()},
+			{Name: "id", Type: codegentest.StringType()},
 		},
 	}
 	pkg := newModelDomainForTest(t, model.DomainSpec{
@@ -136,7 +137,7 @@ func TestGeneratorRendersGoPubAndRegularModules(t *testing.T) {
 				Pub:  true,
 				Name: "UserService",
 				Methods: []*model.Method{
-					methodForTest("UserService", &model.Method{Name: "getUser", ResultType: dataTypeForTest(user)}),
+					methodForTest("UserService", &model.Method{Name: "getUser", ResultType: codegentest.DataType(user)}),
 				},
 			},
 		},
@@ -145,7 +146,7 @@ func TestGeneratorRendersGoPubAndRegularModules(t *testing.T) {
 				Pub:  true,
 				Name: "UserChangedEvent",
 				Members: []*model.DataMember{
-					{Name: "user", Type: dataTypeForTest(user)},
+					{Name: "user", Type: codegentest.DataType(user)},
 				},
 			},
 		},

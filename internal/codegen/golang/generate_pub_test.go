@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/codegen/golang"
 	"go.yorun.ai/skelc/internal/model"
 )
@@ -21,56 +22,56 @@ func TestGeneratorRendersPubGoView(t *testing.T) {
 		Pub:  true,
 		Name: "Address",
 		Members: []*model.DataMember{
-			{Name: "city", Type: stringTypeForTest()},
+			{Name: "city", Type: codegentest.StringType()},
 		},
 	}
 	user := &model.Data{
 		Pub:  true,
 		Name: "User",
 		Members: []*model.DataMember{
-			{Name: "status", Type: enumTypeForTest(userStatus)},
-			{Name: "address", Type: dataTypeForTest(address)},
+			{Name: "status", Type: codegentest.EnumType(userStatus)},
+			{Name: "address", Type: codegentest.DataType(address)},
 		},
 	}
 	unusedData := &model.Data{
 		Pub:  true,
 		Name: "UnusedData",
 		Members: []*model.DataMember{
-			{Name: "idle", Type: enumTypeForTest(unusedStatus)},
+			{Name: "idle", Type: codegentest.EnumType(unusedStatus)},
 		},
 	}
 	partnerCredential := &model.Data{
 		Name: "PartnerActorCredential",
 		Members: []*model.DataMember{
-			{Name: "subject", Type: stringTypeForTest()},
+			{Name: "subject", Type: codegentest.StringType()},
 		},
 	}
 	partnerInfo := &model.Data{
 		Name: "PartnerActorInfo",
 		Members: []*model.DataMember{
-			{Name: "userId", Type: stringTypeForTest()},
+			{Name: "userId", Type: codegentest.StringType()},
 		},
 	}
 	publicCredential := &model.Data{
 		Name:      "PublicOnlyActorCredential",
 		Sensitive: true,
 		Members: []*model.DataMember{
-			{Name: "subject", Type: stringTypeForTest()},
+			{Name: "subject", Type: codegentest.StringType()},
 		},
 	}
 	publicInfo := &model.Data{
 		Name:      "PublicOnlyActorInfo",
 		Sensitive: true,
 		Members: []*model.DataMember{
-			{Name: "userId", Type: stringTypeForTest()},
+			{Name: "userId", Type: codegentest.StringType()},
 		},
 	}
 	pkg := newModelDomainForTest(t, model.DomainSpec{
 		Name: "demo.user",
 		Actors: []*model.Actor{
-			{Pub: true, Name: "OpenAPIActor", Vias: []*model.ActorVia{actorViaForTest(model.ActorViaAgent)}},
-			{Name: "PartnerActor", Vias: []*model.ActorVia{actorViaForTest(model.ActorViaClient)}, AuthEnabled: true, AuthCredential: partnerCredential, AuthInfo: partnerInfo},
-			{Pub: true, Name: "PublicOnlyActor", Vias: []*model.ActorVia{actorViaForTest(model.ActorViaClient)}, AuthEnabled: true, AuthCredential: publicCredential, AuthInfo: publicInfo},
+			{Pub: true, Name: "OpenAPIActor", Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaAgent)}},
+			{Name: "PartnerActor", Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaClient)}, AuthEnabled: true, AuthCredential: partnerCredential, AuthInfo: partnerInfo},
+			{Pub: true, Name: "PublicOnlyActor", Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaClient)}, AuthEnabled: true, AuthCredential: publicCredential, AuthInfo: publicInfo},
 		},
 		Enums: []*model.Enum{userStatus, unusedStatus, publicStatus},
 		Data:  []*model.Data{address, user, unusedData},
@@ -80,7 +81,7 @@ func TestGeneratorRendersPubGoView(t *testing.T) {
 				Name:      "DemoConfig",
 				Lifecycle: model.ConfigLifecycleEternal,
 				Members: []*model.DataMember{
-					{Name: "status", Type: enumTypeForTest(publicStatus)},
+					{Name: "status", Type: codegentest.EnumType(publicStatus)},
 				},
 			},
 		},
@@ -90,14 +91,14 @@ func TestGeneratorRendersPubGoView(t *testing.T) {
 				Name:      "UserService",
 				Audiences: []*model.ActorAudience{{Actor: "OpenAPIActor"}},
 				Methods: []*model.Method{
-					methodForTest("UserService", &model.Method{Name: "getUser", ResultType: dataTypeForTest(user)}),
+					methodForTest("UserService", &model.Method{Name: "getUser", ResultType: codegentest.DataType(user)}),
 				},
 			},
 			{
 				Name:      "PartnerService",
 				Audiences: []*model.ActorAudience{{Actor: "PartnerActor"}},
 				Methods: []*model.Method{
-					methodForTest("PartnerService", &model.Method{Name: "ping", ResultType: stringTypeForTest()}),
+					methodForTest("PartnerService", &model.Method{Name: "ping", ResultType: codegentest.StringType()}),
 				},
 			},
 		},
@@ -106,13 +107,13 @@ func TestGeneratorRendersPubGoView(t *testing.T) {
 				Pub:  true,
 				Name: "UserCreatedEvent",
 				Members: []*model.DataMember{
-					{Name: "user", Type: dataTypeForTest(user)},
+					{Name: "user", Type: codegentest.DataType(user)},
 				},
 			},
 			{
 				Name: "PartnerEvent",
 				Members: []*model.DataMember{
-					{Name: "message", Type: stringTypeForTest()},
+					{Name: "message", Type: codegentest.StringType()},
 				},
 			},
 		},
@@ -126,7 +127,7 @@ func TestGeneratorRendersPubGoView(t *testing.T) {
 					triggerForTest("RebuildUserIndexTask", &model.TaskTrigger{
 						Name: "atTime",
 						Arguments: []*model.Argument{
-							{Name: "startAt", Type: localDateTimeTypeForTest()},
+							{Name: "startAt", Type: codegentest.LocalDateTimeType()},
 						},
 					}),
 				},
@@ -274,13 +275,13 @@ func TestGeneratorIncludesImplicitPubDependencies(t *testing.T) {
 	user := &model.Data{
 		Name: "User",
 		Members: []*model.DataMember{
-			{Name: "name", Type: stringTypeForTest()},
+			{Name: "name", Type: codegentest.StringType()},
 		},
 	}
 	pkg := newModelDomainForTest(t, model.DomainSpec{
 		Name: "demo.user",
 		Actors: []*model.Actor{
-			{Pub: true, Name: "OpenAPIActor", Vias: []*model.ActorVia{actorViaForTest(model.ActorViaAgent)}},
+			{Pub: true, Name: "OpenAPIActor", Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaAgent)}},
 		},
 		Data: []*model.Data{user},
 		Services: []*model.Service{
@@ -289,7 +290,7 @@ func TestGeneratorIncludesImplicitPubDependencies(t *testing.T) {
 				Name:      "UserService",
 				Audiences: []*model.ActorAudience{{Actor: "OpenAPIActor"}},
 				Methods: []*model.Method{
-					methodForTest("UserService", &model.Method{Name: "getUser", ResultType: dataTypeForTest(user)}),
+					methodForTest("UserService", &model.Method{Name: "getUser", ResultType: codegentest.DataType(user)}),
 				},
 			},
 		},

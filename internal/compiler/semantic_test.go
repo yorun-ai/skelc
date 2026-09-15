@@ -9,7 +9,7 @@ import (
 
 func TestParseServiceAndData(t *testing.T) {
 	domain := parseDomain(t, map[string]string{
-		"domain.skel": "@desc(\"User domain\")\ndomain demo.user\n",
+		"domain.skel": describedUserDomain,
 		"user.skel": `
 actor ClientActor {
     via client {}
@@ -73,7 +73,7 @@ enum UserStatus {
 
 func TestParseAcrossFilesAndResolveTypes(t *testing.T) {
 	domain := parseDomain(t, map[string]string{
-		"domain.skel": "@desc(\"User domain\")\ndomain demo.user\n",
+		"domain.skel": describedUserDomain,
 		"types.skel": `
 actor ClientActor { via client {} }
 actor OpenAPIActor { via openapi {} }
@@ -189,7 +189,7 @@ service UserService {
 
 func TestParseFilesPopulatesDomainAndSkelContents(t *testing.T) {
 	dir := t.TempDir()
-	writeFile(t, filepath.Join(dir, "domain.skel"), "@desc(\"User domain\")\ndomain demo.user\n")
+	writeFile(t, filepath.Join(dir, "domain.skel"), describedUserDomain)
 	writeFile(t, filepath.Join(dir, "service.skel"), "domain demo.user\nactor PortalAdminActor { via client {} }\nservice AgentService { for PortalAdminActor\nmethod ping {} }\n")
 	writeFile(t, filepath.Join(dir, "types.skel"), "domain demo.user\ndata User { id: int }\nenum UserStatus { ACTIVE }\n")
 

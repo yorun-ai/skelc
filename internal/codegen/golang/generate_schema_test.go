@@ -1,6 +1,7 @@
 package golang_test
 
 import (
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/codegen/golang"
 	"go.yorun.ai/skelc/internal/model"
 	"os"
@@ -15,7 +16,7 @@ func TestGeneratorGoRendersSchemaFile(t *testing.T) {
 		Pub:  true,
 		Name: "AppContext",
 		Members: []*model.DataMember{
-			{Name: "name", Type: stringTypeForTest()},
+			{Name: "name", Type: codegentest.StringType()},
 		},
 	}
 
@@ -30,12 +31,12 @@ func TestGeneratorGoRendersSchemaFile(t *testing.T) {
 				Name:      "AppConfig",
 				Lifecycle: model.ConfigLifecycleEternal,
 				Members: []*model.DataMember{
-					{Name: "title", Type: stringTypeForTest()},
+					{Name: "title", Type: codegentest.StringType()},
 				},
 			},
 		},
 		Actors: []*model.Actor{
-			{Pub: true, Name: "ClientActor", Vias: []*model.ActorVia{actorViaForTest(model.ActorViaClient)}},
+			{Pub: true, Name: "ClientActor", Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaClient)}},
 		},
 		Services: []*model.Service{
 			{
@@ -43,7 +44,7 @@ func TestGeneratorGoRendersSchemaFile(t *testing.T) {
 				Name:      "AppService",
 				Audiences: []*model.ActorAudience{{Actor: "ClientActor", Via: string(model.ActorViaClient)}},
 				Methods: []*model.Method{
-					methodForTest("AppService", &model.Method{Name: "getContext", ResultType: dataTypeForTest(appContext)}),
+					methodForTest("AppService", &model.Method{Name: "getContext", ResultType: codegentest.DataType(appContext)}),
 				},
 			},
 		},
@@ -92,8 +93,8 @@ func TestGeneratorGoSchemaHasNoBlankLineBeforeFields(t *testing.T) {
 		Name:        "User",
 		Description: "User record",
 		Members: []*model.DataMember{
-			{Name: "id", Type: stringTypeForTest()},
-			{Name: "status", Sensitive: true, Type: scalarTypeForTest(model.ScalarInt)},
+			{Name: "id", Type: codegentest.StringType()},
+			{Name: "status", Sensitive: true, Type: codegentest.ScalarType(model.ScalarInt)},
 		},
 	}
 
@@ -108,7 +109,7 @@ func TestGeneratorGoSchemaHasNoBlankLineBeforeFields(t *testing.T) {
 				Name:      "AppConfig",
 				Lifecycle: model.ConfigLifecycleEternal,
 				Members: []*model.DataMember{
-					{Name: "title", Type: stringTypeForTest()},
+					{Name: "title", Type: codegentest.StringType()},
 				},
 			},
 		},
@@ -116,7 +117,7 @@ func TestGeneratorGoSchemaHasNoBlankLineBeforeFields(t *testing.T) {
 			{Name: "Status", Items: []*model.EnumItem{{Name: "ACTIVE"}}},
 		},
 		Actors: []*model.Actor{
-			{Pub: true, Name: "ClientActor", Vias: []*model.ActorVia{actorViaForTest(model.ActorViaClient)}},
+			{Pub: true, Name: "ClientActor", Vias: []*model.ActorVia{codegentest.ActorVia(model.ActorViaClient)}},
 		},
 		Services: []*model.Service{
 			{
@@ -124,7 +125,7 @@ func TestGeneratorGoSchemaHasNoBlankLineBeforeFields(t *testing.T) {
 				Name:      "UserService",
 				Audiences: []*model.ActorAudience{{Actor: "ClientActor", Via: string(model.ActorViaClient)}},
 				Methods: []*model.Method{
-					methodForTest("UserService", &model.Method{Name: "getUser", ResultType: dataTypeForTest(userData)}),
+					methodForTest("UserService", &model.Method{Name: "getUser", ResultType: codegentest.DataType(userData)}),
 				},
 			},
 		},
@@ -134,7 +135,7 @@ func TestGeneratorGoSchemaHasNoBlankLineBeforeFields(t *testing.T) {
 				Triggers: []*model.TaskTrigger{
 					triggerForTest("RebuildTask", &model.TaskTrigger{
 						Name:      "atTime",
-						Arguments: []*model.Argument{{Name: "startAt", Type: localDateTimeTypeForTest()}},
+						Arguments: []*model.Argument{{Name: "startAt", Type: codegentest.LocalDateTimeType()}},
 					}),
 				},
 			},
@@ -143,7 +144,7 @@ func TestGeneratorGoSchemaHasNoBlankLineBeforeFields(t *testing.T) {
 			{
 				Name: "UserCreated",
 				Members: []*model.DataMember{
-					{Name: "userId", Type: stringTypeForTest()},
+					{Name: "userId", Type: codegentest.StringType()},
 				},
 			},
 		},

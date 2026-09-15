@@ -2,30 +2,25 @@ package skelc_test
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"go.yorun.ai/skelc"
+	"go.yorun.ai/skelc/internal/testutil"
 )
 
 func TestApiGoClientCrossDomainAndInvocation(t *testing.T) {
+	testutil.RequireToolchain(t)
 	root := t.TempDir()
 	shared := filepath.Join(root, "shared.skel")
 	order := filepath.Join(root, "order.skel")
-	write := func(path, source string) {
-		t.Helper()
-		if err := os.WriteFile(path, []byte(source), 0600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	write(shared, `domain common.shared
+	writeTestFile(t, shared, `domain common.shared
 pub data Page<TItem> { items: list<TItem> }
 data Detail { label: string }
 pub data External { detail: Detail }
 `)
-	write(order, `domain shop.order
+	writeTestFile(t, order, `domain shop.order
 import common.shared as shared
 actor ClientActor { via client {} }
 data Unused { secret: string }
@@ -119,25 +114,13 @@ pub service BackendService { method ping {} }
 			t.Errorf("missing API method documentation %q", fragment)
 		}
 	}
-	write(filepath.Join(out, "invoke_test.go"), apiInvocationTest)
-	run := func(dir string, args ...string) string {
-		t.Helper()
-		cmd := exec.Command("go", args...)
-		cmd.Dir = dir
-		cmd.Env = append(os.Environ(), "GOWORK=off")
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			t.Fatalf("go %v: %v\n%s", args, err, output)
-		}
-		return string(output)
-	}
-	run(out, "mod", "edit", "-replace=example.com/gen/common/sharedapi="+sharedOut)
-	run(out, "mod", "tidy")
-	run(out, "test", "./...")
-	deps := run(out, "list", "-deps", "./...")
+	writeTestFile(t, filepath.Join(out, "invoke_test.go"), apiInvocationTest)
+	testutil.Go(t, out, "mod", "edit", "-replace=example.com/gen/common/sharedapi="+sharedOut)
+	deps := testutil.Go(t, out, "list", "-mod=mod", "-deps", "./...")
 	if strings.Contains(deps, "go.yorun.ai/vine") {
 		t.Fatal("API module depends on Vine")
 	}
+	testutil.Go(t, out, "test", "-mod=mod", "./...")
 }
 
 const apiInvocationTest = `package orderapi
@@ -219,10 +202,8 @@ func TestApiOutputBoundaryAndUnusedBackendImport(t *testing.T) {
 	root := t.TempDir()
 	backend := filepath.Join(root, "backend.skel")
 	entry := filepath.Join(root, "order.skel")
-	if err := os.WriteFile(backend, []byte("domain demo.backend\npub data Internal { id: string }\n"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(entry, []byte(`domain demo.order
+	writeTestFile(t, backend, "domain demo.backend\npub data Internal { id: string }\n")
+	writeTestFile(t, entry, `domain demo.order
 import demo.backend as backend
 data Item { id: string }
 data Unused { hidden: string }
@@ -231,9 +212,7 @@ api service OrderApiService { method get { output Item } }
 service LegacyService { method get { noauth output Item } }
 pub service BackendService { method get { output backend.Internal } }
 service HiddenService { method ping {} }
-`), 0600); err != nil {
-		t.Fatal(err)
-	}
+`)
 	input := skelc.Input{SkelIn: entry, SkelImports: map[string]string{"demo.backend": backend}}
 	goOut, tsOut := filepath.Join(root, "orderapi"), filepath.Join(root, "ts")
 	if _, err := skelc.CompileGolang(input, skelc.GolangOption{CompilerVersion: "v0.0.0-dev", ApiOnly: true, AsModule: true, Module: "example.com/orderapi", Out: goOut}); err != nil {
@@ -272,12 +251,10 @@ service HiddenService { method ping {} }
 func TestApiBackendSchemaAndClientBoundary(t *testing.T) {
 	root := t.TempDir()
 	entry := filepath.Join(root, "order.skel")
-	if err := os.WriteFile(entry, []byte(`domain demo.order
+	writeTestFile(t, entry, `domain demo.order
 api service OrderApiService { method ping {} }
 pub service BackendService { method ping {} }
-`), 0600); err != nil {
-		t.Fatal(err)
-	}
+`)
 	input := skelc.Input{SkelIn: entry}
 	out := filepath.Join(root, "server")
 	option := skelc.GolangOption{CompilerVersion: "v0.0.0-dev", AsModule: true, Module: "example.com/orderserver", Out: out}

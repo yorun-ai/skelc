@@ -11,6 +11,19 @@ import (
 	"go.yorun.ai/skelc/internal/parser/grammar"
 )
 
+// describedUserDomain is the domain fixture shared by the compiler tests.
+const describedUserDomain = "@desc(\"User domain\")\ndomain demo.user\n"
+
+// mustMkdirAll creates every directory, failing the test on error.
+func mustMkdirAll(t *testing.T, dirs ...string) {
+	t.Helper()
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("create %s: %v", dir, err)
+		}
+	}
+}
+
 func parseDomain(t *testing.T, files map[string]string) *model.Domain {
 	t.Helper()
 
@@ -44,18 +57,6 @@ func findDataByName(t *testing.T, domain *model.Domain, name string) *model.Data
 		}
 	}
 	t.Fatalf("data %s not found", name)
-	return nil
-}
-
-func findServiceByName(t *testing.T, domain *model.Domain, name string) *model.Service {
-	t.Helper()
-
-	for _, service := range domain.Services() {
-		if service.Name == name {
-			return service
-		}
-	}
-	t.Fatalf("service %s not found", name)
 	return nil
 }
 

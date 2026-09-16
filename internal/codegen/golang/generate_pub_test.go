@@ -262,9 +262,7 @@ func TestGeneratorRendersPubGoView(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read go schema file: %v", err)
 	}
-	if !strings.Contains(string(schemaContent), `Domain: "demo.user"`) {
-		t.Fatalf("expected pub schema file, got:\n%s", string(schemaContent))
-	}
+	codegentest.AssertGoSourceContains(t, string(schemaContent), `Domain: "demo.user"`)
 	assertFileMissing(t, filepath.Join(goPubOutDir, "task.go"))
 }
 

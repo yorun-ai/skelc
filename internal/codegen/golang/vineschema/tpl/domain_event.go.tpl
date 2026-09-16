@@ -2,27 +2,12 @@
 {{- if .Schema.Events }}
 	Events: []*skel.EventSchema{
 		{{- range $event := .Schema.Events }}
-		{
-			Name: {{ quote $event.Name }},
-			SkelName: {{ quote $event.SkelName }},
-			{{- if $event.Description }}
-			Description: {{ quote $event.Description }},
-			{{- end }}
-			{{- template "deprecatedFields" $event }}
-			Hash: {{ quote $event.Hash }},
-			Pub: {{ $event.Pub }},
-			{{- if $event.Sensitive }}
-			Sensitive: true,
-			{{- end }}
-			{{- if $event.Members }}
-			Members: []*skel.MemberSchema{
-				{{- range $member := $event.Members }}
-				{{ template "memberSchema" $member }},
-				{{- end }}
-			},
-			{{- end }}
-		},
+		{{ template "eventSchemaValue" $event }},
 		{{- end }}
 	},
 	{{- end }}
+{{- end }}
+
+{{- define "eventSchemaValue" -}}
+{Name: {{ quote .Name }}, SkelName: {{ quote .SkelName }}{{ if .Description }}, Description: {{ quote .Description }}{{ end }}{{ template "deprecatedFields" . }}, Hash: {{ quote .Hash }}, Pub: {{ .Pub }}{{ if .Sensitive }}, Sensitive: true{{ end }}{{ template "memberSchemaList" .Members }}}
 {{- end }}

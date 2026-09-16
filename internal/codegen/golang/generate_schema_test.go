@@ -67,25 +67,22 @@ func TestGeneratorGoRendersSchemaFile(t *testing.T) {
 	if !strings.Contains(string(goSchemaContent), "skel.RegisterDomainSchema(_DomainSchema)") {
 		t.Fatalf("expected schema go registration, got:\n%s", string(goSchemaContent))
 	}
-	if !strings.Contains(string(goSchemaContent), `Name:     "AppContext"`) {
-		t.Fatalf("expected pub schema data entry, got:\n%s", string(goSchemaContent))
-	}
+	codegentest.AssertGoSourceContains(t, string(goSchemaContent), `Name: "AppContext"`)
 	if !strings.Contains(string(goSchemaContent), `"AppConfig"`) ||
-		!strings.Contains(string(goSchemaContent), `"demo.app.AppConfig"`) ||
-		!strings.Contains(string(goSchemaContent), `Pub:       true`) {
-		t.Fatalf("expected pub schema config pub flag, got:\n%s", string(goSchemaContent))
+		!strings.Contains(string(goSchemaContent), `"demo.app.AppConfig"`) {
+		t.Fatalf("expected pub schema config declaration, got:\n%s", string(goSchemaContent))
 	}
+	codegentest.AssertGoSourceContains(t, string(goSchemaContent), "Pub: true")
 	if !strings.Contains(string(goSchemaContent), `Via: skel.ActorViaClient`) {
 		t.Fatalf("expected pub schema actor via, got:\n%s", string(goSchemaContent))
 	}
 }
 
-// TestGeneratorGoSchemaHasNoBlankLineBeforeFields guards against stray blank
-// lines being emitted before schema fields such as Hash and Type. Each
-// conditional field block renders onto its own line, and a blank line at the
-// composite-literal level would be preserved by gofmt, so the templates must
-// trim leading whitespace around the optional deprecated-fields block.
-func TestGeneratorGoSchemaHasNoBlankLineBeforeFields(t *testing.T) {
+// TestGeneratorGoSchemaHasNoBlankLineInsideDeclarations guards against stray
+// blank lines inside rendered schema blocks. gofmt preserves blank lines a
+// template emits, so a conditional block that leaves one behind would open a
+// gap in the compact declaration layout.
+func TestGeneratorGoSchemaHasNoBlankLineInsideDeclarations(t *testing.T) {
 	goOutDir := filepath.Join(t.TempDir(), "skeled")
 
 	userData := &model.Data{
@@ -155,23 +152,32 @@ func TestGeneratorGoSchemaHasNoBlankLineBeforeFields(t *testing.T) {
 	}
 
 	goSchemaContent := readFileForTest(t, filepath.Join(goOutDir, "schema.go"))
-	assertNoBlankLineBeforeSchemaField(t, goSchemaContent, "Hash:")
-	assertNoBlankLineBeforeSchemaField(t, goSchemaContent, "Type:")
-	assertNoBlankLineBeforeSchemaField(t, goSchemaContent, "SkelName:")
+	assertNoBlankLineInsideDeclaration(t, goSchemaContent)
 }
 
-// assertNoBlankLineBeforeSchemaField reports a failure when any schema field
-// line (identified by fieldPrefix) is immediately preceded by a blank line.
-func assertNoBlankLineBeforeSchemaField(t *testing.T, content string, fieldPrefix string) {
+// assertNoBlankLineInsideDeclaration reports a failure when a blank line opens
+// or closes a rendered block, which the compact layout only allows between
+// top-level schema sections.
+func assertNoBlankLineInsideDeclaration(t *testing.T, content string) {
 	t.Helper()
 	lines := strings.Split(content, "\n")
 	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if !strings.HasPrefix(trimmed, fieldPrefix) {
+		if strings.TrimSpace(line) != "" {
 			continue
 		}
-		if i > 0 && strings.TrimSpace(lines[i-1]) == "" {
-			t.Fatalf("unexpected blank line before schema field %q at line %d:\n%s", fieldPrefix, i+1, content)
+		previous := ""
+		if i > 0 {
+			previous = strings.TrimSpace(lines[i-1])
+		}
+		if strings.HasSuffix(previous, "{") {
+			t.Fatalf("unexpected blank line after %q at line %d:\n%s", previous, i, content)
+		}
+		next := ""
+		if i+1 < len(lines) {
+			next = strings.TrimSpace(lines[i+1])
+		}
+		if strings.HasPrefix(next, "}") {
+			t.Fatalf("unexpected blank line before %q at line %d:\n%s", next, i+2, content)
 		}
 	}
 }

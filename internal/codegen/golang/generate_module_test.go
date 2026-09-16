@@ -193,20 +193,14 @@ func TestGeneratorRendersGoPubAndRegularModules(t *testing.T) {
 	}
 
 	pubSchemaContent := readFileForTest(t, filepath.Join(goPubOutDir, "schema.go"))
-	if !strings.Contains(pubSchemaContent, `Name:     "User"`) ||
-		!strings.Contains(pubSchemaContent, `Name:     "UserService"`) ||
-		!strings.Contains(pubSchemaContent, `Name:     "UserChangedEvent"`) {
-		t.Fatalf("expected pub schemas in pub schema.go, got:\n%s", pubSchemaContent)
+	for _, name := range []string{"User", "UserService", "UserChangedEvent"} {
+		codegentest.AssertGoSourceContains(t, pubSchemaContent, `Name: "`+name+`"`)
 	}
-	if !strings.Contains(pubSchemaContent, "Full:   false") {
-		t.Fatalf("expected pub schema to render full=false, got:\n%s", pubSchemaContent)
-	}
+	codegentest.AssertGoSourceContains(t, pubSchemaContent, "Full: false")
 	regularSchemaContent := readFileForTest(t, filepath.Join(goOutDir, "schema.go"))
-	if !strings.Contains(regularSchemaContent, "Full:   true") ||
-		!strings.Contains(regularSchemaContent, `Name:     "User"`) ||
-		!strings.Contains(regularSchemaContent, `Name:     "UserService"`) ||
-		!strings.Contains(regularSchemaContent, `Name:     "UserChangedEvent"`) {
-		t.Fatalf("expected full regular schema in regular schema.go, got:\n%s", regularSchemaContent)
+	codegentest.AssertGoSourceContains(t, regularSchemaContent, "Full: true")
+	for _, name := range []string{"User", "UserService", "UserChangedEvent"} {
+		codegentest.AssertGoSourceContains(t, regularSchemaContent, `Name: "`+name+`"`)
 	}
 
 	regularGoModContent := readFileForTest(t, filepath.Join(goOutDir, "go.mod"))

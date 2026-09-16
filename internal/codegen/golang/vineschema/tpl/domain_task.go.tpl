@@ -2,44 +2,24 @@
 {{- if .Schema.Tasks }}
 	Tasks: []*skel.TaskSchema{
 		{{- range $task := .Schema.Tasks }}
-		{
-			Name: {{ quote $task.Name }},
-			SkelName: {{ quote $task.SkelName }},
-			{{- if $task.Description }}
-			Description: {{ quote $task.Description }},
-			{{- end }}
-			{{- template "deprecatedFields" $task }}
-			Hash: {{ quote $task.Hash }},
-			{{- if $task.Triggers }}
-			Triggers: []*skel.TriggerSchema{
-				{{- range $trigger := $task.Triggers }}
-				{
-					Name: {{ quote $trigger.Name }},
-					SkelName: {{ quote $trigger.SkelName }},
-					{{- if $trigger.Description }}
-					Description: {{ quote $trigger.Description }},
-					{{- end }}
-					{{- template "deprecatedFields" $trigger }}
-					Hash: {{ quote $trigger.Hash }},
-					{{- if $trigger.InputDescription }}
-					InputDescription: {{ quote $trigger.InputDescription }},
-					{{- end }}
-					{{- if $trigger.ArgumentsSensitive }}
-					ArgumentsSensitive: true,
-					{{- end }}
-					{{- if $trigger.Arguments }}
-					Arguments: []*skel.MemberSchema{
-						{{- range $argument := $trigger.Arguments }}
-						{{ template "memberSchema" $argument }},
-						{{- end }}
-					},
-					{{- end }}
-				},
-				{{- end }}
-			},
-			{{- end }}
-		},
+		{{ template "taskSchemaValue" $task }},
 		{{- end }}
 	},
 	{{- end }}
+{{- end }}
+
+{{- define "taskSchemaValue" -}}
+{Name: {{ quote .Name }}, SkelName: {{ quote .SkelName }}{{ if .Description }}, Description: {{ quote .Description }}{{ end }}{{ template "deprecatedFields" . }}, Hash: {{ quote .Hash }}{{ template "triggerSchemaList" .Triggers }}}
+{{- end }}
+
+{{- define "triggerSchemaList" -}}
+{{- if . }}, Triggers: []*skel.TriggerSchema{
+{{- range $trigger := . }}
+{{ template "triggerSchemaValue" $trigger }},
+{{- end }}
+}{{ end -}}
+{{- end }}
+
+{{- define "triggerSchemaValue" -}}
+{Name: {{ quote .Name }}, SkelName: {{ quote .SkelName }}{{ if .Description }}, Description: {{ quote .Description }}{{ end }}{{ template "deprecatedFields" . }}, Hash: {{ quote .Hash }}{{ if .InputDescription }}, InputDescription: {{ quote .InputDescription }}{{ end }}{{ if .ArgumentsSensitive }}, ArgumentsSensitive: true{{ end }}{{ template "argumentSchemaList" .Arguments }}}
 {{- end }}

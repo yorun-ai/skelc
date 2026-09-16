@@ -53,18 +53,10 @@ func TestGenSchemaGoRendersActorAuthEnabled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile() error = %v", err)
 	}
-	if !strings.Contains(string(content), `IdentifierField: "userId",`) {
-		t.Fatalf("identifier metadata missing: %s", content)
-	}
-	if !strings.Contains(strings.Join(strings.Fields(string(content)), " "), "AuthEnabled: true,") {
-		t.Fatalf("expected generated schema to render AuthEnabled, got:\n%s", string(content))
-	}
-	if !strings.Contains(string(content), "AuthEnabled: false,") {
-		t.Fatalf("expected generated schema to render disabled AuthEnabled, got:\n%s", string(content))
-	}
-	if !strings.Contains(string(content), "PermEnabled: false,") {
-		t.Fatalf("expected generated schema to render disabled PermEnabled, got:\n%s", string(content))
-	}
+	codegentest.AssertGoSourceContains(t, string(content), `IdentifierField: "userId"`)
+	codegentest.AssertGoSourceContains(t, string(content), "AuthEnabled: true")
+	codegentest.AssertGoSourceContains(t, string(content), "AuthEnabled: false")
+	codegentest.AssertGoSourceContains(t, string(content), "PermEnabled: false")
 }
 
 func TestGenSchemaGoRendersDeprecatedFields(t *testing.T) {

@@ -2,26 +2,12 @@
 {{- if .Schema.Webs }}
 	Webs: []*skel.WebSchema{
 		{{- range $web := .Schema.Webs }}
-		{
-			Name: {{ quote $web.Name }},
-			SkelName: {{ quote $web.SkelName }},
-			{{- if $web.Description }}
-			Description: {{ quote $web.Description }},
-			{{- end }}
-			{{- template "deprecatedFields" $web }}
-			Hash: {{ quote $web.Hash }},
-			{{- if $web.MountPath }}
-			MountPath: {{ quote $web.MountPath }},
-			{{- end }}
-			{{- if $web.Audiences }}
-			Audiences: []*skel.ActorAudienceSchema{
-				{{- range $actor := $web.Audiences }}
-				{Name: {{ quote $actor.Name }}, SkelName: {{ quote $actor.SkelName }}{{ with $actor.Via }}, Via: {{ viaLiteral . }}{{ end }}},
-				{{- end }}
-			},
-			{{- end }}
-		},
+		{{ template "webSchemaValue" $web }},
 		{{- end }}
 	},
 	{{- end }}
+{{- end }}
+
+{{- define "webSchemaValue" -}}
+{Name: {{ quote .Name }}, SkelName: {{ quote .SkelName }}{{ if .Description }}, Description: {{ quote .Description }}{{ end }}{{ template "deprecatedFields" . }}, Hash: {{ quote .Hash }}{{ if .MountPath }}, MountPath: {{ quote .MountPath }}{{ end }}{{ if .Audiences }}, Audiences: []*skel.ActorAudienceSchema{ {{- range $actor := .Audiences }}{{ template "actorAudienceSchema" $actor }}, {{- end }} }{{ end }}}
 {{- end }}

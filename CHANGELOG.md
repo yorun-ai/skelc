@@ -6,6 +6,18 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+### Changed
+
+- Render generated Vine schemas one declaration per line: an enum, data, config,
+  web, event, actor, resource, service, task or method keeps its own fields on one
+  line, and members, arguments and nested declarations stay one per line. The
+  runtime values are unchanged, but generated schema files no longer re-align
+  when a single field changes, and hub's admin schema drops from 6170 to 825 lines
+  and from 160 KB to 118 KB. Keyed fields inside a generated schema literal may
+  appear in a different order than in earlier releases.
+- Inline single-line descriptions in generated TypeScript data and service files
+  as `/** ... */` instead of a three-line comment block.
+
 ## [0.20.0] - 2026-09-16
 
 ### Changed

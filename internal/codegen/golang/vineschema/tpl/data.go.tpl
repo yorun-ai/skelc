@@ -3,30 +3,5 @@
 {{- end }}
 
 {{- define "dataSchemaValue" -}}
-{
-	Name: {{ quote .Name }},
-	SkelName: {{ quote .SkelName }},
-	{{- if .Description }}
-	Description: {{ quote .Description }},
-	{{- end }}
-	{{- template "deprecatedFields" . }}
-	Hash: {{ quote .Hash }},
-	{{- if .Sensitive }}
-	Sensitive: true,
-	{{- end }}
-	{{- if .TypeParameters }}
-	TypeParameters: []string{
-		{{- range $typeParameter := .TypeParameters }}
-		{{ quote $typeParameter }},
-		{{- end }}
-	},
-	{{- end }}
-	{{- if .Members }}
-	Members: []*skel.MemberSchema{
-		{{- range $member := .Members }}
-		{{ template "memberSchema" $member }},
-		{{- end }}
-	},
-	{{- end }}
-}
+{Name: {{ quote .Name }}, SkelName: {{ quote .SkelName }}{{ if .Description }}, Description: {{ quote .Description }}{{ end }}{{ template "deprecatedFields" . }}, Hash: {{ quote .Hash }}{{ if .Sensitive }}, Sensitive: true{{ end }}{{ if .TypeParameters }}, TypeParameters: []string{ {{- range $typeParameter := .TypeParameters }}{{ quote $typeParameter }}, {{- end }} }{{ end }}{{ template "memberSchemaList" .Members }}}
 {{- end }}

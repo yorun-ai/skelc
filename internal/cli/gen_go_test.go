@@ -256,7 +256,7 @@ pub data User {
 	if result.ExitCode != ExitCodeSuccess {
 		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
 	}
-	assertFileContains(t, filepath.Join(goOut, "schema.go"),
+	assertFileGoSourceContains(t, filepath.Join(goOut, "schema.go"),
 		`Domain: "demo.user"`,
 		`CompilerVersion: "v9.9.9"`)
 }

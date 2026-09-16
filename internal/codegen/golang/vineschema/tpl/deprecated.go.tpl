@@ -1,6 +1,3 @@
 {{- define "deprecatedFields" -}}
-{{- if .Deprecated }}
-Deprecated: true,
-DeprecatedReason: {{ quote .DeprecatedReason }},
-{{- end }}
+{{- if .Deprecated }}, Deprecated: true, DeprecatedReason: {{ quote .DeprecatedReason }}{{ end -}}
 {{- end }}

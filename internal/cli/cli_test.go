@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/command"
 )
 
@@ -84,6 +85,19 @@ func assertFileContains(t *testing.T, path string, expected ...string) {
 	}
 }
 
+// assertFileGoSourceContains asserts a generated Go file contains every
+// expected fragment as a Go token sequence, so gofmt line breaks and column
+// alignment do not decide the outcome of the assertion.
+func assertFileGoSourceContains(t *testing.T, path string, expected ...string) {
+	t.Helper()
+	content, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	for _, item := range expected {
+		codegentest.AssertGoSourceContains(t, string(content), item)
+	}
+}
 func assertFileMissing(t *testing.T, path string) {
 	t.Helper()
 	if _, err := os.Stat(path); !os.IsNotExist(err) {

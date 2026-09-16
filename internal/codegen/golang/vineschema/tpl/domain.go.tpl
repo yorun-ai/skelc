@@ -6,9 +6,7 @@ var _DomainSchema = &skel.DomainSchema{
 	{{- end }}
 	Hash: {{ quote .Schema.Hash }},
 	Full: {{ .Schema.Full }},
-	Generated: &skel.GeneratedInfo{
-		CompilerVersion: {{ quote .Schema.Generated.CompilerVersion }},
-	},
+	Generated: &skel.GeneratedInfo{CompilerVersion: {{ quote .Schema.Generated.CompilerVersion }}},
 	{{ template "domainEnums" . }}
 	{{ template "domainData" . }}
 	{{ template "domainConfigs" . }}

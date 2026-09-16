@@ -2,67 +2,36 @@
 {{- if .Schema.Resources }}
 	Resources: []*skel.ResourceSchema{
 		{{- range $resource := .Schema.Resources }}
-		{
-			Name: {{ quote $resource.Name }},
-			SkelName: {{ quote $resource.SkelName }},
-			{{- if $resource.Description }}
-			Description: {{ quote $resource.Description }},
-			{{- end }}
-			{{- template "deprecatedFields" $resource }}
-			Hash: {{ quote $resource.Hash }},
-			{{- if $resource.Checks }}
-			Checks: []*skel.ResourceCheckSchema{
-				{{- range $check := $resource.Checks }}
-				{
-					Name: {{ quote $check.Name }},
-					{{- template "deprecatedFields" $check }}
-					Method: {{ template "methodSchema" $check.Method }},
-					{{- if $check.Arguments }}
-					Arguments: []*skel.MemberSchema{
-						{{- range $argument := $check.Arguments }}
-						{{ template "memberSchema" $argument }},
-						{{- end }}
-					},
-					{{- end }}
-				},
-				{{- end }}
-			},
-			{{- end }}
-			Actions: []*skel.ResourceActionSchema{
-				{{- range $action := $resource.Actions }}
-				{
-					Name: {{ quote $action.Name }},
-					PermissionCode: {{ quote $action.PermissionCode }},
-					{{- if $action.Description }}
-					Description: {{ quote $action.Description }},
-					{{- end }}
-					{{- template "deprecatedFields" $action }}
-					{{- if $action.Checks }}
-					Checks: []*skel.ResourceCheckSchema{
-						{{- range $check := $action.Checks }}
-						{
-							Name: {{ quote $check.Name }},
-							{{- template "deprecatedFields" $check }}
-							Method: {{ template "methodSchema" $check.Method }},
-							{{- if $check.Arguments }}
-							Arguments: []*skel.MemberSchema{
-								{{- range $argument := $check.Arguments }}
-								{{ template "memberSchema" $argument }},
-								{{- end }}
-							},
-							{{- end }}
-						},
-						{{- end }}
-					},
-					{{- end }}
-				},
-				{{- end }}
-			},
-			{{- if $resource.CheckService }}
-			CheckService: {{ template "serviceSchema" $resource.CheckService }},
-			{{- end }}
-		},
+		{{ template "resourceSchemaValue" $resource }},
 		{{- end }}
 	},
 	{{- end }}
+{{- end }}
+
+{{- define "resourceSchemaValue" -}}
+{Name: {{ quote .Name }}, SkelName: {{ quote .SkelName }}{{ if .Description }}, Description: {{ quote .Description }}{{ end }}{{ template "deprecatedFields" . }}, Hash: {{ quote .Hash }}{{ if .CheckService }}, CheckService: {{ template "serviceSchema" .CheckService }}{{ end }}{{ template "resourceCheckSchemaList" .Checks }}{{ template "resourceActionSchemaList" .Actions }}}
+{{- end }}
+
+{{- define "resourceCheckSchemaList" -}}
+{{- if . }}, Checks: []*skel.ResourceCheckSchema{
+{{- range $check := . }}
+{{ template "resourceCheckSchemaValue" $check }},
+{{- end }}
+}{{ end -}}
+{{- end }}
+
+{{- define "resourceCheckSchemaValue" -}}
+{Name: {{ quote .Name }}{{ template "deprecatedFields" . }}, Method: {{ template "methodSchema" .Method }}{{ template "argumentSchemaList" .Arguments }}}
+{{- end }}
+
+{{- define "resourceActionSchemaList" -}}
+{{- if . }}, Actions: []*skel.ResourceActionSchema{
+{{- range $action := . }}
+{{ template "resourceActionSchemaValue" $action }},
+{{- end }}
+}{{ end -}}
+{{- end }}
+
+{{- define "resourceActionSchemaValue" -}}
+{Name: {{ quote .Name }}, PermissionCode: {{ quote .PermissionCode }}{{ if .Description }}, Description: {{ quote .Description }}{{ end }}{{ template "deprecatedFields" . }}{{ template "resourceCheckSchemaList" .Checks }}}
 {{- end }}

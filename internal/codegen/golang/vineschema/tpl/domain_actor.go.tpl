@@ -2,46 +2,12 @@
 {{- if .Schema.Actors }}
 	Actors: []*skel.ActorSchema{
 		{{- range $actor := .Schema.Actors }}
-		{
-			Name: {{ quote $actor.Name }},
-			SkelName: {{ quote $actor.SkelName }},
-			{{- if $actor.Description }}
-			Description: {{ quote $actor.Description }},
-			{{- end }}
-			{{- template "deprecatedFields" $actor }}
-			Hash: {{ quote $actor.Hash }},
-			{{- if $actor.Vias }}
-			Vias: []skel.ActorVia{
-				{{- range $via := $actor.Vias }}
-				{{ viaLiteral $via }},
-				{{- end }}
-			},
-			{{- end }}
-			AuthEnabled: {{ $actor.AuthEnabled }},
-			{{- if $actor.IdentifierField }}
-			IdentifierField: {{ quote $actor.IdentifierField }},
-			{{- end }}
-			{{- if $actor.AuthCredential }}
-			AuthCredential: {{ template "dataSchema" $actor.AuthCredential }},
-			{{- end }}
-			{{- if $actor.AuthInfo }}
-			AuthInfo: {{ template "dataSchema" $actor.AuthInfo }},
-			{{- end }}
-			{{- if $actor.AuthService }}
-			AuthService: {{ template "serviceSchema" $actor.AuthService }},
-			{{- end }}
-			{{- if $actor.AuthMethod }}
-			AuthMethod: {{ template "methodSchema" $actor.AuthMethod }},
-			{{- end }}
-			PermEnabled: {{ $actor.PermEnabled }},
-			{{- if $actor.PermService }}
-			PermService: {{ template "serviceSchema" $actor.PermService }},
-			{{- end }}
-			{{- if $actor.PermMethod }}
-			PermMethod: {{ template "methodSchema" $actor.PermMethod }},
-			{{- end }}
-		},
+		{{ template "actorSchemaValue" $actor }},
 		{{- end }}
 	},
 	{{- end }}
+{{- end }}
+
+{{- define "actorSchemaValue" -}}
+{Name: {{ quote .Name }}, SkelName: {{ quote .SkelName }}{{ if .Description }}, Description: {{ quote .Description }}{{ end }}{{ template "deprecatedFields" . }}, Hash: {{ quote .Hash }}{{ if .Vias }}, Vias: []skel.ActorVia{ {{- range $via := .Vias }}{{ viaLiteral $via }}, {{- end }} }{{ end }}, AuthEnabled: {{ .AuthEnabled }}{{ if .IdentifierField }}, IdentifierField: {{ quote .IdentifierField }}{{ end }}{{ if .AuthCredential }}, AuthCredential: {{ template "dataSchema" .AuthCredential }}{{ end }}{{ if .AuthInfo }}, AuthInfo: {{ template "dataSchema" .AuthInfo }}{{ end }}{{ if .AuthService }}, AuthService: {{ template "serviceSchema" .AuthService }}{{ end }}{{ if .AuthMethod }}, AuthMethod: {{ template "methodSchema" .AuthMethod }}{{ end }}, PermEnabled: {{ .PermEnabled }}{{ if .PermService }}, PermService: {{ template "serviceSchema" .PermService }}{{ end }}{{ if .PermMethod }}, PermMethod: {{ template "methodSchema" .PermMethod }}{{ end }}}
 {{- end }}

@@ -24,11 +24,15 @@ import type * as {{ $import.Alias }} from '{{ $import.Path }}';
 
 {{- end }}
 {{- if $service.CommentLines }}
+{{- if eq (len $service.CommentLines) 1 }}
+/** {{ index $service.CommentLines 0 }} */
+{{- else }}
 /**
 {{- range $line := $service.CommentLines }}
  * {{ $line }}
 {{- end }}
  */
+{{- end }}
 {{- end }}
 export function {{ $service.FactoryName }}(client: VrpcClient) {
   return {
@@ -37,6 +41,9 @@ export function {{ $service.FactoryName }}(client: VrpcClient) {
 
     {{- end }}
     {{- if or $method.SummaryLines $method.ParamDocs $method.ReturnDoc }}
+    {{- if and (eq (len $method.SummaryLines) 1) (not $method.ParamDocs) (not $method.ReturnDoc) }}
+    /** {{ index $method.SummaryLines 0 }} */
+    {{- else }}
     /**
     {{- range $line := $method.SummaryLines }}
      * {{ $line }}
@@ -48,6 +55,7 @@ export function {{ $service.FactoryName }}(client: VrpcClient) {
      * @returns {{ $method.ReturnDoc.TypeName }} - {{ $method.ReturnDoc.Description }}
     {{- end }}
      */
+    {{- end }}
     {{- end }}
     {{ $method.Name }}(
       params: {{- if $method.HasParams }} {

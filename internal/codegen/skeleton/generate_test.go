@@ -444,6 +444,31 @@ pub config TextConfig instant {
 	}
 }
 
+func TestGenPreservesOpenServiceModifier(t *testing.T) {
+	domain, _ := parseDomainForTest(t, "demo/domain.skel", "domain demo.storage\n", "demo/service.skel", `domain demo.storage
+data Item { value: string }
+open service StorageService {
+    method get {
+        input { key: string }
+        output Item
+    }
+}
+pub service LookupService { method ping {} }
+`, nil)
+	output := t.TempDir()
+
+	mustGenerateForTest(t, domain, Option{Out: output, PubOnly: true})
+
+	parsed, err := compiler.Compile(compiler.Option{SkelIn: output, Strict: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	services := parsed.Domain.Services()
+	if len(services) != 2 || !services[1].Open {
+		t.Fatalf("public Skel lost open modifier: %+v", services)
+	}
+}
+
 func TestActorIdentifierPublicRoundTrip(t *testing.T) {
 	domain, _ := parseDomainForTest(t, "demo/domain.skel", "domain demo\n", "demo/actor.skel", `domain demo
 pub actor UserActor {

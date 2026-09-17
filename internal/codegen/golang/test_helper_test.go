@@ -2,6 +2,7 @@ package golang_test
 
 import (
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -10,6 +11,16 @@ import (
 	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/util/nameutil"
 )
+
+func writeFileForTest(t *testing.T, path string, content string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("create test directory: %v", err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write test file: %v", err)
+	}
+}
 
 func readFileForTest(t *testing.T, path string) string {
 	t.Helper()

@@ -1,4 +1,4 @@
-package skelc_test
+package golang_test
 
 import (
 	"os"
@@ -15,12 +15,12 @@ func TestApiGoClientCrossDomainAndInvocation(t *testing.T) {
 	root := t.TempDir()
 	shared := filepath.Join(root, "shared.skel")
 	order := filepath.Join(root, "order.skel")
-	writeTestFile(t, shared, `domain common.shared
+	writeFileForTest(t, shared, `domain common.shared
 pub data Page<TItem> { items: list<TItem> }
 data Detail { label: string }
 pub data External { detail: Detail }
 `)
-	writeTestFile(t, order, `domain shop.order
+	writeFileForTest(t, order, `domain shop.order
 import common.shared as shared
 actor ClientActor { via client {} }
 data Unused { secret: string }
@@ -114,7 +114,7 @@ pub service BackendService { method ping {} }
 			t.Errorf("missing API method documentation %q", fragment)
 		}
 	}
-	writeTestFile(t, filepath.Join(out, "invoke_test.go"), apiInvocationTest)
+	writeFileForTest(t, filepath.Join(out, "invoke_test.go"), apiInvocationTest)
 	testutil.Go(t, out, "mod", "edit", "-replace=example.com/gen/common/sharedapi="+sharedOut)
 	deps := testutil.Go(t, out, "list", "-mod=mod", "-deps", "./...")
 	if strings.Contains(deps, "go.yorun.ai/vine") {
@@ -202,8 +202,8 @@ func TestApiOutputBoundaryAndUnusedBackendImport(t *testing.T) {
 	root := t.TempDir()
 	backend := filepath.Join(root, "backend.skel")
 	entry := filepath.Join(root, "order.skel")
-	writeTestFile(t, backend, "domain demo.backend\npub data Internal { id: string }\n")
-	writeTestFile(t, entry, `domain demo.order
+	writeFileForTest(t, backend, "domain demo.backend\npub data Internal { id: string }\n")
+	writeFileForTest(t, entry, `domain demo.order
 import demo.backend as backend
 data Item { id: string }
 data Unused { hidden: string }
@@ -251,7 +251,7 @@ service HiddenService { method ping {} }
 func TestApiBackendSchemaAndClientBoundary(t *testing.T) {
 	root := t.TempDir()
 	entry := filepath.Join(root, "order.skel")
-	writeTestFile(t, entry, `domain demo.order
+	writeFileForTest(t, entry, `domain demo.order
 api service OrderApiService { method ping {} }
 pub service BackendService { method ping {} }
 `)

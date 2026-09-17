@@ -36,7 +36,7 @@ func buildActorViaNames(items []*model.ActorVia) []string {
 	return values
 }
 
-func (s *_hashState) buildMemberHashValues(items []*model.DataMember) []*_MemberHashValue {
+func (s *_HashState) buildMemberHashValues(items []*model.DataMember) []*_MemberHashValue {
 	values := make([]*_MemberHashValue, 0, len(items))
 	for _, item := range items {
 		values = append(values, &_MemberHashValue{
@@ -53,7 +53,7 @@ func (s *_hashState) buildMemberHashValues(items []*model.DataMember) []*_Member
 	return values
 }
 
-func (s *_hashState) buildArgumentHashValues(items []*model.Argument) []*_MemberHashValue {
+func (s *_HashState) buildArgumentHashValues(items []*model.Argument) []*_MemberHashValue {
 	values := make([]*_MemberHashValue, 0, len(items))
 	for _, item := range items {
 		values = append(values, &_MemberHashValue{
@@ -69,7 +69,7 @@ func (s *_hashState) buildArgumentHashValues(items []*model.Argument) []*_Member
 	return values
 }
 
-func (s *_hashState) buildTypeHashValue(typeMeta *model.Type) *_TypeHashValue {
+func (s *_HashState) buildTypeHashValue(typeMeta *model.Type) *_TypeHashValue {
 	if typeMeta == nil {
 		return nil
 	}

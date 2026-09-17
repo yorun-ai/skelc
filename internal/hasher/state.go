@@ -2,7 +2,7 @@ package hasher
 
 import "go.yorun.ai/skelc/internal/model"
 
-type _hashState struct {
+type _HashState struct {
 	domain      *model.Domain
 	enumBySkel  map[string]*model.Enum
 	dataBySkel  map[string]*model.Data
@@ -12,8 +12,8 @@ type _hashState struct {
 	err         error
 }
 
-func newHashState(domain *model.Domain) *_hashState {
-	state := &_hashState{
+func newHashState(domain *model.Domain) *_HashState {
+	state := &_HashState{
 		domain:      domain,
 		enumBySkel:  map[string]*model.Enum{},
 		dataBySkel:  map[string]*model.Data{},
@@ -39,7 +39,7 @@ func newHashState(domain *model.Domain) *_hashState {
 	return state
 }
 
-func (s *_hashState) enumHash(enum *model.Enum) string {
+func (s *_HashState) enumHash(enum *model.Enum) string {
 	return s.memoHash("enum", enum.SkelName, func() string {
 		return s.hashValue(_EnumHashValue{
 			Name:             enum.Name,
@@ -52,7 +52,7 @@ func (s *_hashState) enumHash(enum *model.Enum) string {
 	})
 }
 
-func (s *_hashState) dataHash(data *model.Data) string {
+func (s *_HashState) dataHash(data *model.Data) string {
 	return s.memoHash(string(data.Kind), data.SkelName, func() string {
 		return s.hashValue(_DataHashValue{
 			Name:             data.Name,
@@ -70,7 +70,7 @@ func (s *_hashState) dataHash(data *model.Data) string {
 	})
 }
 
-func (s *_hashState) webHash(web *model.Web) string {
+func (s *_HashState) webHash(web *model.Web) string {
 	return s.memoHash("web", web.SkelName, func() string {
 		return s.hashValue(_WebHashValue{
 			MountPath:        web.MountPath,
@@ -84,7 +84,7 @@ func (s *_hashState) webHash(web *model.Web) string {
 	})
 }
 
-func (s *_hashState) actorHash(actor *model.Actor) string {
+func (s *_HashState) actorHash(actor *model.Actor) string {
 	return s.memoHash("actor", actor.SkelName, func() string {
 		var authCredentialName string
 		var authCredentialHash string

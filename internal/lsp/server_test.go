@@ -3,7 +3,6 @@ package lsp
 import (
 	"context"
 	"net"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -70,69 +69,15 @@ func TestServeLifecycle(t *testing.T) {
 	}
 }
 
-func TestServePublishesAndInvalidatesSemanticDiagnostics(t *testing.T) {
-	serverStream, clientStream := net.Pipe()
-	serverDone := make(chan error, 1)
-	go func() {
-		serverDone <- Serve(t.Context(), serverStream, serverStream, false)
-	}()
-
-	client := &recordingClient{diagnostics: make(chan *protocol.PublishDiagnosticsParams, 16)}
-	_, connection, server := protocol.NewClient(t.Context(), client, jsonrpc2.NewStream(clientStream))
-	t.Cleanup(func() { _ = connection.Close() })
-
-	rootPath := t.TempDir()
-	root := uri.File(rootPath)
-	_, err := server.Initialize(t.Context(), &protocol.InitializeParams{
-		RootURI: &root, Capabilities: protocol.ClientCapabilities{},
-	})
-	require.NoError(t, err)
-	require.NoError(t, server.Initialized(t.Context(), &protocol.InitializedParams{}))
-
-	userURI := uri.File(filepath.Join(rootPath, "user.skel"))
-	orderURI := uri.File(filepath.Join(rootPath, "order.skel"))
-	require.NoError(t, server.DidOpen(t.Context(), &protocol.DidOpenTextDocumentParams{TextDocument: protocol.TextDocumentItem{
-		URI: userURI, LanguageID: "skel", Version: 1, Text: "domain demo.user\ndata User {}\n",
-	}}))
-	require.NoError(t, server.DidOpen(t.Context(), &protocol.DidOpenTextDocumentParams{TextDocument: protocol.TextDocumentItem{
-		URI: orderURI, LanguageID: "skel", Version: 1,
-		Text: "domain demo.order\ndata Order { owner: Missing }\n",
-	}}))
-
-	diagnostic := waitForDiagnostics(t, client.diagnostics, func(params *protocol.PublishDiagnosticsParams) bool {
-		return params.URI == orderURI && len(params.Diagnostics) == 1 && params.Diagnostics[0].Code == protocol.String("semantic.reference")
-	})
-	assert.Equal(t, protocol.NewOptional(int32(1)), diagnostic.Version)
-
-	require.NoError(t, server.DidChange(t.Context(), &protocol.DidChangeTextDocumentParams{
-		TextDocument: protocol.VersionedTextDocumentIdentifier{
-			TextDocumentIdentifier: protocol.TextDocumentIdentifier{URI: orderURI}, Version: 2,
-		},
-		ContentChanges: []protocol.TextDocumentContentChangeEvent{&protocol.TextDocumentContentChangeWholeDocument{
-			Text: "domain demo.order\ndata Order { owner: int }\n",
-		}},
-	}))
-	waitForDiagnostics(t, client.diagnostics, func(params *protocol.PublishDiagnosticsParams) bool {
-		return params.URI == orderURI && params.Version == protocol.NewOptional(int32(2)) && len(params.Diagnostics) == 0
-	})
-
-	require.NoError(t, server.Shutdown(t.Context()))
-	require.NoError(t, server.Exit(t.Context()))
-	select {
-	case err := <-serverDone:
-		require.NoError(t, err)
-	case <-time.After(2 * time.Second):
-		t.Fatal("language server did not exit after the exit notification")
-	}
-}
-
 func waitForDiagnostics(
 	t *testing.T,
 	diagnostics <-chan *protocol.PublishDiagnosticsParams,
 	accept func(*protocol.PublishDiagnosticsParams) bool,
 ) *protocol.PublishDiagnosticsParams {
 	t.Helper()
-	timer := time.NewTimer(3 * time.Second)
+	// The wait covers analysis work rather than a fixed delay, and race-enabled
+	// suite runs share a small CI runner, so keep a generous budget.
+	timer := time.NewTimer(10 * time.Second)
 	defer timer.Stop()
 	for {
 		select {

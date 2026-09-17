@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
+	"go.yorun.ai/skelc/internal/lsp/analysis"
 )
 
 func TestStrictSettingsInitializationAndChanges(t *testing.T) {
@@ -37,6 +38,10 @@ func TestStrictSettingsInitializationAndChanges(t *testing.T) {
 
 func TestStrictConfigurationRepublishesDiagnostics(t *testing.T) {
 	server := newServer()
+	// The republished diagnostics come from the analysis runner. Drop the debounce
+	// delay so the wait below covers analysis work instead of a fixed timer that a
+	// loaded CI runner can delay.
+	server.analysis = analysis.NewRunner(0)
 	t.Cleanup(server.stopSemanticAnalysis)
 	documentURI := uri.File("/workspace/order.skel")
 	client := &recordingClient{diagnostics: make(chan *protocol.PublishDiagnosticsParams, 16)}

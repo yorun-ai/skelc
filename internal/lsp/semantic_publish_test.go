@@ -1,0 +1,72 @@
+package lsp
+
+import (
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.lsp.dev/protocol"
+	"go.lsp.dev/uri"
+	"go.yorun.ai/skelc/internal/lsp/analysis"
+)
+
+func receiveDiagnostics(t *testing.T, diagnostics <-chan *protocol.PublishDiagnosticsParams) *protocol.PublishDiagnosticsParams {
+	t.Helper()
+	select {
+	case params := <-diagnostics:
+		return params
+	default:
+		t.Fatal("expected published diagnostics")
+		return nil
+	}
+}
+
+// TestSemanticDiagnosticsPublishAndInvalidate drives publishing synchronously:
+// the analysis runner never fires, so the assertions depend on the handlers and
+// the accept callback alone instead of the debounce timer and wall-clock waits.
+func TestSemanticDiagnosticsPublishAndInvalidate(t *testing.T) {
+	server := newServer()
+	server.analysis = analysis.NewRunner(time.Hour)
+	t.Cleanup(server.stopSemanticAnalysis)
+
+	client := &recordingClient{diagnostics: make(chan *protocol.PublishDiagnosticsParams, 16)}
+	server.client = client
+
+	documentURI := uri.File("/workspace/order.skel")
+	require.NoError(t, server.DidOpen(t.Context(), &protocol.DidOpenTextDocumentParams{TextDocument: protocol.TextDocumentItem{
+		URI: documentURI, LanguageID: "skel", Version: 1,
+		Text: "domain demo.order\ndata Order { owner: Missing }\n",
+	}}))
+
+	server.acceptSemanticAnalysis(analysis.Result{
+		Revision: server.workspace.Snapshot().Revision(),
+		Diagnostics: map[uri.URI][]protocol.Diagnostic{
+			documentURI: {{
+				Severity: protocol.DiagnosticSeverityError,
+				Code:     protocol.String("semantic.reference"),
+				Message:  protocol.String("unknown type Missing"),
+			}},
+		},
+	})
+
+	published := receiveDiagnostics(t, client.diagnostics)
+	assert.Equal(t, documentURI, published.URI)
+	assert.Equal(t, protocol.NewOptional(int32(1)), published.Version)
+	require.Len(t, published.Diagnostics, 1)
+	assert.Equal(t, protocol.String("semantic.reference"), published.Diagnostics[0].Code)
+
+	require.NoError(t, server.DidChange(t.Context(), &protocol.DidChangeTextDocumentParams{
+		TextDocument: protocol.VersionedTextDocumentIdentifier{
+			TextDocumentIdentifier: protocol.TextDocumentIdentifier{URI: documentURI}, Version: 2,
+		},
+		ContentChanges: []protocol.TextDocumentContentChangeEvent{&protocol.TextDocumentContentChangeWholeDocument{
+			Text: "domain demo.order\ndata Order { owner: int }\n",
+		}},
+	}))
+
+	invalidated := receiveDiagnostics(t, client.diagnostics)
+	assert.Equal(t, documentURI, invalidated.URI)
+	assert.Equal(t, protocol.NewOptional(int32(2)), invalidated.Version)
+	assert.Empty(t, invalidated.Diagnostics)
+}

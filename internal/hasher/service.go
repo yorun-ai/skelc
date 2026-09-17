@@ -2,7 +2,7 @@ package hasher
 
 import "go.yorun.ai/skelc/internal/model"
 
-func (s *_hashState) resourceHash(resource *model.Resource) string {
+func (s *_HashState) resourceHash(resource *model.Resource) string {
 	return s.memoHash("resource", resource.SkelName, func() string {
 		var checkServiceName string
 		var checkServiceHash string
@@ -25,7 +25,7 @@ func (s *_hashState) resourceHash(resource *model.Resource) string {
 	})
 }
 
-func (s *_hashState) methodHash(method *model.Method) string {
+func (s *_HashState) methodHash(method *model.Method) string {
 	return s.hashValue(_MethodHashValue{
 		Name:               method.Name,
 		SkelName:           method.SkelName,
@@ -45,7 +45,7 @@ func (s *_hashState) methodHash(method *model.Method) string {
 	})
 }
 
-func (s *_hashState) serviceHash(service *model.Service) string {
+func (s *_HashState) serviceHash(service *model.Service) string {
 	return s.memoHash("service", service.SkelName, func() string {
 		for _, method := range service.Methods {
 			method.Hash = s.methodHash(method)
@@ -68,7 +68,7 @@ func (s *_hashState) serviceHash(service *model.Service) string {
 	})
 }
 
-func (s *_hashState) buildResourceCheckHashValues(checks []*model.ResourceCheck) []*_ResourceCheck {
+func (s *_HashState) buildResourceCheckHashValues(checks []*model.ResourceCheck) []*_ResourceCheck {
 	values := make([]*_ResourceCheck, 0, len(checks))
 	for _, check := range checks {
 		values = append(values, &_ResourceCheck{
@@ -83,7 +83,7 @@ func (s *_hashState) buildResourceCheckHashValues(checks []*model.ResourceCheck)
 	return values
 }
 
-func (s *_hashState) buildResourceActionHashValues(actions []*model.ResourceAction) []*_ResourceAction {
+func (s *_HashState) buildResourceActionHashValues(actions []*model.ResourceAction) []*_ResourceAction {
 	values := make([]*_ResourceAction, 0, len(actions))
 	for _, action := range actions {
 		value := &_ResourceAction{
@@ -99,7 +99,7 @@ func (s *_hashState) buildResourceActionHashValues(actions []*model.ResourceActi
 	return values
 }
 
-func (s *_hashState) buildRequireHashValue(require *model.PermissionRequire) *_RequireHashValue {
+func (s *_HashState) buildRequireHashValue(require *model.PermissionRequire) *_RequireHashValue {
 	if require == nil {
 		return nil
 	}
@@ -108,7 +108,7 @@ func (s *_hashState) buildRequireHashValue(require *model.PermissionRequire) *_R
 	}
 }
 
-func (s *_hashState) buildRequireExprHashValue(expr *model.PermissionExpr) *_RequireExprHashValue {
+func (s *_HashState) buildRequireExprHashValue(expr *model.PermissionExpr) *_RequireExprHashValue {
 	if expr == nil {
 		return nil
 	}
@@ -133,7 +133,7 @@ func (s *_hashState) buildRequireExprHashValue(expr *model.PermissionExpr) *_Req
 	return value
 }
 
-func (s *_hashState) buildRequireCheckArgumentHashValues(arguments []*model.PermissionCheckArgument) []*_RequireCheckArgument {
+func (s *_HashState) buildRequireCheckArgumentHashValues(arguments []*model.PermissionCheckArgument) []*_RequireCheckArgument {
 	values := make([]*_RequireCheckArgument, 0, len(arguments))
 	for _, argument := range arguments {
 		values = append(values, &_RequireCheckArgument{

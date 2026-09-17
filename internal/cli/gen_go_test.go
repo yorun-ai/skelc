@@ -117,7 +117,7 @@ func TestRunSkelcGenGoClassifiesOutputFailures(t *testing.T) {
 	}
 }
 
-func TestRunSkelcGenGoRendersDataCloneMethodsAndGenericCallbacks(t *testing.T) {
+func TestRunSkelcGenGoOmitsCloneCode(t *testing.T) {
 	dir, goOut := newGenFixture(t)
 	writeCLIFile(t, filepath.Join(dir, "types.skel"), `domain demo.user
 
@@ -146,14 +146,21 @@ service UserService {
 	if result.ExitCode != ExitCodeSuccess {
 		t.Fatalf("unexpected exit code: %d, stderr=%q", result.ExitCode, result.Stderr)
 	}
-	assertFileContains(t, filepath.Join(goOut, "data.go"),
-		"func (v User) Clone() User",
-		"func (v Page[TItem]) CloneBy(cloneTItem func(TItem) TItem) Page[TItem]",
-		"func (v Users) Clone() Users",
-		"v.Page.CloneBy(func(value User) User {")
-	assertFileContains(t, filepath.Join(goOut, "service.go"),
-		"CloneResult: func(value any) any {",
-		"source.CloneBy(func(value User) User {")
+
+	// Generated data and services no longer carry clone code: the Vine runtime
+	// clones in-process Rpc values from their Go types.
+	for _, path := range []string{filepath.Join(goOut, "data.go"), filepath.Join(goOut, "service.go")} {
+		generated, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, fragment := range []string{"Clone", "cloneTItem"} {
+			if strings.Contains(string(generated), fragment) {
+				t.Fatalf("%s must not contain %q:\n%s", path, fragment, generated)
+			}
+		}
+	}
+	assertFileContains(t, filepath.Join(goOut, "data.go"), "type User struct {", "type Page[TItem any] struct {")
 }
 
 func TestRunSkelcGenGoPreservesUnmanagedOutput(t *testing.T) {
@@ -195,7 +202,7 @@ func TestRunSkelcGenGoModule(t *testing.T) {
 
 	result := Run([]string{"gen", "go-module", "--skel-in", dir, "--go-out", goOut, "--go-module-prefix", "github.com/acme/skel"})
 	assertGenerationResult(t, result)
-	assertFileContains(t, filepath.Join(goOut, "go.mod"), "go.yorun.ai/vine v0.19.0")
+	assertFileContains(t, filepath.Join(goOut, "go.mod"), "go.yorun.ai/vine v0.20.2")
 }
 
 func TestRunSkelcGenGoModuleWithGoVineVersion(t *testing.T) {
@@ -214,7 +221,7 @@ func TestRunSkelcGenGoModuleRejectsLowGoVineVersion(t *testing.T) {
 
 	result := Run([]string{"gen", "go-module", "--skel-in", dir, "--go-out", goOut, "--go-module-prefix", "github.com/acme/skel", "--go-vine-version", "v0.8.0"})
 
-	assertCommandErrorMessage(t, result, "go-vine-version v0.8.0 is lower than minimum v0.19.0")
+	assertCommandErrorMessage(t, result, "go-vine-version v0.8.0 is lower than minimum v0.20.2")
 }
 
 func TestRunSkelcGenGoModuleRejectsGoVineVersionWithoutVPrefix(t *testing.T) {

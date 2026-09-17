@@ -158,16 +158,6 @@ func finishSymbol(symbol Symbol) Symbol {
 	return symbol
 }
 
-func descriptionFromDecorators(decorators []*grammar.Decorator) string {
-	description, _ := documentationFromDecoratorGroups(decorators)
-	return description
-}
-
-func descriptionFromDecoratorGroups(groups ...[]*grammar.Decorator) string {
-	description, _ := documentationFromDecoratorGroups(groups...)
-	return description
-}
-
 func documentationFromDecoratorGroups(groups ...[]*grammar.Decorator) (string, bool) {
 	description := ""
 	deprecatedReason := ""

@@ -73,10 +73,9 @@ func TestGeneratorRendersNullableMapAndServiceHooks(t *testing.T) {
 			t.Fatalf("expected service argument tag %s, got:\n%s", tag, goServiceContent)
 		}
 	}
-	if !strings.Contains(string(goServiceContent), "CloneArguments: func(value any) any {") {
-		t.Fatalf("expected service arguments clone, got:\n%s", string(goServiceContent))
-	}
-	if !strings.Contains(string(goServiceContent), "CloneResult: func(value any) any {") {
-		t.Fatalf("expected service result clone, got:\n%s", string(goServiceContent))
+	for _, fragment := range []string{"CloneArguments", "CloneResult"} {
+		if strings.Contains(string(goServiceContent), fragment) {
+			t.Fatalf("service must not declare %s, got:\n%s", fragment, string(goServiceContent))
+		}
 	}
 }

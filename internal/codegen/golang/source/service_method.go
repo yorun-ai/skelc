@@ -17,10 +17,7 @@ type ServiceMethod struct {
 	CommentLines                []string
 	Arguments                   []*MethodArgument
 	ArgumentsData               *Data
-	CloneArguments              *_GoFunction
 	ResultType                  *Type
-	CloneResult                 *_GoFunction
-	CloneImports                []*Import
 	ArgumentsSensitive          bool
 	ResultSensitive             bool
 	ArgumentsContainsBinaryType bool
@@ -58,7 +55,6 @@ func castServiceMethod(ps *model.Service, pm *model.Method) *ServiceMethod {
 			}
 		}
 	}
-	buildMethodClones(pm, method)
 	method.CommentLines = goMethodDocLines(
 		method.Name,
 		pm.Description,

@@ -7,7 +7,7 @@ import (
 	"go.yorun.ai/skelc/internal/model"
 )
 
-func (s *_hashState) triggerHash(trigger *model.TaskTrigger) string {
+func (s *_HashState) triggerHash(trigger *model.TaskTrigger) string {
 	return s.hashValue(_TriggerHashValue{
 		Name:               trigger.Name,
 		SkelName:           trigger.SkelName,
@@ -20,7 +20,7 @@ func (s *_hashState) triggerHash(trigger *model.TaskTrigger) string {
 	})
 }
 
-func (s *_hashState) taskHash(task *model.Task) string {
+func (s *_HashState) taskHash(task *model.Task) string {
 	return s.memoHash("task", task.SkelName, func() string {
 		for _, trigger := range task.Triggers {
 			trigger.Hash = s.triggerHash(trigger)
@@ -38,7 +38,7 @@ func (s *_hashState) taskHash(task *model.Task) string {
 	})
 }
 
-func (s *_hashState) memoHash(kind string, skelName string, build func() string) string {
+func (s *_HashState) memoHash(kind string, skelName string, build func() string) string {
 	key := fmt.Sprintf("%s:%s", kind, skelName)
 	if hash, ok := s.cache[key]; ok {
 		return hash
@@ -59,7 +59,7 @@ func (s *_hashState) memoHash(kind string, skelName string, build func() string)
 	return hash
 }
 
-func (s *_hashState) hashValue(value any) string {
+func (s *_HashState) hashValue(value any) string {
 	if s.err != nil {
 		return ""
 	}
@@ -71,7 +71,7 @@ func (s *_hashState) hashValue(value any) string {
 	return hash
 }
 
-func (s *_hashState) buildActorAudienceHashValues(audiences []*model.ActorAudience) []*_ActorRefHashValue {
+func (s *_HashState) buildActorAudienceHashValues(audiences []*model.ActorAudience) []*_ActorRefHashValue {
 	values := make([]*_ActorRefHashValue, 0, len(audiences))
 	for _, audience := range audiences {
 		name, skelName := s.actorRefNames(audience.Actor)
@@ -89,7 +89,7 @@ func (s *_hashState) buildActorAudienceHashValues(audiences []*model.ActorAudien
 	return values
 }
 
-func (s *_hashState) actorRefNames(actorName string) (string, string) {
+func (s *_HashState) actorRefNames(actorName string) (string, string) {
 	if alias, baseName, ok := strings.Cut(actorName, "."); ok {
 		for _, import_ := range s.domain.Imports() {
 			if import_.Alias == alias {

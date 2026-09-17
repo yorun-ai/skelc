@@ -22,5 +22,4 @@ type {{ $s.FullName }} struct {
 
 func ({{ $s.ReceiverType }}) {{ $s.MarkerMethodName }}() {}
 {{- end }}
-{{ template "dataClone" $s -}}
 {{ end }}

@@ -2,10 +2,8 @@ package source
 
 import (
 	"reflect"
-	"strings"
 	"testing"
 
-	"go.yorun.ai/skelc/internal/codegen/codegentest"
 	"go.yorun.ai/skelc/internal/model"
 )
 
@@ -56,122 +54,6 @@ func TestCastData(t *testing.T) {
 	}
 	if len(data.Members[1].CommentLines) == 0 || data.Members[1].CommentLines[0] != `AvatarUrl Avatar URL (e.g. "https://xxx.com/a.png")` {
 		t.Fatalf("unexpected second member comment lines: %+v", data.Members[1].CommentLines)
-	}
-}
-
-func TestCastDataBuildsCloneMethod(t *testing.T) {
-	child := &model.Data{
-		Name:    "Child",
-		Members: []*model.DataMember{{Name: "name", Type: codegentest.StringType()}},
-	}
-	data := castCloneableData(&model.Data{
-		Name: "Payload",
-		Members: []*model.DataMember{
-			{Name: "content", Type: codegentest.ScalarType(model.ScalarBinary)},
-			{Name: "children", Type: codegentest.ListType(codegentest.DataType(child))},
-			{Name: "labels", Type: codegentest.MapType(codegentest.StringType(), codegentest.StringType())},
-		},
-	})
-
-	if !data.Clone || data.CloneMethodName != "Clone" || len(data.CloneParameters) != 0 {
-		t.Fatalf("unexpected clone metadata: %+v", data)
-	}
-	lines := renderGoIRForTest(t, "goBlock", data.CloneBlock)
-	for _, fragment := range []string{
-		"if v.Content == nil {",
-		"cloned.Content = make(skel.Binary, len(v.Content))",
-		"copy(cloned.Content, v.Content)",
-		"cloned.Children = make([]Child, len(v.Children))",
-		"cloned.Children[index0] = v.Children[index0].Clone()",
-		"cloned.Labels = maps.Clone(v.Labels)",
-	} {
-		if !strings.Contains(lines, fragment) {
-			t.Fatalf("clone lines missing %q:\n%s", fragment, lines)
-		}
-	}
-	if got := importPaths(data.CloneImports); len(got) != 1 || got[0] != "maps" {
-		t.Fatalf("unexpected clone imports: %v", got)
-	}
-}
-
-func TestCastGenericDataBuildsCloneByMethod(t *testing.T) {
-	tItem := codegentest.TypeParam("TItem")
-	data := castCloneableData(&model.Data{
-		Name:           "Page",
-		TypeParameters: []*model.TypeParameter{tItem},
-		Members: []*model.DataMember{
-			{Name: "items", Type: codegentest.ListType(codegentest.TypeParamType(tItem))},
-		},
-	})
-
-	if !data.Clone || data.CloneMethodName != "CloneBy" {
-		t.Fatalf("unexpected clone metadata: %+v", data)
-	}
-	if len(data.CloneParameters) != 1 ||
-		data.CloneParameters[0].Name != "cloneTItem" ||
-		data.CloneParameters[0].Type != "func(TItem) TItem" {
-		t.Fatalf("unexpected clone parameters: %+v", data.CloneParameters)
-	}
-	if lines := renderGoIRForTest(t, "goBlock", data.CloneBlock); !strings.Contains(lines, "cloned.Items[index0] = cloneTItem(v.Items[index0])") {
-		t.Fatalf("generic clone lines did not use callback:\n%s", lines)
-	}
-}
-
-func TestCastDataCallsNestedGenericCloneBy(t *testing.T) {
-	tItem := codegentest.TypeParam("TItem")
-	page := &model.Data{
-		Name:           "Page",
-		TypeParameters: []*model.TypeParameter{tItem},
-		Members: []*model.DataMember{
-			{Name: "items", Type: codegentest.ListType(codegentest.TypeParamType(tItem))},
-		},
-	}
-	user := &model.Data{Name: "User", Members: []*model.DataMember{{Name: "name", Type: codegentest.StringType()}}}
-	data := castCloneableData(&model.Data{
-		Name: "Users",
-		Members: []*model.DataMember{
-			{Name: "page", Type: codegentest.DataType(page, codegentest.DataType(user))},
-		},
-	})
-
-	lines := renderGoIRForTest(t, "goBlock", data.CloneBlock)
-	if !strings.Contains(lines, "v.Page.CloneBy(func(value User) User {") ||
-		!strings.Contains(lines, "return value.Clone()") {
-		t.Fatalf("nested generic clone did not build concrete callback:\n%s", lines)
-	}
-}
-
-func TestCastDataCallsCloneForImportedMember(t *testing.T) {
-	external := &model.Data{Name: "User", Domain: "identity.user"}
-	externalType := codegentest.DataType(external)
-	externalType.ExternalDomain = "identity.user"
-	externalType.ExternalImportPath = "example.com/identity"
-	externalType.ExternalAlias = "userpub"
-	data := castCloneableData(&model.Data{
-		Name:    "Order",
-		Members: []*model.DataMember{{Name: "user", Type: externalType}},
-	})
-	if !data.Clone {
-		t.Fatalf("data with imported member must expose Clone: %+v", data)
-	}
-	lines := renderGoIRForTest(t, "goBlock", data.CloneBlock)
-	if !strings.Contains(lines, "cloned.User = v.User.Clone()") {
-		t.Fatalf("imported clone missing direct Clone call:\n%s", lines)
-	}
-	if got, want := importPaths(data.CloneImports), []string{"example.com/identity"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("unexpected imported clone imports: got=%v want=%v", got, want)
-	}
-}
-
-func TestCastDataBuildsCloneForRecursiveData(t *testing.T) {
-	node := &model.Data{Name: "Node"}
-	node.Members = []*model.DataMember{{Name: "children", Type: codegentest.ListType(codegentest.DataType(node))}}
-	data := castCloneableData(node)
-	if !data.Clone {
-		t.Fatalf("recursive data must expose Clone: %+v", data)
-	}
-	if lines := renderGoIRForTest(t, "goBlock", data.CloneBlock); !strings.Contains(lines, "cloned.Children[index0] = v.Children[index0].Clone()") {
-		t.Fatalf("recursive clone missing nested Clone call:\n%s", lines)
 	}
 }
 

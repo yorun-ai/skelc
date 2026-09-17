@@ -111,11 +111,3 @@ func parseDecoratorMeta(reporter *_DiagnosticReporter, decorators []*grammar.Dec
 		"%s decorator @example must be used with @desc", meta.examplePos) && valid
 	return meta, valid
 }
-
-func parseAnnotations(reporter *_DiagnosticReporter, decorators []*grammar.Decorator) (_DecoratorMeta, bool) {
-	return parseDecoratorMeta(reporter, decorators, _DecoratorContext{
-		allowDesc:    true,
-		allowExample: true,
-		requireDesc:  true,
-	})
-}

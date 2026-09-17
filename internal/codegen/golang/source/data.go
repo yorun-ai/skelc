@@ -13,7 +13,7 @@ import (
 
 const dataGoFilename = "data.go"
 
-var dataGoTemplate = joinTemplates("imports.go.tpl", "go_ir.go.tpl", "data_clone.go.tpl", "data.go.tpl")
+var dataGoTemplate = joinTemplates("imports.go.tpl", "go_ir.go.tpl", "data.go.tpl")
 
 type DataGoPayload struct {
 	PackageName   string
@@ -35,7 +35,7 @@ func (g *_Gen) buildDataGoPayload() *DataGoPayload {
 		Data:        make([]*Data, 0, len(g.view.Data)),
 	}
 	for _, dataType := range g.view.Data {
-		castedData := castCloneableData(dataType)
+		castedData := castData(dataType)
 		payload.Data = append(payload.Data, castedData)
 	}
 	imports := g.apiImports(buildDataImports(payload.Data))
@@ -59,11 +59,6 @@ type Data struct {
 	Members          []*DataMember
 	Sensitive        bool
 	MarkerMethodName string
-	Clone            bool
-	CloneMethodName  string
-	CloneParameters  []*_GoParameter
-	CloneBlock       *_GoBlock
-	CloneImports     []*Import
 }
 
 func castData(p *model.Data) *Data {
@@ -90,12 +85,6 @@ func castData(p *model.Data) *Data {
 		data.FullName = fmt.Sprintf("%s[%s any]", data.Name, strings.Join(tpNames, ", "))
 		data.ReceiverType = fmt.Sprintf("%s[%s]", data.Name, strings.Join(tpNames, ", "))
 	}
-	return data
-}
-
-func castCloneableData(p *model.Data) *Data {
-	data := castData(p)
-	buildDataClone(p, data)
 	return data
 }
 
@@ -132,7 +121,6 @@ func castDataMember(p *model.DataMember) *DataMember {
 func buildDataImports(dataList []*Data) []*Import {
 	imports := newImportSet()
 	for _, data := range dataList {
-		imports.addMany(data.CloneImports)
 		for _, member := range data.Members {
 			imports.addMany(collectTypeImports(member.Type))
 		}

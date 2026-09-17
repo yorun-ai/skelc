@@ -61,7 +61,6 @@ type {{ $s.FullName }} struct { {{ range $sm := $s.Members }}
 
 func ({{ $s.ReceiverType }}) {{ $s.MarkerMethodName }}() {}
 {{- end }}
-{{ template "dataClone" $s -}}
 {{ end }}
 {{ range $service := $.AuthServices }}
 {{- if $service.CommentLines }}

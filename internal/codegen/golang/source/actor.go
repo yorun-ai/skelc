@@ -16,7 +16,6 @@ var actorInfoImports = []*Import{
 var actorGoTemplate = joinTemplates(
 	"imports.go.tpl",
 	"go_ir.go.tpl",
-	"data_clone.go.tpl",
 	"actor.go.tpl",
 	"service/info.go.tpl",
 	"service/arguments.go.tpl",
@@ -61,13 +60,13 @@ func (g *_Gen) genActorGo() {
 	}
 	for _, tokenActor := range g.authServiceActors() {
 		if tokenActor.AuthEnabled {
-			info := castCloneableData(tokenActor.AuthInfo)
+			info := castData(tokenActor.AuthInfo)
 			for _, member := range info.Members {
 				member.Identifier = member.SkelName == tokenActor.IdentifierField
 			}
 			payload.CredentialData = append(
 				payload.CredentialData,
-				castCloneableData(tokenActor.AuthCredential),
+				castData(tokenActor.AuthCredential),
 				info,
 			)
 			payload.AuthServices = append(payload.AuthServices, castActorAuthService(tokenActor.AuthService))

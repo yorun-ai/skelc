@@ -1,0 +1,76 @@
+name: Main Cache Warmup
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: '1.27.x'
+  GOWORK: 'off'
+
+jobs:
+  changes:
+    name: Cache / Select warmup jobs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run-ci: ${{ steps.changes.outputs['run-ci'] }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: changes
+        env:
+          CHANGE_BASE: ${{ github.event.before }}
+          CHANGE_HEAD: ${{ github.sha }}
+        run: bash .github/scripts/ci.sh changes
+
+  go-cache:
+    name: Cache / Go ${{ matrix.mode }} build and test results
+    needs: changes
+    if: needs.changes.outputs['run-ci'] == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [standard, race]
+    concurrency:
+      group: cache-go-${{ matrix.mode }}-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Restore cache and save successful warmup
+        uses: ./.github/actions/go-cache
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          mode: ${{ matrix.mode }}
+          save: 'true'
+
+      - name: Populate ordinary test cache
+        if: matrix.mode == 'standard'
+        run: go test ./...
+
+      - name: Populate static analysis cache
+        if: matrix.mode == 'standard'
+        run: |
+          go mod tidy -diff
+          go vet ./...
+
+      - name: Populate example module cache
+        if: matrix.mode == 'standard'
+        run: |
+          ./examples/quickstart/generate.sh "$RUNNER_TEMP/skelc-quickstart"
+          (cd "$RUNNER_TEMP/skelc-quickstart/go" && go test -mod=mod ./...)
+
+      - name: Populate race build and test cache
+        if: matrix.mode == 'race'
+        env:
+          GORACE: atexit_sleep_ms=0
+        run: go test -race -vet=off ./...

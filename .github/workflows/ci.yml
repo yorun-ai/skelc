@@ -11,8 +11,8 @@ env:
   GOWORK: 'off'
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   changes:
@@ -20,43 +20,32 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      run-ci: ${{ steps.classify.outputs.run-ci }}
+      run-ci: ${{ steps.changes.outputs['run-ci'] }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - id: classify
+      - id: changes
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          set -euo pipefail
-          run_ci=false
-          while IFS= read -r path; do
-            case "$path" in
-              *.md|*.mdx|LICENSE|.github/ISSUE_TEMPLATE/*) ;;
-              *) run_ci=true; break ;;
-            esac
-          done < <(git diff --name-only "$BASE_SHA...$HEAD_SHA")
-          echo "run-ci=$run_ci" >> "$GITHUB_OUTPUT"
+          CHANGE_BASE: ${{ github.event.pull_request.base.sha }}
+          CHANGE_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: bash .github/scripts/ci.sh changes
 
   go-static:
     name: Go static
     needs: changes
-    if: needs.changes.outputs.run-ci == 'true'
+    if: needs.changes.outputs['run-ci'] == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
 
-      - name: Set up Go
-        uses: actions/setup-go@v7
+      - name: Restore Go build and test cache
+        uses: ./.github/actions/go-cache
         with:
           go-version: ${{ env.GO_VERSION }}
-          check-latest: true
-          cache: true
 
       - name: Check module metadata
         run: go mod tidy -diff
@@ -67,19 +56,18 @@ jobs:
   go-race:
     name: Go race
     needs: changes
-    if: needs.changes.outputs.run-ci == 'true'
+    if: needs.changes.outputs['run-ci'] == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
 
-      - name: Set up Go
-        uses: actions/setup-go@v7
+      - name: Restore Go race build and test cache
+        uses: ./.github/actions/go-cache
         with:
           go-version: ${{ env.GO_VERSION }}
-          check-latest: true
-          cache: true
+          mode: race
 
       - name: Test with race detector
         env:
@@ -89,19 +77,17 @@ jobs:
   examples:
     name: Examples
     needs: changes
-    if: needs.changes.outputs.run-ci == 'true'
+    if: needs.changes.outputs['run-ci'] == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
 
-      - name: Set up Go
-        uses: actions/setup-go@v7
+      - name: Restore Go build and test cache
+        uses: ./.github/actions/go-cache
         with:
           go-version: ${{ env.GO_VERSION }}
-          check-latest: true
-          cache: true
 
       - name: Exercise and compile examples
         run: |
@@ -135,13 +121,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
       - name: Verify CI results
         env:
           NEEDS: ${{ toJSON(needs) }}
-        run: |
-          if [[ "${{ needs.changes.outputs.run-ci }}" != true ]]; then
-            exit 0
-          fi
-          echo "$NEEDS" | jq --exit-status '
-            all(.[]; .result == "success")
-          '
+        run: bash .github/scripts/ci.sh verify

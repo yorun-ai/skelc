@@ -1,0 +1,48 @@
+name: Go build and test cache
+description: Share compatible Go caches between main warmup and pull request checks.
+inputs:
+  go-version:
+    description: Go toolchain version
+    required: true
+  mode:
+    description: Separate standard and race compilation caches
+    default: standard
+  save:
+    description: Save a new cache after a successful job
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@v7
+      id: go
+      with:
+        go-version: ${{ inputs.go-version }}
+        check-latest: true
+        cache: false
+    - id: paths
+      shell: bash
+      run: |
+        echo "modules=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+        echo "build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+    - name: Restore cache without saving
+      if: inputs.save != 'true'
+      uses: actions/cache/restore@v6
+      with:
+        path: |
+          ${{ steps.paths.outputs.modules }}
+          ${{ steps.paths.outputs.build }}
+        key: skelc-go-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ inputs.mode }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+        restore-keys: |
+          skelc-go-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ inputs.mode }}-${{ hashFiles('go.sum') }}-
+          skelc-go-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ inputs.mode }}-
+    - name: Restore cache and save successful warmup
+      if: inputs.save == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: actions/cache@v6
+      with:
+        path: |
+          ${{ steps.paths.outputs.modules }}
+          ${{ steps.paths.outputs.build }}
+        key: skelc-go-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ inputs.mode }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+        restore-keys: |
+          skelc-go-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ inputs.mode }}-${{ hashFiles('go.sum') }}-
+          skelc-go-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.go.outputs.go-version }}-${{ inputs.mode }}-

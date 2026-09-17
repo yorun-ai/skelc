@@ -1,4 +1,4 @@
-package skelc_test
+package golang_test
 
 import (
 	"os"

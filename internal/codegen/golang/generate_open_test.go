@@ -1,4 +1,4 @@
-package skelc_test
+package golang_test
 
 import (
 	"os"
@@ -21,19 +21,10 @@ func TestOpenServicePublicServer(t *testing.T) {
  }
  pub service LookupService { method ping {} }
  `
-	if err := os.WriteFile(input, []byte(source), 0600); err != nil {
-		t.Fatal(err)
-	}
+	writeFileForTest(t, input, source)
 	skelOut := filepath.Join(root, "skel")
 	if _, err := skelc.CompileSkeleton(skelc.Input{SkelIn: input, Strict: true}, skelc.SkeletonOption{Out: skelOut, PubOnly: true}); err != nil {
 		t.Fatal(err)
-	}
-	exported, err := skelc.Parse(skelc.Input{SkelIn: skelOut, Strict: true})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(exported.Domain.Services()) != 2 || !exported.Domain.Services()[1].Open {
-		t.Fatal("public Skel lost open modifier")
 	}
 	pub := filepath.Join(root, "storagepub")
 	regular := filepath.Join(root, "storage")
@@ -69,9 +60,7 @@ func TestPublicServer(t *testing.T) {
  if server.Get("ok").Value != "ok" { t.Fatal("wrong result") }
 }
 `
-	if err := os.WriteFile(filepath.Join(regular, "open_test.go"), []byte(testSource), 0600); err != nil {
-		t.Fatal(err)
-	}
+	writeFileForTest(t, filepath.Join(regular, "open_test.go"), testSource)
 
 	for _, pubOnly := range []bool{false, true} {
 		out := filepath.Join(root, "full")

@@ -6,8 +6,23 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-09-17
+
+### Removed
+
+- Generated Go code no longer declares clone methods. Data types drop `Clone()`
+  and `CloneBy(...)`, and Rpc method specs drop `CloneArguments` and
+  `CloneResult`; the Vine runtime clones in-process arguments and results from
+  their declared Go types since Vine v0.20.2. Regenerate every generated Go
+  package with this compiler and require Vine v0.20.2 or later, and drop calls
+  to `Clone()` or `CloneBy(...)` in application code or clone with
+  `vine/util/vbean.DeepClone`. A data member may now be named `clone` or
+  `cloneBy`, because no generated method collides with it.
+
 ### Changed
 
+- Raise the default and minimum Vine dependency for generated Go code from
+  v0.19.0 to v0.20.2.
 - Render generated Vine schemas one declaration per line: an enum, data, config,
   web, event, actor, resource, service, task or method keeps its own fields on one
   line, and members, arguments and nested declarations stay one per line. The

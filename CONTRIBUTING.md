@@ -113,12 +113,15 @@ Update both when a change affects both language semantics and command behavior.
 
 ## Releases
 
-Keep unreleased user-visible changes under the `[Unreleased]` heading in
-[CHANGELOG.md](CHANGELOG.md). Before creating a tag, move those entries to a
-heading in the form `## [VERSION] - YYYY-MM-DD`, add a fresh `[Unreleased]`
-heading, merge that release-preparation change, and tag the exact commit that
-contains it. The release workflow rejects a tag whose version has no matching
-changelog heading.
+Do not update [CHANGELOG.md](CHANGELOG.md) in ordinary pull requests, even when
+the change is user-visible; leave the changelog to the release process. The
+release-preparation pull request (`chore(release): prepare vX.Y.Z`) writes the
+entries for that release, deriving them from the merged commits and pull
+requests since the previous release. Record them under a heading in the form
+`## [VERSION] - YYYY-MM-DD`, merge that release-preparation change, and tag the
+exact commit that contains it. The release workflow rejects a tag whose version
+has no matching changelog heading. Writing entries at release time keeps
+reverted or reworked changes from leaving stale entries behind.
 
 Batch non-urgent changes into a planned weekly release instead of tagging each
 merged pull request. Additional releases in the same week are reserved for
@@ -129,8 +132,8 @@ out-of-cycle patch in its GitHub release notes.
 Before publishing a release, confirm that:
 
 - the release commit is on `main` and required checks pass
-- `CHANGELOG.md` contains the version and release date, with no released entry
-  left under `[Unreleased]`
+- `CHANGELOG.md` contains the version and release date, and covers every
+  user-visible change merged since the previous release
 - coordinated documentation and dependency-version changes are merged
 - release notes describe compatibility impact and any required regeneration
 - the tag points to the reviewed release commit

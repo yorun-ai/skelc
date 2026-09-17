@@ -13,7 +13,7 @@ import (
 
 const dataGoFilename = "data.go"
 
-var dataGoTemplate = joinTemplates("imports.go.tpl", "go_ir.go.tpl", "data.go.tpl")
+var dataGoTemplate = joinTemplates("imports.go.tpl", "data.go.tpl")
 
 type DataGoPayload struct {
 	PackageName   string

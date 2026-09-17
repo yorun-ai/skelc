@@ -2,16 +2,6 @@ package view
 
 import "go.yorun.ai/skelc/internal/model"
 
-func filterNonPubEnums(enums []*model.Enum) []*model.Enum {
-	filtered := make([]*model.Enum, 0, len(enums))
-	for _, enum := range enums {
-		if !enum.Pub {
-			filtered = append(filtered, enum)
-		}
-	}
-	return filtered
-}
-
 func filterNonPubData(dataList []*model.Data) []*model.Data {
 	filtered := make([]*model.Data, 0, len(dataList))
 	for _, data := range dataList {

@@ -57,3 +57,28 @@ func TestPubViewRejectsServiceRequiringNonPubResource(t *testing.T) {
 		t.Fatal("expected invalid public view error")
 	}
 }
+
+func TestFullViewKeepsEveryDeclaration(t *testing.T) {
+	domain := model.NewDomainFromSpec(model.DomainSpec{
+		Name: "demo",
+		Data: []*model.Data{{Name: "Public", Pub: true}, {Name: "Local"}},
+		Enums: []*model.Enum{
+			{Name: "PublicStatus", Pub: true},
+			{Name: "LocalStatus"},
+		},
+		Resources: []*model.Resource{
+			{Pub: true, Name: "PublicUser"},
+			{Name: "LocalUser"},
+		},
+		Services: []*model.Service{
+			{Pub: true, Name: "PublicService", SkelName: "demo.PublicService"},
+			{Name: "LocalService", SkelName: "demo.LocalService"},
+		},
+	})
+
+	full := Full(domain)
+
+	if len(full.Data) != 2 || len(full.Enums) != 2 || len(full.Resources) != 2 || len(full.Services) != 2 {
+		t.Fatalf("unexpected full view: %+v", full)
+	}
+}

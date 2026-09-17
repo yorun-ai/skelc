@@ -40,6 +40,12 @@
   `skel-site/i18n/zh-CN/docusaurus-plugin-content-docs/current` synchronized.
 - Keep examples executable against the current CLI and syntax. Avoid documenting planned commands or unsupported flags.
 
+## Changelog
+
+- Do not edit `CHANGELOG.md` in ordinary commits or pull requests, even when the change is user-visible. Leave the changelog untouched during implementation, fixes, refactors and follow-up work.
+- Write entries only in the release preparation pull request (`chore(release): prepare vX.Y.Z`). That pull request adds the dated `## [X.Y.Z] - YYYY-MM-DD` heading and records every user-visible change merged since the previous release.
+- Derive the entries from the merged commits and pull requests in the release range. Writing them at release time keeps reverted or reworked changes from leaving stale entries in the changelog.
+
 ## Tests
 
 - Keep implementation tests paired with their source files. Shared setup may live in a narrowly scoped test helper file.

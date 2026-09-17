@@ -46,6 +46,19 @@
 - Write entries only in the release preparation pull request (`chore(release): prepare vX.Y.Z`). That pull request adds the dated `## [X.Y.Z] - YYYY-MM-DD` heading and records every user-visible change merged since the previous release.
 - Derive the entries from the merged commits and pull requests in the release range. Writing them at release time keeps reverted or reworked changes from leaving stale entries in the changelog.
 
+## Commits and Delivery
+
+- Work in the working tree by default: change the code, run the validation this
+  repository requires, and hand the diff and the result to the user for review.
+- `git add`, `commit`, `push`, creating a PR, merging a PR, tagging, and publishing
+  a release are never default actions: each needs the user to ask for that step on
+  that change. One instruction covers only what it names, so asking for a PR does
+  not authorize a merge, and an instruction for one change or one repository never
+  carries over to another change or another repository.
+- When the user asks to move changes back into the working tree, undo the local
+  commit and leave the changes uncommitted; do not clean up remote branches, pull
+  requests, or other remote state in the same request.
+
 ## Tests
 
 - Keep implementation tests paired with their source files. Shared setup may live in a narrowly scoped test helper file.

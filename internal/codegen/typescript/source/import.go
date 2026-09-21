@@ -6,19 +6,34 @@ import (
 	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/codegen/typescript/module"
 	"go.yorun.ai/skelc/internal/model"
+	"go.yorun.ai/skelc/internal/util/nameutil"
 )
 
 func (g *_Gen) resolveExternalTypeImports() {
+	types := []*model.Type{}
 	common.VisitTypes(common.ApiTypeRoots(g.apiView.Data, g.apiView.Services), func(type_ *model.Type) {
 		if type_ == nil || type_.ExternalDomain == "" {
 			return
 		}
+		types = append(types, type_)
 		importPath := g.tsImportPath(type_.ExternalDomain)
 		type_.ExternalImportPath = importPath
 		if !type_.ExternalAliasExplicit {
 			type_.ExternalAlias = importPackageAlias(type_.ExternalDomain)
 		}
 	})
+	reserved := []string{"VrpcClient", "VrpcRequestOptions", "VrpcWireSchema", "await", "class", "const", "default", "enum", "export", "extends", "function", "import", "interface", "let", "new", "return", "super", "this", "typeof", "var", "void", "yield", "break", "case", "catch", "continue", "debugger", "delete", "do", "else", "false", "finally", "for", "if", "in", "instanceof", "null", "switch", "throw", "true", "try", "while", "with", "implements", "package", "private", "protected", "public", "static"}
+	for _, data := range g.apiView.Data {
+		reserved = append(reserved, data.Name)
+	}
+	for _, enum := range g.apiView.Enums {
+		reserved = append(reserved, enum.Name)
+	}
+	for _, service := range g.apiView.Services {
+		names := buildServiceNames(service.Name)
+		reserved = append(reserved, names.Name, names.SpecName, names.FactoryName)
+	}
+	common.ResolveImportAliases(types, nameutil.ToLowerCamel, reserved)
 }
 
 func (g *_Gen) tsImportPath(domainName string) string {

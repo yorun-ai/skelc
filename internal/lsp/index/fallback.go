@@ -34,7 +34,7 @@ func indexIncompleteDocument(document *Document, tokens []source.Token) {
 			if domain == "" {
 				continue
 			}
-			alias := domain[strings.LastIndex(domain, ".")+1:]
+			alias := domain
 			if next+1 < len(tokens) && tokens[next].Value == "as" && IsIdentifier(tokens[next+1].Value) {
 				alias = tokens[next+1].Value
 			}

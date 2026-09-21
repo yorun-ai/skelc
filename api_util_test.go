@@ -75,7 +75,7 @@ func TestGeneratorsReturnErrorsForMissingExternalImportMappings(t *testing.T) {
 	writeTestFile(t, filepath.Join(userDir, "user.skel"), "domain demo.user\npub data User { id: string }")
 	orderDir := t.TempDir()
 	writeTestFile(t, filepath.Join(orderDir, "domain.skel"), "domain demo.order")
-	writeTestFile(t, filepath.Join(orderDir, "order.skel"), "domain demo.order\nimport demo.user\npub data Order { user: user.User }")
+	writeTestFile(t, filepath.Join(orderDir, "order.skel"), "domain demo.order\nimport demo.user as user\npub data Order { user: user.User }")
 
 	parsed, err := skelc.Parse(skelc.Input{
 		SkelIn:      orderDir,

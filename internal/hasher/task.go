@@ -90,7 +90,8 @@ func (s *_HashState) buildActorAudienceHashValues(audiences []*model.ActorAudien
 }
 
 func (s *_HashState) actorRefNames(actorName string) (string, string) {
-	if alias, baseName, ok := strings.Cut(actorName, "."); ok {
+	if index := strings.LastIndexByte(actorName, '.'); index >= 0 {
+		alias, baseName := actorName[:index], actorName[index+1:]
 		for _, import_ := range s.domain.Imports() {
 			if import_.Alias == alias {
 				return baseName, import_.Name + "." + baseName

@@ -105,3 +105,12 @@ func TestCastCollectionTypesUsePointersOnlyWhenNullable(t *testing.T) {
 		})
 	}
 }
+
+func TestCastTypeEmitsGeneratedCollisionAlias(t *testing.T) {
+	for _, kind := range []model.TypeKind{model.TypeKindData, model.TypeKindEnum} {
+		got := castType(&model.Type{Kind: kind, Data: &model.Data{Name: "Value"}, Enum: &model.Enum{Name: "Value", UnspecifiedItem: &model.EnumItem{Name: "UNSPECIFIED"}}, ExternalDomain: "first.user", ExternalAlias: "firstuser", ExternalImportPath: "example.com/first/userpub"})
+		if len(got.Imports) != 1 || got.Imports[0].Alias != "firstuser" || got.Plain != "firstuser.Value" {
+			t.Fatalf("collision alias lost: %+v", got)
+		}
+	}
+}

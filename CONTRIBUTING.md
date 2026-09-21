@@ -134,7 +134,11 @@ Before publishing a release, confirm that:
 - the release commit is on `main` and required checks pass
 - `CHANGELOG.md` contains the version and release date, and covers every
   user-visible change merged since the previous release
-- coordinated documentation and dependency-version changes are merged
+- coordinated documentation is updated and validated in its owning workspace;
+  keep documentation-site changes uncommitted and unmerged unless those Git
+  operations are explicitly authorized separately. A code release does not
+  require documentation-site commits or merges
+- required dependency-version changes are merged
 - release notes describe compatibility impact and any required regeneration
 - the tag points to the reviewed release commit
 

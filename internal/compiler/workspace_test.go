@@ -13,7 +13,7 @@ import (
 func TestAnalyzeWorkspaceValidatesCrossDomainTypes(t *testing.T) {
 	diagnostics := AnalyzeWorkspace([]Source{
 		{Path: "/workspace/user.skel", Content: []byte("domain demo.user\npub data User { id: int }\n")},
-		{Path: "/workspace/order.skel", Content: []byte("domain demo.order\nimport demo.user\ndata Order { owner: user.Missing }\n")},
+		{Path: "/workspace/order.skel", Content: []byte("domain demo.order\nimport demo.user as user\ndata Order { owner: user.Missing }\n")},
 	})
 
 	require.Len(t, diagnostics, 1)
@@ -71,7 +71,7 @@ func TestAnalyzeWorkspaceDoesNotResolveImportsForRootedSources(t *testing.T) {
 		},
 		{
 			Path: "/workspace/order/order.skel", Root: "/workspace/order",
-			Content: []byte("domain demo.order\nimport demo.user\ndata Order { user: user.Missing }\n"),
+			Content: []byte("domain demo.order\nimport demo.user as user\ndata Order { user: user.Missing }\n"),
 		},
 	})
 
@@ -171,7 +171,7 @@ func TestAnalyzeWorkspaceLimitsDiagnosticsPerDomain(t *testing.T) {
 func TestAnalyzeWorkspaceSuppressesDependentCascade(t *testing.T) {
 	diagnostics := AnalyzeWorkspace([]Source{
 		{Path: "/workspace/user.skel", Domain: "demo.user", Content: []byte("domain demo.user\ndata User {")},
-		{Path: "/workspace/order.skel", Content: []byte("domain demo.order\nimport demo.user\ndata Order { owner: user.User }\n")},
+		{Path: "/workspace/order.skel", Content: []byte("domain demo.order\nimport demo.user as user\ndata Order { owner: user.User }\n")},
 	})
 
 	require.Len(t, diagnostics, 1)
@@ -181,7 +181,7 @@ func TestAnalyzeWorkspaceSuppressesDependentCascade(t *testing.T) {
 
 func TestAnalyzeWorkspaceReportsMissingImport(t *testing.T) {
 	diagnostics := AnalyzeWorkspace([]Source{{
-		Path: "/workspace/order.skel", Content: []byte("domain demo.order\nimport demo.user\ndata Order {}\n"),
+		Path: "/workspace/order.skel", Content: []byte("domain demo.order\nimport demo.user as user\ndata Order {}\n"),
 	}})
 
 	require.Len(t, diagnostics, 1)
@@ -192,7 +192,7 @@ func TestAnalyzeWorkspaceReportsMissingImport(t *testing.T) {
 func TestAnalyzeWorkspaceReportsMultipleMissingImports(t *testing.T) {
 	diagnostics := AnalyzeWorkspace([]Source{{
 		Path:    "/workspace/order.skel",
-		Content: []byte("domain demo.order\nimport demo.user\nimport demo.product\ndata Order {}\n"),
+		Content: []byte("domain demo.order\nimport demo.user as user\nimport demo.product\ndata Order {}\n"),
 	}})
 
 	require.Len(t, diagnostics, 2)

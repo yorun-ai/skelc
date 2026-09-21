@@ -89,11 +89,6 @@ func resourceCheckView(check *model.ResourceCheck, indent int) *_ResourceCheckVi
 	}
 }
 
-func defaultImportAlias(domainName string) string {
-	parts := strings.Split(domainName, ".")
-	return parts[len(parts)-1]
-}
-
 func scalarName(scalar model.Scalar) string {
 	switch scalar {
 	case model.ScalarInt:

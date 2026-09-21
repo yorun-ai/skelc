@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-	"strings"
 
 	"go.yorun.ai/skelc/internal/model"
 )
@@ -16,7 +15,7 @@ func (p *Analysis) skelName(name string) string {
 func (p *Analysis) loadImports(domainByName map[string]*Analysis) {
 	for _, grammarImport := range p.content.Imports {
 		domainName := grammarImport.Domain.String()
-		alias := defaultImportAlias(domainName)
+		alias := domainName
 		if grammarImport.Alias != nil {
 			alias = grammarImport.Alias.Value
 		}
@@ -41,11 +40,6 @@ func (p *Analysis) loadImports(domainByName map[string]*Analysis) {
 		p.importsMap[alias] = &_DomainImport{Domain: importedDomain, Model: importModel}
 		p.imports = append(p.imports, importModel)
 	}
-}
-
-func defaultImportAlias(domainName string) string {
-	parts := strings.Split(domainName, ".")
-	return parts[len(parts)-1]
 }
 
 func (p *Analysis) checkDuplicated(name string, namePos model.Position) bool {

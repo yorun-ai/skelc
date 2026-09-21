@@ -2,6 +2,7 @@ package golang
 
 import (
 	"fmt"
+	"go/token"
 	"strings"
 
 	"go.yorun.ai/skelc/internal/codegen/common"
@@ -11,7 +12,8 @@ import (
 )
 
 func (g *_Gen) resolveExternalTypeImports() error {
-	return g.visitDomainTypes(func(type_ *model.Type) error {
+	types := []*model.Type{}
+	err := g.visitDomainTypes(func(type_ *model.Type) error {
 		if type_.ExternalDomain == "" {
 			return nil
 		}
@@ -19,6 +21,7 @@ func (g *_Gen) resolveExternalTypeImports() error {
 		if err != nil {
 			return err
 		}
+		types = append(types, type_)
 		type_.ExternalImportPath = path
 		if !type_.ExternalAliasExplicit {
 			type_.ExternalAlias = importPackageName(type_.ExternalDomain, true)
@@ -28,6 +31,30 @@ func (g *_Gen) resolveExternalTypeImports() error {
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	reserved := []string{"context", "fmt", "errors", "reflect", "sync", "time", "json", "http", "url", "strings", "strconv", "vine", "vrpc", "skel", "meta", "ex", "rpc", "web", "task", "_", "any", "bool", "byte", "error", "int", "string", "float64", "nil", "true", "false"}
+	for keyword := token.BREAK; keyword <= token.VAR; keyword++ {
+		if keyword.IsKeyword() {
+			reserved = append(reserved, keyword.String())
+		}
+	}
+	for _, data := range g.domain.Data() {
+		reserved = append(reserved, data.Name)
+	}
+	for _, enum := range g.domain.Enums() {
+		reserved = append(reserved, enum.Name)
+	}
+	for _, service := range g.domain.Services() {
+		for _, method := range service.Methods {
+			for _, arg := range method.Arguments {
+				reserved = append(reserved, arg.Name)
+			}
+		}
+	}
+	common.ResolveImportAliases(types, func(domain string) string { return strings.ReplaceAll(strings.ReplaceAll(domain, ".", ""), "_", "") }, reserved)
+	return nil
 }
 
 func (g *_Gen) goImportPath(domainName string) (string, error) {

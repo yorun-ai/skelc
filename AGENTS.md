@@ -40,6 +40,11 @@
   `skel-site/i18n/zh-CN/docusaurus-plugin-content-docs/current` synchronized.
 - Keep examples executable against the current CLI and syntax. Avoid documenting planned commands or unsupported flags.
 
+- Before release, complete and validate coordinated documentation edits in the
+  owning workspace. Do not commit or merge documentation-site changes as part
+  of a code release without separate explicit authorization; documentation-site
+  commits and merges are not release prerequisites.
+
 ## Changelog
 
 - Do not edit `CHANGELOG.md` in ordinary commits or pull requests, even when the change is user-visible. Leave the changelog untouched during implementation, fixes, refactors and follow-up work.

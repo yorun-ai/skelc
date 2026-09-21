@@ -103,7 +103,9 @@ func castDataType(p *model.Type) *Type {
 }
 
 func goImportAlias(p *model.Type) string {
-	if p.ExternalAliasExplicit {
+	defaultAlias := p.ExternalDomain[strings.LastIndex(p.ExternalDomain, ".")+1:]
+	generatedAlias := p.ExternalDomain != "" && p.ExternalAlias != defaultAlias+"pub" && p.ExternalAlias != defaultAlias+"api"
+	if p.ExternalAliasExplicit || generatedAlias {
 		return p.ExternalAlias
 	}
 	return ""

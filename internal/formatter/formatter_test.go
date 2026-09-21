@@ -319,3 +319,15 @@ func TestWebMountFormattingRoundTrip(t *testing.T) {
 		t.Fatal("format is not idempotent")
 	}
 }
+
+func TestFullDomainReferencesRoundTrip(t *testing.T) {
+	input := []byte("domain demo\nimport ws.sandbox\nimport other.sandbox as other\npub data Payload{value:ws.sandbox.Value alias:other.Value}\nweb ProxyWeb{for ws.sandbox.SandboxActor}\n")
+	formatted := formatTestSource(t, input)
+	checkTestSource(t, "domain.skel", formatted)
+	if again := formatTestSource(t, formatted); string(again) != string(formatted) {
+		t.Fatalf("format not idempotent: %s", again)
+	}
+	if _, err := parser.ParseSource("domain.skel", formatted); err != nil {
+		t.Fatal(err)
+	}
+}

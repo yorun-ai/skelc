@@ -2,8 +2,6 @@
 package index
 
 import (
-	"strings"
-
 	"go.lsp.dev/protocol"
 	"go.lsp.dev/uri"
 	"go.yorun.ai/skelc/internal/compiler"
@@ -70,7 +68,7 @@ func Build(documentURI uri.URI, path, content string, version int32) *Document {
 	}
 	for _, importDecl := range parsed.Imports {
 		domain := importDecl.Domain.String()
-		alias := domain[strings.LastIndex(domain, ".")+1:]
+		alias := domain
 		if importDecl.Alias != nil {
 			alias = importDecl.Alias.Value
 		}

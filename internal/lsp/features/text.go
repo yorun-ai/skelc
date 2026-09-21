@@ -25,7 +25,7 @@ func qualifierBeforePosition(source string, position protocol.Position) string {
 	start = end
 	for start > 0 {
 		r, size := utf8.DecodeLastRuneInString(source[:start])
-		if r != '_' && !isLetterOrDigit(r) {
+		if r != '.' && r != '_' && !isLetterOrDigit(r) {
 			break
 		}
 		start -= size

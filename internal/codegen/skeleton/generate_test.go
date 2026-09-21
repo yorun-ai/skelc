@@ -488,3 +488,53 @@ pub actor UserActor {
 		t.Fatalf("lost identifier: %+v", result)
 	}
 }
+
+func TestGenQualifiedImportsRoundTrip(t *testing.T) {
+	_, shared := parseDomainForTest(t, "shared/domain.skel", "domain ws.sandbox\n", "shared/types.skel", `domain ws.sandbox
+pub actor SandboxActor { via client {} }
+pub data Value { id: string }
+`, nil)
+	for _, declaration := range []string{"ws.sandbox", "ws.sandbox as sandbox"} {
+		t.Run(declaration, func(t *testing.T) {
+			qualifier := "ws.sandbox"
+			if strings.Contains(declaration, " as ") {
+				qualifier = "sandbox"
+			}
+			domain, _ := parseDomainForTest(t, "app/domain.skel", "domain demo.proxy\n", "app/service.skel", "domain demo.proxy\nimport "+declaration+"\npub data Payload { value: "+qualifier+".Value }\npub service ProxyService { for "+qualifier+".SandboxActor method get { output Payload } }\n", map[string]string{"ws.sandbox": shared})
+			out := t.TempDir()
+			mustGenerateForTest(t, domain, Option{Out: out, PubOnly: true})
+			_, err := compiler.Compile(compiler.Option{SkelIn: out, SkelImports: map[string]string{"ws.sandbox": shared}})
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+func TestGenImportAliasesDoNotSelectUnrelatedDomains(t *testing.T) {
+	imports := map[string]string{}
+	for _, name := range []string{"user", "other"} {
+		_, path := parseDomainForTest(t, name+"/domain.skel", "domain "+name+"\n", name+"/types.skel", "domain "+name+"\npub data Value {}\npub actor ClientActor { via client {} }\n", nil)
+		imports[name] = path
+	}
+	for _, test := range []struct{ name, declaration, usedDomain, expectedImport, filename string }{
+		{"data domain collides with alias", "pub data Payload { value: legacy.Value }", "user", "import user as legacy", "types.skel"},
+		{"data alias collides with domain", "pub data Payload { value: user.Value }", "other", "import other as user", "types.skel"},
+		{"actor domain collides with alias", "pub service ProxyService { for legacy.ClientActor method ping {} }", "user", "import user as legacy", "service.skel"},
+		{"actor alias collides with domain", "pub service ProxyService { for user.ClientActor method ping {} }", "other", "import other as user", "service.skel"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			domain, _ := parseDomainForTest(t, "app/domain.skel", "domain demo.app\n", "app/content.skel", "domain demo.app\nimport user as legacy\nimport other as user\n"+test.declaration+"\n", imports)
+			out := t.TempDir()
+			mustGenerateForTest(t, domain, Option{Out: out, PubOnly: true})
+			content := readGeneratedFileForTest(t, filepath.Join(out, test.filename))
+			if strings.Count(content, "\nimport ") != 1 || !strings.Contains(content, test.expectedImport+"\n") {
+				t.Fatalf("unexpected generated imports:\n%s", content)
+			}
+			// Consumers should only need the domain actually referenced by the contract.
+			if _, err := compiler.Compile(compiler.Option{SkelIn: out, SkelImports: map[string]string{test.usedDomain: imports[test.usedDomain]}}); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}

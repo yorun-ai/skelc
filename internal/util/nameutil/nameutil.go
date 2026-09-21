@@ -184,3 +184,12 @@ func checkIdentifierCase(value string, firstCheck func(rune) bool, letterCheck f
 
 	return true
 }
+
+// SplitQualified separates a declaration name from its domain or explicit alias.
+func SplitQualified(value string) (qualifier, name string, qualified bool) {
+	index := strings.LastIndexByte(value, '.')
+	if index < 0 {
+		return "", value, false
+	}
+	return value[:index], value[index+1:], true
+}

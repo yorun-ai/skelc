@@ -22,7 +22,7 @@ pub data OrderLine {
 
 pub data Order {
     id: uuid
-    customer: user.UserSummary
+    customer: identity.user.UserSummary
     status: OrderStatus
     lines: list<OrderLine>
     attributes: map<string, string>

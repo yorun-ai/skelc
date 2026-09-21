@@ -13,7 +13,7 @@ import (
 
 func TestIndexDocumentDefinitionsAndReferences(t *testing.T) {
 	source := `domain demo.order
-import demo.user
+import demo.user as user
 
 // user.Ignored and Ignored must not be indexed.
 @desc("user.Ignored")

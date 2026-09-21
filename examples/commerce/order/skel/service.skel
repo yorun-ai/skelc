@@ -4,7 +4,7 @@ domain commerce.order
 api service OrderApiService {
     for CustomerActor via client
     auth
-    require any(Order:read, user.User:read)
+    require any(Order:read, identity.user.User:read)
 
     method list {
         input {

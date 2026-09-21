@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-	"strings"
 
 	"go.yorun.ai/skelc/internal/model"
+	"go.yorun.ai/skelc/internal/util/nameutil"
 	"go.yorun.ai/skelc/internal/util/sliceutil"
 )
 
@@ -189,7 +189,7 @@ func (p *Analysis) checkActorAudiences(audiences []*model.ActorAudience, ownerPo
 }
 
 func (p *Analysis) actorByRef(actorName string) *model.Actor {
-	qualifier, name, ok := strings.Cut(actorName, ".")
+	qualifier, name, ok := nameutil.SplitQualified(actorName)
 	if !ok {
 		return p.actorsMap[actorName]
 	}
@@ -201,7 +201,7 @@ func (p *Analysis) actorByRef(actorName string) *model.Actor {
 }
 
 func (p *Analysis) resourceByRef(resourceName string) *model.Resource {
-	qualifier, name, ok := strings.Cut(resourceName, ".")
+	qualifier, name, ok := nameutil.SplitQualified(resourceName)
 	if !ok {
 		return p.resourcesMap[resourceName]
 	}

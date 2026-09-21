@@ -1,10 +1,9 @@
 package analyzer
 
 import (
-	"strings"
-
 	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/parser/grammar"
+	"go.yorun.ai/skelc/internal/util/nameutil"
 )
 
 func parseRequire(reporter *_DiagnosticReporter, gr *grammar.Require) (*model.PermissionRequire, bool) {
@@ -186,7 +185,7 @@ func resourceCheckArguments(check *model.ResourceCheck) []*model.Argument {
 }
 
 func (p *Analysis) isImportedResourceRef(resourceRef string) bool {
-	qualifier, _, ok := strings.Cut(resourceRef, ".")
+	qualifier, _, ok := nameutil.SplitQualified(resourceRef)
 	return ok && p.importsMap[qualifier] != nil
 }
 

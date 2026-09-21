@@ -10,7 +10,7 @@ func TestWorkspaceAnalyzerReusesUnaffectedDomains(t *testing.T) {
 	analyzer := NewWorkspaceAnalyzer()
 	sources := []Source{
 		{Path: "/workspace/user.skel", Content: []byte("domain demo.user\npub data User { id: string }\n")},
-		{Path: "/workspace/order.skel", Content: []byte("domain demo.order\nimport demo.user\ndata Order { user: user.User }\n")},
+		{Path: "/workspace/order.skel", Content: []byte("domain demo.order\nimport demo.user as user\ndata Order { user: user.User }\n")},
 		{Path: "/workspace/audit.skel", Content: []byte("domain demo.audit\ndata Audit { id: string }\n")},
 	}
 	if diagnostics := analyzer.Analyze(sources); len(diagnostics) != 0 {
@@ -56,7 +56,7 @@ func TestWorkspaceAnalyzerDoesNotDuplicateMethodDecoratorsOnReanalysis(t *testin
 	sources := []Source{
 		{Path: "/workspace/user.skel", Content: []byte("domain demo.user\npub data User { id: string }\n")},
 		{Path: "/workspace/order.skel", Content: []byte(`domain demo.order
-import demo.user
+import demo.user as user
 @deprecated("Use NewOrderService")
 pub service OrderService {
     @deprecated("Use getNewOrder")

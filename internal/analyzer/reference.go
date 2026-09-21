@@ -6,6 +6,7 @@ import (
 	"github.com/alecthomas/participle/v2/lexer"
 	"go.yorun.ai/skelc/internal/model"
 	"go.yorun.ai/skelc/internal/parser/grammar"
+	"go.yorun.ai/skelc/internal/util/nameutil"
 )
 
 type _RefKind int
@@ -197,12 +198,7 @@ func parseReferenceName(reporter *_DiagnosticReporter, name *grammar.QualifiedNa
 	if !reporter.check(name != nil && len(name.Parts) > 0, "missing reference type") {
 		return "", "", lexer.Position{}, false
 	}
-	if len(name.Parts) == 1 {
-		return name.Parts[0].Value, "", name.Parts[0].Pos, true
-	}
-	if len(name.Parts) == 2 {
-		return name.Parts[1].Value, name.Parts[0].Value, name.Parts[1].Pos, true
-	}
-	reporter.reportf("%s reference type supports at most one import qualifier", name.Pos)
-	return name.Parts[1].Value, name.Parts[0].Value, name.Parts[1].Pos, false
+	last := name.Parts[len(name.Parts)-1]
+	qualifier, _, _ := nameutil.SplitQualified(name.String())
+	return last.Value, qualifier, last.Pos, true
 }

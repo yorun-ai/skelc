@@ -38,7 +38,7 @@ func TestSemanticDiagnosticsDoNotResolveImportsAcrossDomainRoots(t *testing.T) {
 	orderURI := uri.File("/workspace/order/order.skel")
 	documents := map[uri.URI]*index.Document{
 		userURI:  index.Build(userURI, userURI.FsPath(), "domain demo.user\ndata User {}\n", 2),
-		orderURI: index.Build(orderURI, orderURI.FsPath(), "domain demo.order\nimport demo.user\ndata Order { owner: user.Missing }\n", 7),
+		orderURI: index.Build(orderURI, orderURI.FsPath(), "domain demo.order\nimport demo.user as user\ndata Order { owner: user.Missing }\n", 7),
 	}
 
 	sources, paths := SemanticSources(documents)

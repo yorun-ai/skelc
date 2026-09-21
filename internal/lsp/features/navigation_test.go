@@ -14,12 +14,12 @@ func TestServiceDefinitionAndReferencesAcrossDomains(t *testing.T) {
 	userURI := uri.File("/workspace/user.skel")
 	orderURI := uri.File("/workspace/order.skel")
 	server.putDocument(userURI, "domain demo.user\ndata User {}\n", 1, true)
-	server.putDocument(orderURI, "domain demo.order\nimport demo.user\ndata Order { owner: user.User }\n", 1, true)
+	server.putDocument(orderURI, "domain demo.order\nimport demo.user\ndata Order { owner: demo.user.User }\n", 1, true)
 
 	definition, err := server.service().Definition(t.Context(), &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: orderURI},
-			Position:     protocol.Position{Line: 2, Character: 25},
+			Position:     protocol.Position{Line: 2, Character: 30},
 		},
 	})
 	require.NoError(t, err)

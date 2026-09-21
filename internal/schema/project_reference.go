@@ -1,6 +1,6 @@
 package schema
 
-import "strings"
+import "go.yorun.ai/skelc/internal/util/nameutil"
 
 func normalizeReferenceNames(document *Document, domainName string, importAliases map[string]string) {
 	for _, declaration := range document.Declarations {
@@ -92,7 +92,7 @@ func canonicalReferenceName(domainName string, importAliases map[string]string, 
 	if name == "" {
 		return ""
 	}
-	if alias, localName, ok := strings.Cut(name, "."); ok {
+	if alias, localName, ok := nameutil.SplitQualified(name); ok {
 		if importedDomain := importAliases[alias]; importedDomain != "" {
 			return importedDomain + "." + localName
 		}

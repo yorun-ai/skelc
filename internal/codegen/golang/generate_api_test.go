@@ -21,14 +21,14 @@ data Detail { label: string }
 pub data External { detail: Detail }
 `)
 	writeFileForTest(t, order, `domain shop.order
-import common.shared as shared
+import common.shared
 actor ClientActor { via client {} }
 data Unused { secret: string }
 api service OrderApiService {
     for ClientActor via client
     method get {
-        input { payload: shared.Page<shared.Page<binary>> }
-        output shared.External
+        input { payload: common.shared.Page<common.shared.Page<binary>> }
+        output common.shared.External
     }
     method echo {
         input {
@@ -106,7 +106,7 @@ pub service BackendService { method ping {} }
 	if strings.Contains(string(data), "OrderApiServiceGetArguments") || strings.Contains(string(service), "type OrderApiServiceGetArguments") {
 		t.Fatal("API arguments must not be public data types")
 	}
-	if !strings.Contains(string(service), "type _OrderApiServiceGetArguments struct") || !strings.Contains(string(service), "payload shared.Page[shared.Page[skel.Binary]]") {
+	if !strings.Contains(string(service), "type _OrderApiServiceGetArguments struct") || !strings.Contains(string(service), "payload sharedapi.Page[sharedapi.Page[skel.Binary]]") {
 		t.Fatalf("missing positional API arguments: %s", service)
 	}
 	for _, fragment := range []string{"Get external data", "@param payload - Nested payload", "payload example", "@returns", "External result", "result example", "Deprecated: Use fetch."} {
@@ -285,5 +285,73 @@ pub service BackendService { method ping {} }
 	option.VineVersion = "v0.15.6"
 	if _, err := skelc.CompileGolang(input, option); err == nil {
 		t.Fatal("accepted runtime below the minimum Vine version")
+	}
+}
+
+func TestCrossDomainImportAliasCollisions(t *testing.T) {
+	testutil.RequireToolchain(t)
+	root := t.TempDir()
+	imports := map[string]string{}
+	goImports := map[string]string{}
+	tsImports := map[string]string{}
+	outputs := map[string]string{}
+	for _, prefix := range []string{"first", "second"} {
+		domain := prefix + ".user"
+		input := filepath.Join(root, prefix+".skel")
+		writeFileForTest(t, input, "domain "+domain+"\npub data Value { id: string }\n")
+		imports[domain] = input
+		goImports[domain] = "example.com/" + prefix + "/userapi"
+		tsImports[domain] = "./" + prefix
+		outputs[domain] = filepath.Join(root, prefix)
+		if _, err := skelc.CompileGolang(skelc.Input{SkelIn: input}, skelc.GolangOption{CompilerVersion: "v0.0.0-dev", ApiOnly: true, AsModule: true, Module: goImports[domain], Out: outputs[domain]}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var firstGo, firstTs string
+	for _, reversed := range []bool{false, true} {
+		declarations := "import first.user\nimport second.user\n"
+		if reversed {
+			declarations = "import second.user\nimport first.user\n"
+		}
+		input := filepath.Join(t.TempDir(), "app.skel")
+		writeFileForTest(t, input, "domain demo.app\n"+declarations+"data Pair { first: first.user.Value second: second.user.Value }\napi service AppApiService { method get { output Pair } }\n")
+		out := filepath.Join(t.TempDir(), "appapi")
+		if _, err := skelc.CompileGolang(skelc.Input{SkelIn: input, SkelImports: imports}, skelc.GolangOption{CompilerVersion: "v0.0.0-dev", ApiOnly: true, AsModule: true, Module: "example.com/appapi", Out: out, Imports: goImports}); err != nil {
+			t.Fatal(err)
+		}
+		content, err := os.ReadFile(filepath.Join(out, "data.go"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, fragment := range []string{`firstuser "example.com/first/userapi"`, `seconduser "example.com/second/userapi"`, "firstuser.Value", "seconduser.Value"} {
+			if !strings.Contains(string(content), fragment) {
+				t.Fatalf("missing %s:\n%s", fragment, content)
+			}
+		}
+		if reversed && string(content) != firstGo {
+			t.Fatal("Go imports depend on declaration order")
+		}
+		firstGo = string(content)
+		for domain, path := range outputs {
+			testutil.Go(t, out, "mod", "edit", "-replace="+goImports[domain]+"="+path)
+		}
+		testutil.Go(t, out, "test", "-mod=mod", "./...")
+		tsOut := t.TempDir()
+		if _, err := skelc.CompileTypeScript(skelc.Input{SkelIn: input, SkelImports: imports}, skelc.TypeScriptOption{ApiOnly: true, Out: tsOut, Imports: tsImports}); err != nil {
+			t.Fatal(err)
+		}
+		ts, err := os.ReadFile(filepath.Join(tsOut, "data.ts"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, fragment := range []string{"import type * as firstUser from './first'", "import type * as secondUser from './second'", "firstUser.Value", "secondUser.Value"} {
+			if !strings.Contains(string(ts), fragment) {
+				t.Fatalf("missing %s:\n%s", fragment, ts)
+			}
+		}
+		if reversed && string(ts) != firstTs {
+			t.Fatal("TypeScript imports depend on declaration order")
+		}
+		firstTs = string(ts)
 	}
 }

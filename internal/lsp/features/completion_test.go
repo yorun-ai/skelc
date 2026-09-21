@@ -16,7 +16,7 @@ func TestServiceCompletesKeywordsTypesAndImportedSymbols(t *testing.T) {
 	orderURI := uri.File("/workspace/order.skel")
 	statusURI := uri.File("/workspace/status.skel")
 	server.putDocument(userURI, "domain demo.user\ndata User {}\n", 1, true)
-	server.putDocument(orderURI, "domain demo.order\nimport demo.user\ndata Order { owner: user. }\n", 1, true)
+	server.putDocument(orderURI, "domain demo.order\nimport demo.user as user\ndata Order { owner: user. }\n", 1, true)
 	server.putDocument(statusURI, "domain demo.order\nenum Status { ACTIVE }\n", 1, true)
 
 	result, err := server.service().Completion(t.Context(), &protocol.CompletionParams{
@@ -353,4 +353,23 @@ func hasCompletion(items protocol.CompletionItemSlice, label string) bool {
 		}
 	}
 	return false
+}
+
+func TestServiceCompletesFullDomainQualifier(t *testing.T) {
+	server := newFixture()
+	userURI := uri.File("/workspace/user.skel")
+	orderURI := uri.File("/workspace/order.skel")
+	server.putDocument(userURI, "domain demo.user\ndata User {}\n", 1, true)
+	for _, suffix := range []string{"", "Us"} {
+		line := "data Order { owner: demo.user." + suffix
+		server.putDocument(orderURI, "domain demo.order\nimport demo.user\n"+line, 1, true)
+		result, err := server.service().Completion(t.Context(), &protocol.CompletionParams{
+			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+				TextDocument: protocol.TextDocumentIdentifier{URI: orderURI},
+				Position:     protocol.Position{Line: 2, Character: uint32(len(line))},
+			},
+		})
+		require.NoError(t, err)
+		assert.True(t, hasCompletion(result.(protocol.CompletionItemSlice), "User"))
+	}
 }

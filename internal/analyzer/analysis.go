@@ -100,7 +100,7 @@ func (p *Analysis) ImportAliases() map[string]string {
 	aliases := make(map[string]string, len(p.content.Imports))
 	for _, importDecl := range p.content.Imports {
 		domainName := importDecl.Domain.String()
-		alias := defaultImportAlias(domainName)
+		alias := domainName
 		if importDecl.Alias != nil {
 			alias = importDecl.Alias.Value
 		}

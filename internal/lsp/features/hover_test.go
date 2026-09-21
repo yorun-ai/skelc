@@ -14,12 +14,12 @@ func TestServiceHoverShowsQualifiedDeclaration(t *testing.T) {
 	userURI := uri.File("/workspace/user.skel")
 	orderURI := uri.File("/workspace/order.skel")
 	server.putDocument(userURI, "domain demo.user\n@desc(\"Account data\")\ndata User {}\n", 1, true)
-	server.putDocument(orderURI, "domain demo.order\nimport demo.user\ndata Order { owner: user.User }\n", 1, true)
+	server.putDocument(orderURI, "domain demo.order\nimport demo.user\ndata Order { owner: demo.user.User }\n", 1, true)
 
 	hover, err := server.service().Hover(t.Context(), &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: orderURI},
-			Position:     protocol.Position{Line: 2, Character: 27},
+			Position:     protocol.Position{Line: 2, Character: 32},
 		},
 	})
 	require.NoError(t, err)
@@ -34,12 +34,12 @@ func TestServiceHoverShowsDeprecation(t *testing.T) {
 	userURI := uri.File("/workspace/user.skel")
 	orderURI := uri.File("/workspace/order.skel")
 	server.putDocument(userURI, "domain demo.user\n@deprecated(\"Use Profile instead\")\ndata User {}\n", 1, true)
-	server.putDocument(orderURI, "domain demo.order\nimport demo.user\ndata Order { owner: user.User }\n", 1, true)
+	server.putDocument(orderURI, "domain demo.order\nimport demo.user\ndata Order { owner: demo.user.User }\n", 1, true)
 
 	hover, err := server.service().Hover(t.Context(), &protocol.HoverParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{URI: orderURI},
-			Position:     protocol.Position{Line: 2, Character: 27},
+			Position:     protocol.Position{Line: 2, Character: 32},
 		},
 	})
 	require.NoError(t, err)

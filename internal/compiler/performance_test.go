@@ -150,7 +150,7 @@ func benchmarkWorkspaceSources(count int) []compiler.Source {
 		content := "domain " + name + "\npub data Value { id: string }\n"
 		if index > 0 {
 			previous := fmt.Sprintf("benchmark.d%d", index-1)
-			content = "domain " + name + "\nimport " + previous + "\npub data Value { previous: d" + fmt.Sprint(index-1) + ".Value }\n"
+			content = "domain " + name + "\nimport " + previous + "\npub data Value { previous: " + previous + ".Value }\n"
 		}
 		sources = append(sources, compiler.Source{Path: fmt.Sprintf("/benchmark/%d.skel", index), Content: []byte(content)})
 	}

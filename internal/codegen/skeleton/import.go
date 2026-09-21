@@ -1,10 +1,9 @@
 package skeleton
 
 import (
-	"strings"
-
 	"go.yorun.ai/skelc/internal/codegen/common"
 	"go.yorun.ai/skelc/internal/model"
+	"go.yorun.ai/skelc/internal/util/nameutil"
 )
 
 func collectTypeImports(domain *model.Domain, view *common.PublicView) []*model.Import {
@@ -59,10 +58,14 @@ func collectActorImports(domain *model.Domain, actors []*model.Actor) []*model.I
 
 func collectServiceImports(domain *model.Domain, services []*model.Service) []*model.Import {
 	used := map[string]struct{}{}
+	importDomains := make(map[string]string, len(domain.Imports()))
+	for _, import_ := range domain.Imports() {
+		importDomains[import_.Alias] = import_.Name
+	}
 	types := make([]*model.Type, 0)
 	for _, service := range services {
 		for _, audience := range service.Audiences {
-			collectImportFromQualifiedName(used, audience.Actor)
+			collectImportFromQualifiedName(used, importDomains, audience.Actor)
 		}
 		for _, method := range service.Methods {
 			types = append(types, method.ResultType)
@@ -75,10 +78,10 @@ func collectServiceImports(domain *model.Domain, services []*model.Service) []*m
 	return selectUsedImports(domain.Imports(), used)
 }
 
-func collectImportFromQualifiedName(used map[string]struct{}, name string) {
-	qualifier, _, ok := strings.Cut(name, ".")
-	if ok {
-		used[qualifier] = struct{}{}
+func collectImportFromQualifiedName(used map[string]struct{}, importDomains map[string]string, name string) {
+	qualifier, _, ok := nameutil.SplitQualified(name)
+	if domainName := importDomains[qualifier]; ok && domainName != "" {
+		used[domainName] = struct{}{}
 	}
 }
 

@@ -522,3 +522,64 @@ service UserService {
 		t.Fatalf("expected semantic error, got %v", err)
 	}
 }
+
+func TestImportQualifiers(t *testing.T) {
+	root := t.TempDir()
+	shared := filepath.Join(root, "shared.skel")
+	writeFile(t, shared, `domain ws.sandbox
+pub actor SandboxActor { via client {} }
+pub data Box<TValue> { value: TValue }
+pub enum State { READY }
+pub resource Document { action read }
+`)
+	other := filepath.Join(root, "other.skel")
+	writeFile(t, other, "domain other.sandbox\npub data Item {}\n")
+	var webHash, serviceHash string
+	for _, test := range []struct {
+		name, declaration, qualifier string
+		valid                        bool
+	}{
+		{"full domain", "ws.sandbox", "ws.sandbox", true},
+		{"explicit alias", "ws.sandbox as sandbox", "sandbox", true},
+		{"custom alias", "ws.sandbox as sb", "sb", true},
+		{"no implicit alias", "ws.sandbox", "sandbox", false},
+		{"alias replaces domain", "ws.sandbox as sb", "ws.sandbox", false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			input := filepath.Join(t.TempDir(), "domain.skel")
+			source := `domain demo.proxy
+import IMPORT
+import other.sandbox
+pub data Payload { value: REF.Box<REF.State> other: other.sandbox.Item }
+web DeepseekWeb { for REF.SandboxActor }
+pub service ProxyService { for REF.SandboxActor method ping { require REF.Document:read } }
+`
+			source = strings.ReplaceAll(strings.ReplaceAll(source, "IMPORT", test.declaration), "REF", test.qualifier)
+			writeFile(t, input, source)
+			result, err := Compile(Option{SkelIn: input, SkelImports: map[string]string{"ws.sandbox": shared, "other.sandbox": other}})
+			if !test.valid {
+				if err == nil {
+					t.Fatal("expected unresolved reference")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.ImportAliases[test.qualifier] != "ws.sandbox" {
+				t.Fatalf("unexpected imports: %v", result.ImportAliases)
+			}
+			if webHash == "" {
+				webHash = result.Domain.Webs()[0].Hash
+				serviceHash = result.Domain.Services()[0].Hash
+			}
+			if result.Domain.Webs()[0].Hash != webHash || result.Domain.Services()[0].Hash != serviceHash {
+				t.Fatal("import spelling changed compatibility hashes")
+			}
+			member := result.Domain.Data()[0].Members[0].Type
+			if member.SkelName != "ws.sandbox.Box" || member.TypeArguments[0].SkelName != "ws.sandbox.State" {
+				t.Fatalf("incorrect canonical type: %+v", member)
+			}
+		})
+	}
+}

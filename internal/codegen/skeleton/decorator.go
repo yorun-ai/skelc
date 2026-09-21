@@ -69,7 +69,7 @@ func methodAuthMarker(method *model.Method) string {
 }
 
 func importAlias(import_ *model.Import) string {
-	if import_.Alias == defaultImportAlias(import_.Name) {
+	if !import_.ExplicitAlias {
 		return ""
 	}
 	return import_.Alias

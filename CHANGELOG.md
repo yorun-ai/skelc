@@ -6,6 +6,34 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-09-21
+
+### Changed
+
+- Unaliased imports now require the full domain name in references. For example,
+  `import ws.sandbox` uses `ws.sandbox.SandboxActor`; add `as sandbox` to keep
+  using `sandbox.SandboxActor`. This applies to data and enum types, Actor
+  audiences and permission resources. LSP completion, navigation and rename
+  support full-domain references. Canonical schema identities and compatibility
+  hashes remain independent of the chosen import spelling.
+- Go and TypeScript generators allocate deterministic aliases for colliding
+  import names, using lowercase Go package aliases and camelCase TypeScript
+  namespace aliases. Available explicit aliases retain priority, and generated
+  aliases avoid reserved names. Update implicit short references or add explicit
+  aliases, then regenerate affected Go/TypeScript packages and public Skel
+  contracts. Upgrade the compiler used by editors as well as the CLI.
+- Release preparation requires coordinated documentation edits and validation in
+  the owning workspace, without requiring documentation-site commits or merges;
+  those Git operations still require separate explicit authorization.
+
+### Fixed
+
+- Public Skel exports no longer retain unrelated dependencies when an import
+  alias matches another domain name. Actor and type dependencies are selected
+  using their resolved domain identity.
+- Update the commerce example's imported type and permission references to use
+  the full domain name.
+
 ## [0.21.0] - 2026-09-17
 
 ### Removed
@@ -511,3 +539,6 @@ Initial public release.
 - TypeScript type, package, and vRPC service client generation
 - Public Skel contract extraction for cross-domain sharing
 - Binary-aware sparse vRPC wire-schema generation for TypeScript clients
+
+[Unreleased]: https://github.com/yorun-ai/skelc/compare/v0.22.0...HEAD
+[0.22.0]: https://github.com/yorun-ai/skelc/compare/v0.21.0...v0.22.0

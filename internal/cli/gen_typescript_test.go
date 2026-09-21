@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -174,5 +176,69 @@ func TestRunSkelcGenTSRequiresApiAndRejectsPub(t *testing.T) {
 	help := Run([]string{"gen", "ts", "--help"})
 	if help.ExitCode != ExitCodeSuccess || !strings.Contains(help.Stdout, "--api") || strings.Contains(help.Stdout, "--pub") {
 		t.Fatalf("unexpected TS options: %s", help.Stdout)
+	}
+}
+
+func TestRunSkelcGenTSEmptyPackageReplacesPreviousDeclarations(t *testing.T) {
+	for _, asModule := range []bool{false, true} {
+		t.Run(fmt.Sprintf("module=%v", asModule), func(t *testing.T) {
+			dir := t.TempDir()
+			out := filepath.Join(t.TempDir(), "typescript")
+			input := filepath.Join(dir, "contracts.skel")
+			args := []string{"gen", "ts", "--api", "--skel-in", input, "--ts-out", out}
+			if asModule {
+				args = append(args, "--ts-as-module", "--ts-module", "@acme/empty")
+			}
+			writeCLIFile(t, input, "domain demo.empty\n\npub data Visible {\n value: string\n}\n")
+			assertGenerationResult(t, Run(args))
+			for _, name := range []string{"data.ts", "service.ts", "spec.ts"} {
+				if _, err := os.Stat(filepath.Join(out, name)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			writeCLIFile(t, filepath.Join(out, "notes.txt"), "user-owned\n")
+			// A domain can contain declarations but expose no TypeScript API.
+			writeCLIFile(t, input, "domain demo.empty\n\ndata Internal {\n value: string\n}\n")
+			assertGenerationResult(t, Run(args))
+			index, err := os.ReadFile(filepath.Join(out, "index.ts"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(index), "export {};") || strings.Contains(string(index), "export *") {
+				t.Fatalf("unexpected empty entry point: %s", index)
+			}
+			for _, name := range []string{"data.ts", "service.ts", "spec.ts"} {
+				assertFileMissing(t, filepath.Join(out, name))
+			}
+			if content, err := os.ReadFile(filepath.Join(out, "notes.txt")); err != nil || string(content) != "user-owned\n" {
+				t.Fatalf("user file changed: %q, %v", content, err)
+			}
+			if asModule {
+				content, err := os.ReadFile(filepath.Join(out, "package.json"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				var pkg struct {
+					Name    string `json:"name"`
+					Exports map[string]struct {
+						Types   string `json:"types"`
+						Default string `json:"default"`
+					} `json:"exports"`
+				}
+				if err := json.Unmarshal(content, &pkg); err != nil {
+					t.Fatal(err)
+				}
+				if pkg.Name != "@acme/empty" || pkg.Exports["."].Types != "./index.ts" || pkg.Exports["."].Default != "./index.ts" {
+					t.Fatalf("unexpected empty package metadata: %s", content)
+				}
+			} else {
+				assertFileMissing(t, filepath.Join(out, "package.json"))
+			}
+			assertGenerationResult(t, Run(args))
+			repeated, err := os.ReadFile(filepath.Join(out, "index.ts"))
+			if err != nil || string(repeated) != string(index) {
+				t.Fatalf("empty output is not stable: %q, %v", repeated, err)
+			}
+		})
 	}
 }

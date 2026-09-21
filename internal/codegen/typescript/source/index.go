@@ -10,5 +10,5 @@ const indexFilename = "index.ts"
 var indexTemplate string
 
 func (g *_Gen) genIndex() {
-	g.renderTs(indexFilename, indexTemplate, struct{}{})
+	g.renderTs(indexFilename, indexTemplate, g.hasApiDeclarations())
 }

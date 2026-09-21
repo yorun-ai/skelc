@@ -76,8 +76,14 @@ func newGen(domain *model.Domain, outputDir string, options ...Option) *_Gen {
 }
 
 func (g *_Gen) generate() {
-	g.genDataTs()
-	g.genSpecTs()
-	g.genServiceTs()
+	if g.hasApiDeclarations() {
+		g.genDataTs()
+		g.genSpecTs()
+		g.genServiceTs()
+	}
 	g.genIndex()
+}
+
+func (g *_Gen) hasApiDeclarations() bool {
+	return len(g.apiView.Enums) > 0 || len(g.apiView.Data) > 0 || len(g.apiView.Services) > 0
 }

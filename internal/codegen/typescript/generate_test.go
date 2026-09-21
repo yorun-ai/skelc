@@ -17,6 +17,7 @@ func TestGenerateModule(t *testing.T) {
 		Name: "demo.user",
 		Data: []*model.Data{{
 			Name: "User",
+			Pub:  true,
 			Members: []*model.DataMember{{
 				Name: "id",
 				Type: &model.Type{Kind: model.TypeKindScalar, Scalar: model.ScalarString},

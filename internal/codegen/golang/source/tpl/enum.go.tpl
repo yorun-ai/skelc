@@ -20,7 +20,7 @@ const (
 )
 
 func ({{ $e.VarName }} {{ $e.Name }}) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf("\"%s\"", {{ $e.VarName }})), nil
+	return fmt.Appendf(nil, "\"%s\"", {{ $e.VarName }}), nil
 }
 
 func ({{ $e.VarName }} *{{ $e.Name }}) UnmarshalJSON(data []byte) error {

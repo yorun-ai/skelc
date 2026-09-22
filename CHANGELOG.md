@@ -6,6 +6,17 @@ The project follows [Semantic Versioning](https://semver.org/). The public versi
 
 ## [Unreleased]
 
+## [0.22.1] - 2026-09-23
+
+### Fixed
+
+- TypeScript API generation emits a minimal usable package for contracts with
+  no API declarations, including an empty module entry point instead of exports
+  referencing files that were not generated.
+- Generated Go enum JSON marshalers append formatted bytes directly with
+  `fmt.Appendf`, eliminating the intermediate string conversion and its editor
+  diagnostic without changing serialized output.
+
 ## [0.22.0] - 2026-09-21
 
 ### Changed
@@ -540,5 +551,6 @@ Initial public release.
 - Public Skel contract extraction for cross-domain sharing
 - Binary-aware sparse vRPC wire-schema generation for TypeScript clients
 
-[Unreleased]: https://github.com/yorun-ai/skelc/compare/v0.22.0...HEAD
+[Unreleased]: https://github.com/yorun-ai/skelc/compare/v0.22.1...HEAD
+[0.22.1]: https://github.com/yorun-ai/skelc/compare/v0.22.0...v0.22.1
 [0.22.0]: https://github.com/yorun-ai/skelc/compare/v0.21.0...v0.22.0
